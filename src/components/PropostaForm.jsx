@@ -1,0 +1,192 @@
+import { useState, useEffect } from 'react'
+
+export default function PropostaForm({ proposta = null, onSave, onCancel }) {
+  const [formData, setFormData] = useState({
+    brandNome: '',
+    settore: '',
+    priorita: 'NORMALE',
+    stato: 'DA_CONTATTARE',
+    agente: '',
+    creatorSuggeriti: '',
+    noteStrategiche: '',
+    riferimento: '',
+    contattoMail: '',
+    telefono: '',
+    link: '',
+    dataContatto: '',
+  })
+
+  useEffect(() => {
+    if (proposta) setFormData(proposta)
+  }, [proposta])
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSave(formData)
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Brand Nome */}
+        <div>
+          <label className="label">Nome Brand *</label>
+          <input
+            className="input"
+            value={formData.brandNome}
+            onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
+            required
+          />
+        </div>
+
+        {/* Settore */}
+        <div>
+          <label className="label">Settore Merceologico</label>
+          <input
+            className="input"
+            value={formData.settore}
+            onChange={(e) => setFormData({...formData, settore: e.target.value})}
+            placeholder="es. Gaming, Tech, Food..."
+          />
+        </div>
+
+        {/* Priorità */}
+        <div>
+          <label className="label">Priorità *</label>
+          <select
+            className="input"
+            value={formData.priorita}
+            onChange={(e) => setFormData({...formData, priorita: e.target.value})}
+            required
+          >
+            <option value="BASSA">BASSA</option>
+            <option value="NORMALE">NORMALE</option>
+            <option value="ALTA">ALTA</option>
+            <option value="URGENTE">URGENTE</option>
+          </select>
+        </div>
+
+        {/* Stato */}
+        <div>
+          <label className="label">Stato *</label>
+          <select
+            className="input"
+            value={formData.stato}
+            onChange={(e) => setFormData({...formData, stato: e.target.value})}
+            required
+          >
+            <option value="DA_CONTATTARE">Da Contattare</option>
+            <option value="CONTATTATO">Contattato</option>
+            <option value="IN_TRATTATIVA">In Trattativa</option>
+            <option value="CHIUSO_VINTO">Chiuso Vinto</option>
+            <option value="CHIUSO_PERSO">Chiuso Perso</option>
+          </select>
+        </div>
+
+        {/* Agente */}
+        <div>
+          <label className="label">Agente Assegnato</label>
+          <input
+            className="input"
+            value={formData.agente}
+            onChange={(e) => setFormData({...formData, agente: e.target.value})}
+            placeholder="Nome agente commerciale"
+          />
+        </div>
+
+        {/* Creator Suggeriti */}
+        <div>
+          <label className="label">Creator Suggeriti</label>
+          <input
+            className="input"
+            value={formData.creatorSuggeriti}
+            onChange={(e) => setFormData({...formData, creatorSuggeriti: e.target.value})}
+            placeholder="es. BUGALALLA, DIO EROS"
+          />
+        </div>
+
+        {/* Riferimento */}
+        <div>
+          <label className="label">Riferimento</label>
+          <input
+            className="input"
+            value={formData.riferimento}
+            onChange={(e) => setFormData({...formData, riferimento: e.target.value})}
+            placeholder="Nome referente brand"
+          />
+        </div>
+
+        {/* Email */}
+        <div>
+          <label className="label">Email Contatto</label>
+          <input
+            type="email"
+            className="input"
+            value={formData.contattoMail}
+            onChange={(e) => setFormData({...formData, contattoMail: e.target.value})}
+          />
+        </div>
+
+        {/* Telefono */}
+        <div>
+          <label className="label">Telefono</label>
+          <input
+            className="input"
+            value={formData.telefono}
+            onChange={(e) => setFormData({...formData, telefono: e.target.value})}
+          />
+        </div>
+
+        {/* Link */}
+        <div>
+          <label className="label">Link</label>
+          <input
+            type="url"
+            className="input"
+            value={formData.link}
+            onChange={(e) => setFormData({...formData, link: e.target.value})}
+            placeholder="https://"
+          />
+        </div>
+
+        {/* Data Contatto */}
+        <div>
+          <label className="label">Data Contatto</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataContatto}
+            onChange={(e) => setFormData({...formData, dataContatto: e.target.value})}
+          />
+        </div>
+
+        {/* Note Strategiche */}
+        <div className="md:col-span-2">
+          <label className="label">Note Strategiche</label>
+          <textarea
+            className="input min-h-[100px]"
+            value={formData.noteStrategiche}
+            onChange={(e) => setFormData({...formData, noteStrategiche: e.target.value})}
+            placeholder="Note, obiettivi, strategia di approccio..."
+          />
+        </div>
+      </div>
+
+      <div className="mt-6 flex gap-3 justify-end">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          Annulla
+        </button>
+        <button
+          type="submit"
+          className="px-6 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+        >
+          {proposta ? 'Aggiorna' : 'Crea'} Proposta
+        </button>
+      </div>
+    </form>
+  )
+}
