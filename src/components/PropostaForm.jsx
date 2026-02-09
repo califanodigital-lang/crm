@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getActiveAgents } from '../services/userService'
 
 export default function PropostaForm({ proposta = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -16,6 +17,17 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     dataContatto: '',
     sitoWeb:''
   })
+
+  const [agenti, setAgenti] = useState([])
+
+  useEffect(() => {
+      loadAgenti()
+    }, [])
+
+    const loadAgenti = async () => {
+      const { data } = await getActiveAgents()
+      setAgenti(data || [])
+    }
 
   useEffect(() => {
     if (proposta) setFormData(proposta)
@@ -87,12 +99,16 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
         {/* Agente */}
         <div>
           <label className="label">Agente Assegnato</label>
-          <input
+          <select
             className="input"
             value={formData.agente}
             onChange={(e) => setFormData({...formData, agente: e.target.value})}
-            placeholder="Nome agente commerciale"
-          />
+          >
+            <option value="">Nessuno</option>
+            {agenti.map(a => (
+              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+            ))}
+          </select>
         </div>
 
         {/* Creator Suggeriti */}

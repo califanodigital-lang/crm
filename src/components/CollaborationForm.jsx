@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getActiveAgents } from '../services/userService'
 
 export default function CollaborationForm({ collaboration = null, creators = [], brands = [], onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -15,6 +16,17 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     contatto: '',
     note: '',
   })
+
+  const [agenti, setAgenti] = useState([])
+
+  useEffect(() => {
+      loadAgenti()
+    }, [])
+
+    const loadAgenti = async () => {
+      const { data } = await getActiveAgents()
+      setAgenti(data || [])
+    }
 
   useEffect(() => {
     if (collaboration) {
@@ -117,21 +129,31 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         {/* Agente */}
         <div>
           <label className="label">Agente</label>
-          <input
+          <select
             className="input"
             value={formData.agente}
             onChange={(e) => setFormData({...formData, agente: e.target.value})}
-          />
+          >
+            <option value="">Nessuno</option>
+            {agenti.map(a => (
+              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+            ))}
+          </select>
         </div>
 
         {/* Sales */}
         <div>
           <label className="label">Sales</label>
-          <input
+          <select
             className="input"
             value={formData.sales}
             onChange={(e) => setFormData({...formData, sales: e.target.value})}
-          />
+          >
+            <option value="">Nessuno</option>
+            {agenti.map(a => (
+              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+            ))}
+          </select>
         </div>
 
         {/* Stato */}

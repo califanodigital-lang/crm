@@ -9,6 +9,7 @@ import {
   getProposteStats
 } from '../services/propostaService'
 import { convertPropostaToBrand } from '../services/propostaService'
+import { getActiveAgents } from '../services/userService'
 
 export default function PropostePage() {
   const [proposte, setProposte] = useState([])
@@ -20,6 +21,7 @@ export default function PropostePage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({})
   const [draggedItem, setDraggedItem] = useState(null)
+  const [agenti, setAgenti] = useState([])
 
   useEffect(() => {
     loadData()
@@ -27,12 +29,15 @@ export default function PropostePage() {
 
   const loadData = async () => {
     setLoading(true)
-    const { data } = await getAllProposte()
-    setProposte(data || [])
+    const [proposteRes, statsRes, agentiRes] = await Promise.all([
+      getAllProposte(),
+      getProposteStats(),
+      getActiveAgents()
+    ])
     
-    const { data: statsData } = await getProposteStats()
-    if (statsData) setStats(statsData)
-    
+    setProposte(proposteRes.data || [])
+    if (statsRes.data) setStats(statsRes.data)
+    setAgenti(agentiRes.data || [])
     setLoading(false)
   }
 
@@ -120,8 +125,6 @@ export default function PropostePage() {
     const matchesPriorita = filterPriorita === 'ALL' || p.priorita === filterPriorita
     return matchesSearch && matchesAgente && matchesPriorita
   })
-
-  const agentiUnici = [...new Set(proposte.map(p => p.agente).filter(Boolean))]
 
   const PriorityBadge = ({ priority }) => {
     const colors = {
@@ -334,7 +337,9 @@ export default function PropostePage() {
           </div>
           <select value={filterAgente} onChange={(e) => setFilterAgente(e.target.value)} className="input">
             <option value="ALL">Tutti gli agenti</option>
-            {agentiUnici.map(agente => <option key={agente} value={agente}>{agente}</option>)}
+            {agenti.map(a => (
+              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+            ))}
           </select>
           <select value={filterPriorita} onChange={(e) => setFilterPriorita(e.target.value)} className="input">
             <option value="ALL">Tutte le priorità</option>

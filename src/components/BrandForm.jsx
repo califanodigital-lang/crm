@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getActiveAgents } from '../services/userService'
 
 export default function BrandForm({ brand = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -15,8 +16,18 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     stato: 'DA_CONTATTARE',
     note: '',
   })
+  const [agenti, setAgenti] = useState([])
 
   const [categoriaInput, setCategoriaInput] = useState('')
+
+  const loadAgenti = async () => {
+    const { data } = await getActiveAgents()
+    setAgenti(data || [])
+  }
+
+  useEffect(() => {
+      loadAgenti()
+    }, [])
 
   const handleAddCategoria = () => {
   if (categoriaInput.trim()) {
@@ -148,11 +159,16 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         
         <div>
           <label className="label">Agente Assegnato</label>
-          <input
+          <select
             className="input"
             value={formData.agente}
             onChange={(e) => setFormData({...formData, agente: e.target.value})}
-          />
+          >
+            <option value="">Nessuno</option>
+            {agenti.map(a => (
+              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+            ))}
+          </select>
         </div>
         
         <div>

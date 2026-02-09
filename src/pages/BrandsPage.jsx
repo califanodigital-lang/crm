@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import BrandForm from '../components/BrandForm'
 import BrandDetail from '../components/BrandDetail'
 import { getAllBrands, createBrand, updateBrand, deleteBrand } from '../services/brandService'
+import { getActiveAgents } from '../services/userService'
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState([])
@@ -11,6 +12,8 @@ export default function BrandsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [agenti, setAgenti] = useState([])
+  const [filterAgente, setFilterAgente] = useState('ALL')
 
   // Carica brand da Supabase
   useEffect(() => {
@@ -19,13 +22,19 @@ export default function BrandsPage() {
 
   const loadBrands = async () => {
     setLoading(true)
-    const { data, error } = await getAllBrands()
-    if (error) {
+    const [brandsRes, agentiRes] = await Promise.all([
+      getAllBrands(),
+      getActiveAgents()
+    ])
+    
+    if (brandsRes.error) {
       setError('Errore nel caricamento dei brand')
-      console.error(error)
+      console.error(brandsRes.error)
     } else {
-      setBrands(data || [])
+      setBrands(brandsRes.data || [])
     }
+    
+    setAgenti(agentiRes.data || [])
     setLoading(false)
   }
 
@@ -89,10 +98,12 @@ export default function BrandsPage() {
     setSelectedBrand(null)
   }
 
-  const filteredBrands = brands.filter(b =>
-    b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (b.settore && b.settore.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const filteredBrands = brands.filter(b => {
+    const matchesSearch = b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (b.settore && b.settore.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesAgente = filterAgente === 'ALL' || b.agente === filterAgente
+    return matchesSearch && matchesAgente
+  })
 
   const StatusBadge = ({ status }) => {
     const colors = {
@@ -139,15 +150,27 @@ export default function BrandsPage() {
         )}
 
         <div className="card mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cerca brand per nome o settore..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cerca brand per nome o settore..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              />
+            </div>
+            <select
+              value={filterAgente}
+              onChange={(e) => setFilterAgente(e.target.value)}
+              className="input"
+            >
+              <option value="ALL">Tutti gli agenti</option>
+              {agenti.map(a => (
+                <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+              ))}
+            </select>
           </div>
         </div>
 
