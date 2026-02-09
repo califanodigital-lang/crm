@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, TrendingUp, AlertCircle, GripVertical } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, TrendingUp, AlertCircle, GripVertical, Award } from 'lucide-react'
 import PropostaForm from '../components/PropostaForm'
 import {
   getAllProposte,
@@ -8,6 +8,7 @@ import {
   deleteProposta,
   getProposteStats
 } from '../services/propostaService'
+import { convertPropostaToBrand } from '../services/propostaService'
 
 export default function PropostePage() {
   const [proposte, setProposte] = useState([])
@@ -96,6 +97,22 @@ export default function PropostePage() {
     setDraggedItem(null)
   }
 
+  const handleConvertToBrand = async (proposta) => {
+    if (!confirm(`Convertire "${proposta.brandNome}" in Brand?`)) return
+    
+    setLoading(true)
+    const { data, error } = await convertPropostaToBrand(proposta.id)
+    
+    if (error) {
+      alert('Errore durante la conversione')
+      console.error(error)
+    } else {
+      alert(`Brand "${data.nome}" creato con successo!`)
+      await loadData()
+    }
+    setLoading(false)
+  }
+
   const filteredProposte = proposte.filter(p => {
     const matchesSearch = p.brandNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (p.settore && p.settore.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -140,17 +157,36 @@ export default function PropostePage() {
           )}
           {proposta.agente && <div className="text-xs text-gray-500 mb-3">📍 {proposta.agente}</div>}
           
+          {/* Badge se già convertita */}
+          {proposta.brandId && (
+            <div className="mb-3">
+              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                ✓ Convertita in Brand
+              </span>
+            </div>
+          )}
+          
           <div className="flex gap-2">
+            {/* Pulsante Converti - solo per CHIUSO_VINTO e non già convertite */}
+            {proposta.stato === 'CHIUSO_VINTO' && !proposta.brandId && (
+              <button
+                onClick={() => handleConvertToBrand(proposta)}
+                className="flex-1 text-xs px-2 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded transition-colors font-semibold"
+              >
+                <Award className="w-3 h-3 inline mr-1" />
+                Converti in Brand
+              </button>
+            )}
             <button
               onClick={() => handleEdit(proposta)}
-              className="flex-1 text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded"
+              className="flex-1 text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
             >
               <Edit className="w-3 h-3 inline mr-1" />
               Modifica
             </button>
             <button
               onClick={() => handleDelete(proposta.id)}
-              className="text-xs px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded"
+              className="text-xs px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors"
             >
               <Trash2 className="w-3 h-3" />
             </button>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { createBrand } from './brandService'
 
 // Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
@@ -197,6 +198,53 @@ export const getProposteStats = async () => {
     return { data: stats, error: null }
   } catch (error) {
     console.error('Error calculating stats:', error)
+    return { data: null, error }
+  }
+}
+
+// CONVERSIONE: Proposta → Brand
+export const convertPropostaToBrand = async (propostaId) => {
+  try {
+    // 1. Recupera proposta
+    const { data: proposta, error: propostaError } = await supabase
+      .from('proposte_brand')
+      .select('*')
+      .eq('id', propostaId)
+      .single()
+
+    if (propostaError) throw propostaError
+
+    // 2. Crea brand con dati proposta
+    const brandData = {
+      nome: proposta.brand_nome,
+      settore: proposta.settore,
+      email: proposta.contatto_mail,
+      telefono: proposta.telefono,
+      agente: proposta.agente,
+      stato: 'CONTATTATO', // Brand già contattato
+      priorita: proposta.priorita,
+      dataContatto: proposta.data_contatto,
+      note: proposta.note_strategiche,
+      creatorSuggeriti: proposta.creator_suggeriti,
+      riferimento: proposta.riferimento,
+      sitoWeb: proposta.link,
+      propostaId: propostaId // Link alla proposta originale
+    }
+
+    const { data: brand, error: brandError } = await createBrand(brandData)
+    if (brandError) throw brandError
+
+    // 3. Aggiorna proposta con brand_id
+    const { error: updateError } = await supabase
+      .from('proposte_brand')
+      .update({ brand_id: brand.id })
+      .eq('id', propostaId)
+
+    if (updateError) throw updateError
+
+    return { data: brand, error: null }
+  } catch (error) {
+    console.error('Error converting proposta:', error)
     return { data: null, error }
   }
 }

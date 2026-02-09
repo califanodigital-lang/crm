@@ -116,23 +116,27 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
 
       {/* Brand Header Card */}
       <div className="card mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{brand.nome}</h1>
-            {brand.settore && (
-              <p className="text-lg text-gray-600 mb-3">{brand.settore}</p>
-            )}
-            <div className="flex gap-2 mb-4">
-              <StatusBadge status={brand.stato} />
-              <PriorityBadge priority={brand.priorita} />
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{brand.nome}</h1>
+          {brand.settore && (
+            <p className="text-lg text-gray-600 mb-3">{brand.settore}</p>
+          )}
+          <div className="flex gap-2 mb-4">
+            <StatusBadge status={brand.stato} />
+            <PriorityBadge priority={brand.priorita} />
             {brand.categorie && brand.categorie.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {brand.categorie.map((cat, index) => (
-                  <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
-                    {cat}
-                  </span>
-                ))}
-              </div>
+              brand.categorie.map((cat, index) => (
+                <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+                  {cat}
+                </span>
+              ))
+            )}
+            {/* AGGIUNGI: Badge se viene da proposta */}
+            {brand.propostaId && (
+              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                🎯 Da Proposta
+              </span>
             )}
             </div>
           </div>

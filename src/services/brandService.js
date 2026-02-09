@@ -32,6 +32,7 @@ const toCamelCase = (brand) => {
     stato: brand.stato || 'DA_CONTATTARE',
     createdAt: brand.created_at,
     updatedAt: brand.updated_at,
+    propostaId: brand.proposta_id,
   }
 }
 
@@ -57,6 +58,7 @@ const toSnakeCase = (brand) => {
     creator_suggeriti: cleanValue(brand.creatorSuggeriti),
     priorita: brand.priorita || 'NORMALE',
     stato: brand.stato || 'DA_CONTATTARE',
+    proposta_id: cleanValue(brand.propostaId),
   }
 }
 
