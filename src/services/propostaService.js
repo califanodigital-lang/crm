@@ -17,7 +17,7 @@ const toCamelCase = (proposta) => {
     priorita: proposta.priorita,
     stato: proposta.stato,
     agente: proposta.agente,
-    creatorSuggeriti: proposta.creator_suggeriti,
+    creatorSuggeriti: proposta.creator_suggeriti || [],
     noteStrategiche: proposta.note_strategiche,
     riferimento: proposta.riferimento,
     telefono: proposta.telefono,
@@ -38,7 +38,7 @@ const toSnakeCase = (proposta) => {
     priorita: proposta.priorita || 'NORMALE',
     stato: proposta.stato || 'DA_CONTATTARE',
     agente: cleanValue(proposta.agente),
-    creator_suggeriti: cleanValue(proposta.creatorSuggeriti),
+    creator_suggeriti: proposta.creatorSuggeriti || [],
     note_strategiche: cleanValue(proposta.noteStrategiche),
     riferimento: cleanValue(proposta.riferimento),
     telefono: cleanValue(proposta.telefono),
@@ -218,16 +218,16 @@ export const convertPropostaToBrand = async (propostaId) => {
     const brandData = {
       nome: proposta.brand_nome,
       settore: proposta.settore,
-      email: proposta.contatto_mail,
+      contatto: proposta.contatto,
       telefono: proposta.telefono,
       agente: proposta.agente,
       stato: 'CONTATTATO', // Brand già contattato
       priorita: proposta.priorita,
       dataContatto: proposta.data_contatto,
       note: proposta.note_strategiche,
-      creatorSuggeriti: proposta.creator_suggeriti,
+      creatorSuggeriti: proposta.creator_suggeriti || [],
       riferimento: proposta.riferimento,
-      sitoWeb: proposta.link,
+      sitoWeb: proposta.sito_web,
       propostaId: propostaId // Link alla proposta originale
     }
 

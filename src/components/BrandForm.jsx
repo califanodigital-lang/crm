@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
+import CreatorMultiSelect from './CreatorMultiSelect'
 
 export default function BrandForm({ brand = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     priorita: 'NORMALE',
     stato: 'DA_CONTATTARE',
     note: '',
+    creatorSuggeriti: []
   })
   const [agenti, setAgenti] = useState([])
 
@@ -114,6 +116,13 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
               </span>
             ))}
           </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <CreatorMultiSelect
+            selectedIds={formData.creatorSuggeriti || []}
+            onChange={(ids) => setFormData({...formData, creatorSuggeriti: ids})}
+          />
         </div>
         
         <div>

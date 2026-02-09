@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
+import CreatorMultiSelect from './CreatorMultiSelect'
 
 export default function PropostaForm({ proposta = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -8,7 +9,7 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     priorita: 'NORMALE',
     stato: 'DA_CONTATTARE',
     agente: '',
-    creatorSuggeriti: '',
+    creatorSuggeriti: proposta?.creatorSuggeriti || [],
     noteStrategiche: '',
     riferimento: '',
     contatto: '',
@@ -113,12 +114,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
 
         {/* Creator Suggeriti */}
         <div>
-          <label className="label">Creator Suggeriti</label>
-          <input
-            className="input"
-            value={formData.creatorSuggeriti}
-            onChange={(e) => setFormData({...formData, creatorSuggeriti: e.target.value})}
-            placeholder="es. BUGALALLA, DIO EROS"
+          <CreatorMultiSelect
+            selectedIds={formData.creatorSuggeriti || []}
+            onChange={(ids) => setFormData({...formData, creatorSuggeriti: ids})}
           />
         </div>
 

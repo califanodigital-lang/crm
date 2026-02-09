@@ -10,6 +10,7 @@ import {
 } from '../services/propostaService'
 import { convertPropostaToBrand } from '../services/propostaService'
 import { getActiveAgents } from '../services/userService'
+import { getAllCreators } from '../services/creatorService'
 
 export default function PropostePage() {
   const [proposte, setProposte] = useState([])
@@ -22,6 +23,7 @@ export default function PropostePage() {
   const [stats, setStats] = useState({})
   const [draggedItem, setDraggedItem] = useState(null)
   const [agenti, setAgenti] = useState([])
+  const [creators, setCreators] = useState([])
 
   useEffect(() => {
     loadData()
@@ -29,15 +31,17 @@ export default function PropostePage() {
 
   const loadData = async () => {
     setLoading(true)
-    const [proposteRes, statsRes, agentiRes] = await Promise.all([
+    const [proposteRes, statsRes, agentiRes, creatorsRes] = await Promise.all([
       getAllProposte(),
       getProposteStats(),
-      getActiveAgents()
+      getActiveAgents(),
+      getAllCreators()
     ])
     
     setProposte(proposteRes.data || [])
     if (statsRes.data) setStats(statsRes.data)
     setAgenti(agentiRes.data || [])
+    setCreators(creatorsRes.data || [])  // <-- AGGIUNGI
     setLoading(false)
   }
 
@@ -153,9 +157,21 @@ export default function PropostePage() {
           </div>
           
           {proposta.settore && <p className="text-sm text-gray-600 mb-2">{proposta.settore}</p>}
-          {proposta.creatorSuggeriti && (
-            <div className="text-xs text-blue-600 mb-2 truncate" title={proposta.creatorSuggeriti}>
-              👤 {proposta.creatorSuggeriti}
+          {proposta.creatorSuggeriti && proposta.creatorSuggeriti.length > 0 && (
+            <div className="text-xs mb-2 flex flex-wrap gap-1">
+              {proposta.creatorSuggeriti.slice(0, 2).map(creatorId => {
+                const creator = creators.find(c => c.id === creatorId)
+                return creator ? (
+                  <span key={creatorId} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                    {creator.nome}
+                  </span>
+                ) : null
+              })}
+              {proposta.creatorSuggeriti.length > 2 && (
+                <span className="px-2 py-0.5 text-gray-500 text-xs">
+                  +{proposta.creatorSuggeriti.length - 2}
+                </span>
+              )}
             </div>
           )}
           {proposta.agente && <div className="text-xs text-gray-500 mb-3">📍 {proposta.agente}</div>}

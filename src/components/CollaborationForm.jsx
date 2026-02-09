@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
 
-export default function CollaborationForm({ collaboration = null, creators = [], brands = [], onSave, onCancel }) {
+export default function CollaborationForm({ collaboration = null, creators = [], brands = [],  prefilledBrand = null, prefilledCreatorId = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
-    creatorId: '',
-    brandNome: '',
+    creatorId: prefilledCreatorId || '',
+    brandNome: prefilledBrand || '',
     pagamento: '',
     feeManagement: '',
     dataFirma: '',
@@ -49,27 +49,33 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             className="input"
             value={formData.creatorId}
             onChange={(e) => setFormData({...formData, creatorId: e.target.value})}
+            disabled={!!prefilledCreatorId}  // <-- AGGIUNGI
             required
           >
-            <option value="">Seleziona Creator...</option>
-            {creators.map(creator => (
-              <option key={creator.id} value={creator.id}>
-                {creator.nome} ({creator.nomeCompleto})
-              </option>
+            <option value="">Seleziona creator...</option>
+            {creators.map(c => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
+          {prefilledCreatorId && (
+            <p className="text-xs text-gray-500 mt-1">Creator preselezionato</p>
+          )}
         </div>
 
         {/* Brand */}
         <div>
-          <label className="label">Brand *</label>
+          <label className="label">Brand</label>
           <input
             className="input"
             value={formData.brandNome}
             onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
+            disabled={!!prefilledBrand}  // <-- AGGIUNGI
             placeholder="Nome del brand"
             required
           />
+          {prefilledBrand && (
+            <p className="text-xs text-gray-500 mt-1">Brand preselezionato</p>
+          )}
         </div>
 
         {/* Pagamento */}

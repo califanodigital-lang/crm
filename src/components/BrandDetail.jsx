@@ -33,9 +33,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
 
   const handleSaveCollaboration = async (collabData) => {
     setLoading(true)
-    // Pre-compila il nome brand
-    const dataWithBrand = { ...collabData, brandNome: brand.nome }
-    const { error } = await createCollaboration(dataWithBrand)
+    const { error } = await createCollaboration(collabData)
     
     if (error) {
       alert('Errore durante la creazione della collaborazione')
@@ -241,10 +239,19 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
           </div>
 
           {/* Creator Suggeriti */}
-          {brand.creatorSuggeriti && (
+          {brand.creatorSuggeriti && brand.creatorSuggeriti.length > 0 && (
             <div className="card">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Creator Suggeriti</h2>
-              <p className="text-gray-700">{brand.creatorSuggeriti}</p>
+              <div className="flex flex-wrap gap-2">
+                {brand.creatorSuggeriti.map(creatorId => {
+                  const creator = creators.find(c => c.id === creatorId)
+                  return creator ? (
+                    <span key={creatorId} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                      {creator.nome}
+                    </span>
+                  ) : null
+                })}
+              </div>
             </div>
           )}
 
@@ -267,6 +274,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
                 collaboration={null}
                 creators={creators}
                 brands={[]}
+                prefilledBrand={brand.nome}
                 onSave={handleSaveCollaboration}
                 onCancel={() => setShowCollabForm(false)}
               />

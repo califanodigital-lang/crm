@@ -270,6 +270,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
                 collaboration={null}
                 creators={[creator]}
                 brands={[]}
+                prefilledCreatorId={creator.id}
                 onSave={handleSaveCollaboration}
                 onCancel={() => setShowCollabForm(false)}
               />
