@@ -11,8 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  BriefcaseBusinessIcon,
-  BarChart3
+  BarChart3,
+  Calendar
 } from 'lucide-react'
 
 const navigation = [
@@ -21,6 +21,7 @@ const navigation = [
   { name: 'Creator', href: '/creators', icon: Users },
   { name: 'Collaborazioni', href: '/collaborations', icon: Handshake },
   { name: 'Proposte', href: '/proposte', icon: Target },
+  { name: 'Fiere & Eventi', href: '/eventi', icon: Calendar},
   { name: 'Finance', href: '/finance', icon: DollarSign, adminOnly:true },
   { name: 'Dashboard Agenti',href: '/agenti',icon: BarChart3, adminOnly:true},
   { name: 'Utenti', href: '/users', icon: Users, adminOnly:true }

@@ -10,6 +10,7 @@ import PropostePage from './pages/PropostePage'
 import UsersPage from './pages/UsersPage'
 import FinancePage from './pages/FinancePage'
 import AgentDashboardPage from './pages/AgentDashboardPage'
+import EventiPage from './pages/EventiPage'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -79,6 +80,7 @@ function App() {
             <Route path="creators" element={<CreatorsPage />} />
             <Route path="collaborations" element={<CollaborationsPage />} />
             <Route path="proposte" element={<PropostePage />} />
+            <Route path="eventi" element={<EventiPage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="agenti" element={<AgentDashboardPage />} />
             <Route path="users" element={<UsersPage />} />
