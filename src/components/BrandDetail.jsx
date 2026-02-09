@@ -125,11 +125,15 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
             <div className="flex gap-2 mb-4">
               <StatusBadge status={brand.stato} />
               <PriorityBadge priority={brand.priorita} />
-              {brand.categoria && (
-                <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
-                  {brand.categoria}
-                </span>
-              )}
+            {brand.categorie && brand.categorie.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {brand.categorie.map((cat, index) => (
+                  <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
+                    {cat}
+                  </span>
+                ))}
+              </div>
+            )}
             </div>
           </div>
           <div className="text-right space-y-2">

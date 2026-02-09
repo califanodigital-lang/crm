@@ -5,7 +5,7 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     nome: '',
     settore: '',
     target: '',
-    categoria: '',
+    categorie: [],
     referente: '',
     email: '',
     telefono: '',
@@ -16,9 +16,24 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     note: '',
   })
 
+  const [categoriaInput, setCategoriaInput] = useState('')
+
+  const handleAddCategoria = () => {
+  if (categoriaInput.trim()) {
+    setFormData({...formData, categorie: [...formData.categorie, categoriaInput.trim()]})
+    setCategoriaInput('')
+  }
+  }
+
+  const handleRemoveCategoria = (index) => {
+    setFormData({...formData, categorie: formData.categorie.filter((_, i) => i !== index)})
+  }
+
   useEffect(() => {
     if (brand) setFormData(brand)
   }, [brand])
+
+  
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -57,21 +72,37 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         </div>
         
         <div>
-          <label className="label">Categoria</label>
-          <select
-            className="input"
-            value={formData.categoria}
-            onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-          >
-            <option value="">Seleziona...</option>
-            <option value="FOOD">FOOD</option>
-            <option value="TECH">TECNOLOGIA</option>
-            <option value="GAMING">GAMING</option>
-            <option value="LIFESTYLE">LIFESTYLE</option>
-            <option value="CASA">CASA</option>
-            <option value="FUMETTI">FUMETTI</option>
-            <option value="LIBRI">LIBRI</option>
-          </select>
+          <label className="label">Categorie</label>
+          <div className="flex gap-2 mb-2">
+            <input
+              className="input flex-1"
+              value={categoriaInput}
+              onChange={(e) => setCategoriaInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategoria())}
+              placeholder="es. Food, Gaming..."
+            />
+            <button
+              type="button"
+              onClick={handleAddCategoria}
+              className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
+            >
+              Aggiungi
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {formData.categorie.map((cat, index) => (
+              <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2">
+                {cat}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCategoria(index)}
+                  className="text-purple-600 hover:text-purple-900"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
         
         <div>
