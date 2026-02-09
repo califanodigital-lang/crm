@@ -1,75 +1,218 @@
-import { TrendingUp, Users, Briefcase, DollarSign } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import { getAgentStats, getAgentCollaborations } from '../services/agentService'
+import { TrendingUp, Award, Target, DollarSign, Briefcase, Users, Handshake } from 'lucide-react'
 
 export default function Dashboard() {
-  const stats = [
-    {
-      name: 'Brand Attivi',
-      value: '1',
-      icon: Briefcase,
-      color: 'bg-blue-500',
-      change: '+0%'
-    },
-    {
-      name: 'Creator',
-      value: '1',
-      icon: Users,
-      color: 'bg-purple-500',
-      change: '+0%'
-    },
-    {
-      name: 'Collaborazioni',
-      value: '0',
-      icon: TrendingUp,
-      color: 'bg-green-500',
-      change: '+0%'
-    },
-    {
-      name: 'Revenue Mese',
-      value: '€0',
-      icon: DollarSign,
-      color: 'bg-yellow-500',
-      change: '+0%'
-    },
-  ]
+  const { userProfile } = useAuth()
+  const [agentStats, setAgentStats] = useState(null)
+  const [agentCollabs, setAgentCollabs] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-        <p className="text-gray-600">Benvenuto nel sistema C3 Agency</p>
-      </div>
+  useEffect(() => {
+    loadData()
+  }, [userProfile])
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <div key={stat.name} className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.change}</p>
-                </div>
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
+  const loadData = async () => {
+    setLoading(true)
+    
+    // Se è AGENT, carica sue stats
+    if (userProfile?.role === 'AGENT') {
+      const [statsRes, collabsRes] = await Promise.all([
+        getAgentStats(userProfile.agenteNome),
+        getAgentCollaborations(userProfile.agenteNome)
+      ])
+      setAgentStats(statsRes.data)
+      setAgentCollabs(collabsRes.data || [])
+    }
+    
+    setLoading(false)
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div></div>
+  }
+
+  // VISTA AGENT
+  if (userProfile?.role === 'AGENT' && agentStats) {
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Benvenuto, {userProfile.nomeCompleto}</p>
+        </div>
+
+        {/* Stats Cards Agent */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">I Tuoi Deal</p>
+                <p className="text-2xl font-bold text-gray-900">{agentStats.totaleDeal}</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Target className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Completati</p>
+                <p className="text-2xl font-bold text-gray-900">{agentStats.completati}</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <Award className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Tua Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">€{agentStats.totalRevenue.toLocaleString()}</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Conversion Rate</p>
+                <p className="text-2xl font-bold text-gray-900">{agentStats.conversionRate}%</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Commissioni Card Grande */}
+        <div className="card mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600 font-semibold">Le Tue Commissioni</p>
+              <p className="text-4xl font-bold text-gray-900 mt-2">€{agentStats.totalCommissioni.toLocaleString()}</p>
+              <p className="text-sm text-gray-600 mt-1">Da deal completati e pagati</p>
+            </div>
+            <div className="bg-yellow-400 p-4 rounded-lg">
+              <DollarSign className="w-10 h-10 text-gray-900" />
+            </div>
+          </div>
+        </div>
+
+        {/* Tabella Ultime Collaborazioni */}
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Attività Recente</h2>
-          <p className="text-gray-500">Nessuna attività recente da visualizzare</p>
+          <h2 className="text-xl font-bold mb-4">Le Tue Ultime Collaborazioni</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4">Creator</th>
+                  <th className="text-left py-3 px-4">Brand</th>
+                  <th className="text-left py-3 px-4">Stato</th>
+                  <th className="text-right py-3 px-4">Pagamento</th>
+                  <th className="text-right py-3 px-4">Tua Fee</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agentCollabs.slice(0, 10).map((c) => (
+                  <tr key={c.id} className="border-b border-gray-100">
+                    <td className="py-3 px-4 font-medium">{c.creatorNome}</td>
+                    <td className="py-3 px-4">{c.brand_nome}</td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        c.stato === 'COMPLETATO' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {c.stato}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">€{parseFloat(c.pagamento || 0).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right font-semibold text-green-600">
+                      €{parseFloat(c.fee_management || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // VISTA ADMIN (stats globali - da implementare)
+  if (userProfile?.role === 'ADMIN') {
+    return (
+      <div>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Panoramica generale</p>
+        </div>
+
+        {/* Stats Cards Admin - TODO: implementare stats globali */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Totale Brand</p>
+                <p className="text-2xl font-bold text-gray-900">-</p>
+              </div>
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <Briefcase className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Totale Creator</p>
+                <p className="text-2xl font-bold text-gray-900">-</p>
+              </div>
+              <div className="bg-green-100 p-3 rounded-lg">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Collaborazioni Attive</p>
+                <p className="text-2xl font-bold text-gray-900">-</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <Handshake className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Revenue Totale</p>
+                <p className="text-2xl font-bold text-gray-900">-</p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Brand da Contattare</h2>
-          <p className="text-gray-500">Nessun brand in lista</p>
+          <p className="text-gray-600">Dashboard Admin - Stats globali in arrivo...</p>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  return null
 }

@@ -10,7 +10,9 @@ import {
   Target,
   LogOut,
   Menu,
-  X
+  X,
+  BriefcaseBusinessIcon,
+  BarChart3
 } from 'lucide-react'
 
 const navigation = [
@@ -20,7 +22,8 @@ const navigation = [
   { name: 'Collaborazioni', href: '/collaborations', icon: Handshake },
   { name: 'Proposte', href: '/proposte', icon: Target },
   { name: 'Finance', href: '/finance', icon: DollarSign, adminOnly:true },
-  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true },
+  { name: 'Dashboard Agenti',href: '/agenti',icon: BarChart3, adminOnly:true},
+  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true }
 ]
 
 export default function Layout() {
