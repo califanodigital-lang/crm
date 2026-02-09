@@ -7,6 +7,7 @@ import BrandsPage from './pages/BrandsPage'
 import CreatorsPage from './pages/CreatorsPage'
 import CollaborationsPage from './pages/CollaborationsPage'
 import PropostePage from './pages/PropostePage'
+import UsersPage from './pages/UsersPage'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -77,6 +78,7 @@ function App() {
             <Route path="collaborations" element={<CollaborationsPage />} />
             <Route path="proposte" element={<PropostePage />} />
             <Route path="finance" element={<div className="card"><h2 className="text-2xl font-bold">Finance</h2><p className="text-gray-600 mt-2">Sezione in costruzione</p></div>} />
+            <Route path="users" element={<UsersPage />} />
           </Route>
 
           {/* Fallback route */}

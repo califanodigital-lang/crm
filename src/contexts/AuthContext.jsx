@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { getCurrentUserProfile } from '../services/userService'
 
 const AuthContext = createContext({})
 
@@ -14,42 +15,36 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchUserRole(session.user.id)
-      }
       setLoading(false)
     })
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchUserRole(session.user.id)
-      } else {
-        setUserRole(null)
-      }
       setLoading(false)
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchUserRole = async (userId) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', userId)
-      .single()
-
-    if (data && !error) {
-      setUserRole(data.role)
+  // Carica profilo quando utente cambia
+  useEffect(() => {
+    if (user) {
+      loadUserProfile()
+    } else {
+      setUserProfile(null)
     }
+  }, [user])
+
+  const loadUserProfile = async () => {
+    const { data } = await getCurrentUserProfile()
+    setUserProfile(data)
   }
 
   const signIn = async (email, password) => {
@@ -67,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
-    userRole,
+    userProfile,  // Solo questo (contiene role, nomeCompleto, etc.)
     loading,
     signIn,
     signOut,

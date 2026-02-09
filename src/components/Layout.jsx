@@ -19,14 +19,19 @@ const navigation = [
   { name: 'Creator', href: '/creators', icon: Users },
   { name: 'Collaborazioni', href: '/collaborations', icon: Handshake },
   { name: 'Proposte', href: '/proposte', icon: Target },
-  { name: 'Finance', href: '/finance', icon: DollarSign },
+  { name: 'Finance', href: '/finance', icon: DollarSign, adminOnly:true },
+  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true },
 ]
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, userProfile, signOut } = useAuth()
+
+  const filteredNavigation = navigation.filter(item => 
+    !item.adminOnly || userProfile?.role === 'ADMIN'
+  )
 
   const handleSignOut = async () => {
     await signOut()
@@ -51,7 +56,7 @@ export default function Layout() {
             </button>
           </div>
           <nav className="flex-1 px-4 py-4 space-y-1">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
               return (
