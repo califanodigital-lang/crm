@@ -7,7 +7,7 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     target: '',
     categorie: [],
     referente: '',
-    email: '',
+    contatto: '',
     telefono: '',
     sitoWeb: '',
     agente: '',
@@ -115,13 +115,16 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         </div>
         
         <div>
-          <label className="label">Email</label>
+          <label className="label">Contatto</label>
           <input
-            type="email"
             className="input"
-            value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            value={formData.contatto}
+            onChange={(e) => setFormData({...formData, contatto: e.target.value})}
+            placeholder="Email o link form di contatto"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Inserisci email o URL del form di contatto
+          </p>
         </div>
         
         <div>

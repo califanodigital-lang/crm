@@ -20,9 +20,9 @@ const toCamelCase = (proposta) => {
     creatorSuggeriti: proposta.creator_suggeriti,
     noteStrategiche: proposta.note_strategiche,
     riferimento: proposta.riferimento,
-    contattoMail: proposta.contatto_mail,
     telefono: proposta.telefono,
-    link: proposta.link,
+    contatto: proposta.contatto,           // email o URL form
+    sitoWeb: proposta.sito_web,            // URL sito
     dataContatto: proposta.data_contatto,
     dataUltimaAzione: proposta.data_ultima_azione,
     createdAt: proposta.created_at,
@@ -41,9 +41,9 @@ const toSnakeCase = (proposta) => {
     creator_suggeriti: cleanValue(proposta.creatorSuggeriti),
     note_strategiche: cleanValue(proposta.noteStrategiche),
     riferimento: cleanValue(proposta.riferimento),
-    contatto_mail: cleanValue(proposta.contattoMail),
     telefono: cleanValue(proposta.telefono),
-    link: cleanValue(proposta.link),
+    contatto: cleanValue(proposta.contatto),           // email o URL form
+    sito_web: cleanValue(proposta.sitoWeb),           // URL sito
     data_contatto: cleanValue(proposta.dataContatto),
     data_ultima_azione: cleanValue(proposta.dataUltimaAzione),
   }

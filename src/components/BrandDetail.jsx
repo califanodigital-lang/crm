@@ -141,12 +141,18 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
             </div>
           </div>
           <div className="text-right space-y-2">
-            {brand.email && (
+            {brand.contatto && (
               <div className="flex items-center gap-2 text-gray-600">
                 <Mail className="w-4 h-4" />
-                <a href={`mailto:${brand.email}`} className="text-sm hover:text-yellow-600">
-                  {brand.email}
-                </a>
+                {brand.contatto.includes('@') ? (
+                  <a href={`mailto:${brand.contatto}`} className="text-sm hover:text-yellow-600">
+                    {brand.contatto}
+                  </a>
+                ) : (
+                  <a href={brand.contatto} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-yellow-600">
+                    Form Contatto
+                  </a>
+                )}
               </div>
             )}
             {brand.telefono && (

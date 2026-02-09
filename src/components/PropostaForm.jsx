@@ -10,10 +10,11 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     creatorSuggeriti: '',
     noteStrategiche: '',
     riferimento: '',
-    contattoMail: '',
+    contatto: '',
     telefono: '',
     link: '',
     dataContatto: '',
+    sitoWeb:''
   })
 
   useEffect(() => {
@@ -116,15 +117,17 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           />
         </div>
 
-        {/* Email */}
         <div>
-          <label className="label">Email Contatto</label>
+          <label className="label">Contatto</label>
           <input
-            type="email"
             className="input"
-            value={formData.contattoMail}
-            onChange={(e) => setFormData({...formData, contattoMail: e.target.value})}
+            value={formData.contatto}
+            onChange={(e) => setFormData({...formData, contatto: e.target.value})}
+            placeholder="Email o link form di contatto"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Inserisci email o URL del form di contatto
+          </p>
         </div>
 
         {/* Telefono */}
@@ -137,15 +140,15 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           />
         </div>
 
-        {/* Link */}
+        {/* Sito Web */}
         <div>
-          <label className="label">Link</label>
+          <label className="label">Sito Web</label>
           <input
             type="url"
             className="input"
-            value={formData.link}
-            onChange={(e) => setFormData({...formData, link: e.target.value})}
-            placeholder="https://"
+            value={formData.sitoWeb}
+            onChange={(e) => setFormData({...formData, sitoWeb: e.target.value})}
+            placeholder="https://esempio.com"
           />
         </div>
 

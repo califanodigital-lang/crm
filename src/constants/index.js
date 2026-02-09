@@ -1,0 +1,49 @@
+// src/constants/index.js
+
+export const STATI_BRAND = {
+  DA_CONTATTARE: 'DA_CONTATTARE',
+  CONTATTATO: 'CONTATTATO',
+  IN_TRATTATIVA: 'IN_TRATTATIVA',
+  CHIUSO: 'CHIUSO'
+}
+
+export const STATI_PROPOSTA = {
+  DA_CONTATTARE: 'DA_CONTATTARE',
+  CONTATTATO: 'CONTATTATO',
+  IN_TRATTATIVA: 'IN_TRATTATIVA',
+  CHIUSO_VINTO: 'CHIUSO_VINTO',
+  CHIUSO_PERSO: 'CHIUSO_PERSO'
+}
+
+export const PRIORITA = {
+  BASSA: 'BASSA',
+  NORMALE: 'NORMALE',
+  ALTA: 'ALTA',
+  URGENTE: 'URGENTE'
+}
+
+export const STATI_COLLABORAZIONE = {
+  IN_TRATTATIVA: 'IN_TRATTATIVA',
+  FIRMATO: 'FIRMATO',
+  IN_CORSO: 'IN_CORSO',
+  COMPLETATO: 'COMPLETATO',
+  ANNULLATO: 'ANNULLATO'
+}
+
+export const TIPI_CONTRATTO = [
+  'Standard',
+  'Esclusivo',
+  'Partnership',
+  'Consulenza',
+  'Altro'
+]
+
+export const TIPI_ADV = [
+  'VIDEO_YOUTUBE',
+  'STORIES',
+  'STORY_SET',
+  'POST',
+  'REEL',
+  'LIVE',
+  'COLLABORAZIONE_LUNGA'
+]
