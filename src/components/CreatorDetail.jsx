@@ -210,6 +210,47 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
             </div>
           </div>
 
+          {/* Mediakit */}
+          {creator.mediakit && (
+            <div className="card">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Mediakit</h2>
+              
+              {/* Preview PDF */}
+              <div className="mb-4">
+                <iframe 
+                  src={creator.mediakit}
+                  className="w-full h-[600px] border border-gray-300 rounded-lg"
+                  title="Mediakit Preview"
+                />
+              </div>
+              
+              {/* Pulsanti */}
+              <div className="flex gap-3">
+                <a
+                  href={creator.mediakit}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 text-center"
+                >
+                  Apri in Nuova Tab
+                </a>
+                <a
+                  href={creator.mediakit}
+                  download
+                  className="flex-1 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 text-center"
+                >
+                  Scarica PDF
+                </a>
+              </div>
+              
+              {creator.ultimoAggiornamentoMediakit && (
+                <p className="text-sm text-gray-500 mt-3">
+                  Ultimo aggiornamento: {creator.ultimoAggiornamentoMediakit}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Note */}
           {creator.note && (
             <div className="card">

@@ -93,7 +93,33 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             onChange={(e) => setFormData({...formData, topic: e.target.value})}
           />
         </div>
-        
+
+        {/* Mediakit URL */}
+        <div>
+          <label className="label">Mediakit (URL)</label>
+          <input
+            type="url"
+            className="input"
+            value={formData.mediakit}
+            onChange={(e) => setFormData({...formData, mediakit: e.target.value})}
+            placeholder="https://onedrive.live.com/..."
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Link OneDrive, Google Drive, Dropbox, etc.
+          </p>
+        </div>
+
+        {/* Data Aggiornamento Mediakit */}
+        <div>
+          <label className="label">Ultimo Aggiornamento Mediakit</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.ultimoAggiornamentoMediakit}
+            onChange={(e) => setFormData({...formData, ultimoAggiornamentoMediakit: e.target.value})}
+          />
+        </div>
+          
         <div className="md:col-span-2">
           <label className="label">Categorie ADV</label>
           <input
