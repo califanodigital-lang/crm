@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllCreators } from '../services/creatorService'
 import { getAllRevenue, upsertRevenue, deleteRevenue, getMonthlyTotals } from '../services/revenueService'
-import { DollarSign, TrendingUp, Calendar, Edit, Trash2, Plus } from 'lucide-react'
+import { CheckCircle, XCircle, FileText, ExternalLink, DollarSign, TrendingUp, Calendar, Edit, Trash2, Plus } from 'lucide-react'
+import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento, getVersamentiStats } from '../services/versamentoService'
+
 
 export default function FinancePage() {
   const { userProfile } = useAuth()
@@ -13,22 +15,70 @@ export default function FinancePage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [editingId, setEditingId] = useState(null)
   const [formData, setFormData] = useState({ creatorId: '', importo: '', fatturato: false })
+  const [activeTab, setActiveTab] = useState('revenue') // revenue | versamenti
+  const [versamenti, setVersamenti] = useState([])
+  const [versamentiStats, setVersamentiStats] = useState({})
+  const [versamentoForm, setVersamentoForm] = useState({
+    creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', 
+    dataFattura: '', linkFattura: '', verificato: false
+  })
+
 
   useEffect(() => {
-    if (userProfile?.role === 'ADMIN') loadData()
-  }, [userProfile])
+  if (userProfile?.role === 'ADMIN') loadData()
+}, [userProfile, activeTab, selectedMonth])
 
   const loadData = async () => {
-    setLoading(true)
-    const [creatorsRes, revenueRes, totalsRes] = await Promise.all([
-      getAllCreators(),
+  setLoading(true)
+  
+  // Carica sempre creators
+  const creatorsRes = await getAllCreators()
+  setCreators(creatorsRes.data || [])
+  
+  // Carica dati in base al tab attivo
+  if (activeTab === 'revenue') {
+    const [revenueRes, totalsRes] = await Promise.all([
       getAllRevenue(),
       getMonthlyTotals()
     ])
-    setCreators(creatorsRes.data || [])
     setRevenue(revenueRes.data || [])
     setMonthlyTotals(totalsRes.data || {})
-    setLoading(false)
+  } else if (activeTab === 'versamenti') {
+    const [versamentiRes, statsRes] = await Promise.all([
+      getVersamentByMonth(`${selectedMonth}-01`),
+      getVersamentiStats(`${selectedMonth}-01`)
+    ])
+    setVersamenti(versamentiRes.data || [])
+    setVersamentiStats(statsRes.data || {})
+  }
+  
+  setLoading(false)
+}
+
+  const handleSaveVersamento = async () => {
+    if (!versamentoForm.creatorId) return
+    
+    await upsertVersamento({
+      ...versamentoForm,
+      mese: `${selectedMonth}-01`
+    })
+    
+    setVersamentoForm({
+      creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', 
+      dataFattura: '', linkFattura: '', verificato: false
+    })
+    loadVersamentiData()
+  }
+
+  const handleToggleVerificato = async (id, current) => {
+    await toggleVerificato(id, current)
+    loadVersamentiData()
+  }
+
+  const handleDeleteVersamento = async (id) => {
+    if (!confirm('Eliminare?')) return
+    await deleteVersamento(id)
+    loadVersamentiData()
   }
 
   const handleSave = async () => {
@@ -62,7 +112,7 @@ export default function FinancePage() {
   }
 
   if (userProfile?.role !== 'ADMIN') {
-    return <div className="card"><p>Accesso negato - Solo Admin</p></div>
+    return <div className="card"><p>Accesso negato - Solo Amministratori</p></div>
   }
 
   if (loading) {
@@ -74,7 +124,7 @@ export default function FinancePage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Finance - Revenue Mensile</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Finance</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -115,7 +165,36 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Selettore Mese */}
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex gap-6">
+          <button
+            onClick={() => setActiveTab('revenue')}
+            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+              activeTab === 'revenue'
+                ? 'border-yellow-400 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Revenue Mensile
+          </button>
+          <button
+            onClick={() => setActiveTab('versamenti')}
+            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+              activeTab === 'versamenti'
+                ? 'border-yellow-400 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Verifica Versamenti
+          </button>
+        </div>
+      </div>
+
+    {/* TAB CONTENT - SOSTITUISCI tutto dopo tabs con: */}
+    {activeTab === 'revenue' && (
+      <>
+     {/* Selettore Mese */}
       <div className="card mb-6">
         <div className="flex items-center gap-4">
           <label className="font-semibold">Mese:</label>
@@ -128,85 +207,218 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Form Nuovo/Modifica */}
+        {/* Form Nuovo/Modifica */}
+        <div className="card mb-6">
+          <h2 className="text-xl font-bold mb-4">Aggiungi Revenue</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <select
+              value={formData.creatorId}
+              onChange={(e) => setFormData({...formData, creatorId: e.target.value})}
+              className="input"
+            >
+              <option value="">Seleziona Creator...</option>
+              {creators.map(c => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              step="0.01"
+              placeholder="Importo €"
+              value={formData.importo}
+              onChange={(e) => setFormData({...formData, importo: e.target.value})}
+              className="input"
+            />
+            <label className="flex items-center gap-2 px-4 py-2 border rounded-lg">
+              <input
+                type="checkbox"
+                checked={formData.fatturato}
+                onChange={(e) => setFormData({...formData, fatturato: e.target.checked})}
+              />
+              Fatturato
+            </label>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
+            >
+              {editingId ? 'Aggiorna' : 'Aggiungi'}
+            </button>
+          </div>
+        </div>
+
+        {/* Tabella */}
+        <div className="card">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4">Creator</th>
+                <th className="text-right py-3 px-4">Importo</th>
+                <th className="text-center py-3 px-4">Fatturato</th>
+                <th className="text-right py-3 px-4">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentMonthRevenue.map((r) => (
+                <tr key={r.id} className="border-b border-gray-100">
+                  <td className="py-3 px-4 font-medium">{r.creatorNome}</td>
+                  <td className="py-3 px-4 text-right font-semibold">€{parseFloat(r.importo).toLocaleString()}</td>
+                  <td className="py-3 px-4 text-center">
+                    {r.fatturato ? <span className="text-green-600">✓</span> : <span className="text-gray-300">—</span>}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button onClick={() => handleEdit(r)} className="p-2 text-yellow-600 hover:bg-yellow-50 rounded">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(r.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-300 font-bold">
+                <td className="py-3 px-4">TOTALE</td>
+                <td className="py-3 px-4 text-right text-xl">€{totalMonth.toLocaleString()}</td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </>
+    )}
+
+      {activeTab === 'versamenti' && (
+    <>
+      {/* Stats Versamenti */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="card">
+          <p className="text-sm text-gray-600">Totale</p>
+          <p className="text-2xl font-bold text-gray-900">{versamentiStats.totale || 0}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-600">Verificati</p>
+          <p className="text-2xl font-bold text-green-600">{versamentiStats.verificati || 0}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-600">Da Verificare</p>
+          <p className="text-2xl font-bold text-red-600">{versamentiStats.daVerificare || 0}</p>
+        </div>
+        <div className="card">
+          <p className="text-sm text-gray-600">Importo Totale</p>
+          <p className="text-2xl font-bold text-gray-900">€{(versamentiStats.importoTotale || 0).toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Form Nuovo Versamento */}
       <div className="card mb-6">
-        <h2 className="text-xl font-bold mb-4">Aggiungi Revenue</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <h2 className="text-xl font-bold mb-4">Aggiungi Versamento</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <select
-            value={formData.creatorId}
-            onChange={(e) => setFormData({...formData, creatorId: e.target.value})}
+            value={versamentoForm.creatorId}
+            onChange={(e) => setVersamentoForm({...versamentoForm, creatorId: e.target.value})}
             className="input"
           >
             <option value="">Seleziona Creator...</option>
-            {creators.map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
+            {creators.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
+          <input
+            type="text"
+            placeholder="Tipo Pagamento (F24, Ritenuta...)"
+            value={versamentoForm.tipoPagamento}
+            onChange={(e) => setVersamentoForm({...versamentoForm, tipoPagamento: e.target.value})}
+            className="input"
+          />
           <input
             type="number"
             step="0.01"
             placeholder="Importo €"
-            value={formData.importo}
-            onChange={(e) => setFormData({...formData, importo: e.target.value})}
+            value={versamentoForm.importoVersato}
+            onChange={(e) => setVersamentoForm({...versamentoForm, importoVersato: e.target.value})}
             className="input"
           />
-          <label className="flex items-center gap-2 px-4 py-2 border rounded-lg">
-            <input
-              type="checkbox"
-              checked={formData.fatturato}
-              onChange={(e) => setFormData({...formData, fatturato: e.target.checked})}
-            />
-            Fatturato
-          </label>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <input
+            type="text"
+            placeholder="N. Fattura"
+            value={versamentoForm.numeroFattura}
+            onChange={(e) => setVersamentoForm({...versamentoForm, numeroFattura: e.target.value})}
+            className="input"
+          />
+          <input
+            type="date"
+            value={versamentoForm.dataFattura}
+            onChange={(e) => setVersamentoForm({...versamentoForm, dataFattura: e.target.value})}
+            className="input"
+          />
+          <input
+            type="url"
+            placeholder="Link Fattura (Drive, OneDrive...)"
+            value={versamentoForm.linkFattura}
+            onChange={(e) => setVersamentoForm({...versamentoForm, linkFattura: e.target.value})}
+            className="input"
+          />
           <button
-            onClick={handleSave}
+            onClick={handleSaveVersamento}
             className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
           >
-            {editingId ? 'Aggiorna' : 'Aggiungi'}
+            Aggiungi
           </button>
         </div>
       </div>
 
-      {/* Tabella */}
+      {/* Tabella Versamenti */}
       <div className="card">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4">Creator</th>
+              <th className="text-left py-3 px-4">Tipo</th>
               <th className="text-right py-3 px-4">Importo</th>
-              <th className="text-center py-3 px-4">Fatturato</th>
+              <th className="text-left py-3 px-4">N. Fattura</th>
+              <th className="text-left py-3 px-4">Data</th>
+              <th className="text-center py-3 px-4">Fattura</th>
+              <th className="text-center py-3 px-4">Status</th>
               <th className="text-right py-3 px-4">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {currentMonthRevenue.map((r) => (
-              <tr key={r.id} className="border-b border-gray-100">
-                <td className="py-3 px-4 font-medium">{r.creatorNome}</td>
-                <td className="py-3 px-4 text-right font-semibold">€{parseFloat(r.importo).toLocaleString()}</td>
+            {versamenti.map((v) => (
+              <tr key={v.id} className="border-b border-gray-100">
+                <td className="py-3 px-4 font-medium">{v.creatorNome}</td>
+                <td className="py-3 px-4 text-sm">{v.tipoPagamento || '-'}</td>
+                <td className="py-3 px-4 text-right font-semibold">€{parseFloat(v.importoVersato).toLocaleString()}</td>
+                <td className="py-3 px-4 text-sm">{v.numeroFattura || '-'}</td>
+                <td className="py-3 px-4 text-sm">{v.dataFattura || '-'}</td>
                 <td className="py-3 px-4 text-center">
-                  {r.fatturato ? <span className="text-green-600">✓</span> : <span className="text-gray-300">—</span>}
+                  {v.linkFattura ? (
+                    <a href={v.linkFattura} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                      <ExternalLink className="w-4 h-4 inline" />
+                    </a>
+                  ) : '-'}
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <button
+                    onClick={() => handleToggleVerificato(v.id, v.verificato)}
+                    className={`p-1 rounded ${v.verificato ? 'text-green-600' : 'text-gray-400'}`}
+                  >
+                    {v.verificato ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                  </button>
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <button onClick={() => handleEdit(r)} className="p-2 text-yellow-600 hover:bg-yellow-50 rounded">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(r.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
+                  <button onClick={() => handleDeleteVersamento(v.id)} className="p-2 text-red-600 hover:bg-red-50 rounded">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
               </tr>
             ))}
           </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-gray-300 font-bold">
-              <td className="py-3 px-4">TOTALE</td>
-              <td className="py-3 px-4 text-right text-xl">€{totalMonth.toLocaleString()}</td>
-              <td></td>
-              <td></td>
-            </tr>
-          </tfoot>
         </table>
       </div>
+    </>
+  )}
     </div>
   )
 }
