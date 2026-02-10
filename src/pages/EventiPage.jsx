@@ -88,6 +88,16 @@ export default function EventiPage() {
     loadPartecipazioni(selectedEvento.id)
   }
 
+  const handleCreatorSelect = (creatorId) => {
+    const selectedCreator = creators.find(c => c.id === creatorId)
+    
+    setPartForm({
+      ...partForm,
+      creatorId: creatorId,
+      fee: selectedCreator?.fiereEventi || partForm.fee  // <-- AUTO-COMPILA
+    })
+  }
+
   if (loading && view === 'list') {
     return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div></div>
   }
@@ -175,12 +185,32 @@ export default function EventiPage() {
           <div className="card mb-6">
             <h2 className="text-xl font-bold mb-4">Aggiungi Creator</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <select className="input" value={partForm.creatorId} onChange={(e) => setPartForm({...partForm, creatorId: e.target.value})}>
-                <option value="">Seleziona...</option>
-                {creators.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              <select
+                className="input"
+                value={partForm.creatorId}
+                onChange={(e) => handleCreatorSelect(e.target.value)}  // <-- USA funzione
+                required
+              >
+                <option value="">Seleziona creator...</option>
+                {creators.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
               </select>
               <input className="input" placeholder="Tipo Contratto" value={partForm.tipoContratto} onChange={(e) => setPartForm({...partForm, tipoContratto: e.target.value})} />
-              <input type="number" className="input" placeholder="Fee €" value={partForm.fee} onChange={(e) => setPartForm({...partForm, fee: e.target.value})} />
+              <div>
+                <label className="label">Fee €</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="input bg-gray-50"  // <-- Grigio = auto-compilato
+                  value={partForm.fee}
+                  onChange={(e) => setPartForm({...partForm, fee: e.target.value})}
+                  placeholder="Auto-compilato da creator"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Fee standard del creator, modificabile
+                </p>
+              </div>
               <button onClick={handleAddPartecipazione} className="px-4 py-2 bg-yellow-400 rounded-lg font-semibold hover:bg-yellow-500">Aggiungi</button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

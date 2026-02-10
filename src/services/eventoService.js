@@ -121,3 +121,53 @@ export const deleteEvento = async (id) => {
     return { error }
   }
 }
+
+export const getPartecipazioniByCreator = async (creatorId) => {
+  try {
+    const { data, error } = await supabase
+      .from('partecipazioni_eventi')
+      .select(`
+        *,
+        eventi:evento_id (
+          nome,
+          data_inizio,
+          data_fine,
+          location,
+          citta
+        )
+      `)
+      .eq('creator_id', creatorId)
+      .order('eventi(data_inizio)', { ascending: false })
+
+    if (error) throw error
+
+    // Mappa con info evento embedded
+    const mapped = data.map(p => ({
+      id: p.id,
+      eventoId: p.evento_id,
+      eventoNome: p.eventi?.nome,
+      eventoDataInizio: p.eventi?.data_inizio,
+      eventoDataFine: p.eventi?.data_fine,
+      eventoLocation: p.eventi?.location,
+      eventoCitta: p.eventi?.citta,
+      creatorId: p.creator_id,
+      tipoContratto: p.tipo_contratto,
+      panel: p.panel,
+      workshop: p.workshop,
+      masterGdr: p.master_gdr,
+      giochiTavolo: p.giochi_tavolo,
+      giudiceCosplay: p.giudice_cosplay,
+      firmacopie: p.firmacopie,
+      palco: p.palco,
+      moderazione: p.moderazione,
+      accredito: p.accredito,
+      fee: p.fee,
+      note: p.note
+    }))
+
+    return { data: mapped, error: null }
+  } catch (error) {
+    console.error('Error getting partecipazioni by creator:', error)
+    return { data: null, error }
+  }
+}

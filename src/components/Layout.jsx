@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   BarChart3,
-  Calendar
+  Calendar,
+  Import
 } from 'lucide-react'
 
 const navigation = [
@@ -24,7 +25,8 @@ const navigation = [
   { name: 'Fiere & Eventi', href: '/eventi', icon: Calendar},
   { name: 'Finance', href: '/finance', icon: DollarSign, adminOnly:true },
   { name: 'Dashboard Agenti',href: '/agenti',icon: BarChart3, adminOnly:true},
-  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true }
+  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true },
+  { name: 'Import', href: '/import', icon: Import, adminOnly:true }
 ]
 
 export default function Layout() {

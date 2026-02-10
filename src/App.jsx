@@ -11,6 +11,7 @@ import UsersPage from './pages/UsersPage'
 import FinancePage from './pages/FinancePage'
 import AgentDashboardPage from './pages/AgentDashboardPage'
 import EventiPage from './pages/EventiPage'
+import ImportPage from './pages/ImportPage'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -84,6 +85,7 @@ function App() {
             <Route path="finance" element={<FinancePage />} />
             <Route path="agenti" element={<AgentDashboardPage />} />
             <Route path="users" element={<UsersPage />} />
+            <Route path="/import" element={<ImportPage />} />
           </Route>
 
           {/* Fallback route */}

@@ -5,6 +5,7 @@ import { getCollaborationsByCreator, createCollaboration } from '../services/col
 import { getAllBrands } from '../services/brandService'
 import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato, updateBrandContattato } from '../services/brandContattatoService'
 import { getActiveAgents } from '../services/userService'
+import { getPartecipazioniByCreator } from '../services/eventoService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -30,6 +31,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     contrattoChiuso: false
   })
   const [editingBrandContattato, setEditingBrandContattato] = useState(null)
+  const [partecipazioni, setPartecipazioni] = useState([])
 
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
@@ -42,11 +44,21 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
         loadAgenti()
         loadBrands()
     }
+    if (activeTab === 'eventi') {
+      loadPartecipazioni()
+    }
   }, [activeTab, creator.id])
 
   const loadBrands = async () => {
     const { data } = await getAllBrands()
     setBrands(data || [])
+  }
+
+  const loadPartecipazioni = async () => {
+    setLoading(true)
+    const { data } = await getPartecipazioniByCreator(creator.id)
+    setPartecipazioni(data || [])
+    setLoading(false)
   }
 
   const loadCollaborations = async () => {
@@ -282,6 +294,16 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
             }`}
           >
             Brand Contattati
+          </button>
+          <button
+            onClick={() => setActiveTab('eventi')}
+            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+              activeTab === 'eventi'
+                ? 'border-yellow-400 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Eventi
           </button>
         </div>
       </div>
@@ -638,6 +660,75 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+      {activeTab === 'eventi' && (
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Storico Eventi</h2>
+          
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+            </div>
+          ) : partecipazioni.length === 0 ? (
+            <div className="flex items-center gap-3 text-gray-500 py-8">
+              <AlertCircle className="w-5 h-5" />
+              <p>Nessuna partecipazione registrata</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4">Evento</th>
+                    <th className="text-left py-3 px-4">Data</th>
+                    <th className="text-left py-3 px-4">Location</th>
+                    <th className="text-left py-3 px-4">Tipo Contratto</th>
+                    <th className="text-right py-3 px-4">Fee</th>
+                    <th className="text-left py-3 px-4">Attività</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partecipazioni.map((p) => {
+                    // Estrai attività
+                    const attivita = []
+                    if (p.panel) attivita.push('Panel')
+                    if (p.workshop) attivita.push('Workshop')
+                    if (p.masterGdr) attivita.push('Master GDR')
+                    if (p.giochiTavolo) attivita.push('Giochi Tavolo')
+                    if (p.giudiceCosplay) attivita.push('Giudice Cosplay')
+                    if (p.firmacopie) attivita.push('Firmacopie')
+                    if (p.palco) attivita.push('Palco')
+                    if (p.moderazione) attivita.push('Moderazione')
+                    if (p.accredito) attivita.push('Accredito')
+                    
+                    return (
+                      <tr key={p.id} className="border-b border-gray-100">
+                        <td className="py-3 px-4 font-medium">{p.eventoNome}</td>
+                        <td className="py-3 px-4 text-sm">
+                          {p.eventoDataInizio ? new Date(p.eventoDataInizio).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{p.eventoLocation || '-'}</td>
+                        <td className="py-3 px-4 text-sm">{p.tipoContratto || '-'}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-green-600">
+                          €{parseFloat(p.fee || 0).toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {attivita.map((a, idx) => (
+                              <span key={idx} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                                {a}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
