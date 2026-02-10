@@ -39,6 +39,20 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     onSave(formData)
   }
 
+  const handleBrandSelect = (brandNome) => {
+    const selectedBrand = brands.find(b => b.nome === brandNome)
+    
+    if (selectedBrand) {
+      setFormData({
+        ...formData,
+        brandNome: selectedBrand.nome,
+        agente: selectedBrand.agente || formData.agente,
+      })
+    } else {
+      setFormData({...formData, brandNome})
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -66,29 +80,27 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         <div>
           <label className="label">Brand *</label>
           {prefilledBrand ? (
-            // Se pre-compilato, mostra input disabilitato
             <>
-              <input
-                className="input bg-gray-100"
-                value={formData.brandNome}
-                disabled
-                required
-              />
+              <input className="input bg-gray-100" value={formData.brandNome} disabled required />
               <p className="text-xs text-gray-500 mt-1">Brand preselezionato</p>
             </>
           ) : (
-            // Altrimenti, dropdown brand censiti
-            <select
-              className="input"
-              value={formData.brandNome}
-              onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
-              required
-            >
-              <option value="">Seleziona brand...</option>
-              {brands.map(b => (
-                <option key={b.id} value={b.nome}>{b.nome}</option>
-              ))}
-            </select>
+            <>
+              <select
+                className="input"
+                value={formData.brandNome}
+                onChange={(e) => handleBrandSelect(e.target.value)}  // <-- MODIFICA
+                required
+              >
+                <option value="">Seleziona brand...</option>
+                {brands.map(b => (
+                  <option key={b.id} value={b.nome}>{b.nome}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                L'agente verrà compilato automaticamente dal brand
+              </p>
+            </>
           )}
         </div>
 
@@ -150,7 +162,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         <div>
           <label className="label">Agente</label>
           <select
-            className="input"
+            className="input bg-gray-50"
             value={formData.agente}
             onChange={(e) => setFormData({...formData, agente: e.target.value})}
           >
@@ -159,6 +171,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
             ))}
           </select>
+          <p className="text-xs text-gray-500 mt-1">Auto-compilato da brand, modificabile</p>
         </div>
 
         {/* Sales */}

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2 } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByCreator, createCollaboration } from '../services/collaborationService'
 import { getAllBrands } from '../services/brandService'
+import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato, updateBrandContattato } from '../services/brandContattatoService'
+import { getActiveAgents } from '../services/userService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -10,12 +12,35 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [collaborations, setCollaborations] = useState([])
   const [loading, setLoading] = useState(false)
   const [brands, setBrands] = useState([])
+  const [brandContattati, setBrandContattati] = useState([])
+  const [showBrandForm, setShowBrandForm] = useState(false)
+  const [agenti, setAgenti] = useState([])
+  const [brandForm, setBrandForm] = useState({
+    brandNome: '',
+    settore: '',
+    dataContatto: '',
+    risposta: '',
+    contattatoPer: '',
+    referenti: '',
+    email: '',
+    telefono: '',
+    agente: '',
+    sitoWeb: '',
+    note: '',
+    contrattoChiuso: false
+  })
+  const [editingBrandContattato, setEditingBrandContattato] = useState(null)
 
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
       loadBrands()
+    }
+    if (activeTab === 'contattati') {
+        loadBrandContattati()
+        loadAgenti()
+        loadBrands()
     }
   }, [activeTab, creator.id])
 
@@ -31,6 +56,18 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     setLoading(false)
   }
 
+  const loadBrandContattati = async () => {
+    setLoading(true)
+    const { data } = await getBrandContattatiByCreator(creator.id)
+    setBrandContattati(data || [])
+    setLoading(false)
+  }
+
+  const loadAgenti = async () => {
+    const { data } = await getActiveAgents()
+    setAgenti(data || [])
+  }
+
   const handleSaveCollaboration = async (collabData) => {
     setLoading(true)
     // Pre-compila creator_id
@@ -44,6 +81,87 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
       setShowCollabForm(false)
       await loadCollaborations()
     }
+    setLoading(false)
+  }
+
+  const handleBrandSelect = (brandNome) => {
+    const selectedBrand = brands.find(b => b.nome === brandNome)
+    
+    if (selectedBrand) {
+      setBrandForm({
+        ...brandForm,
+        brandNome: selectedBrand.nome,
+        settore: selectedBrand.settore || brandForm.settore,
+        email: selectedBrand.contatto || brandForm.email,
+        telefono: selectedBrand.telefono || brandForm.telefono,
+        sitoWeb: selectedBrand.sitoWeb || brandForm.sitoWeb,
+        agente: selectedBrand.agente || brandForm.agente,
+      })
+    } else {
+      setBrandForm({...brandForm, brandNome})
+    }
+  }
+
+  const handleEditBrandContattato = (bc) => {
+    setBrandForm({
+      brandNome: bc.brandNome,
+      settore: bc.settore,
+      dataContatto: bc.dataContatto,
+      risposta: bc.risposta,
+      contattatoPer: bc.contattatoPer,
+      referenti: bc.referenti,
+      email: bc.email,
+      telefono: bc.telefono,
+      agente: bc.agente,
+      sitoWeb: bc.sitoWeb,
+      note: bc.note,
+      contrattoChiuso: bc.contrattoChiuso
+    })
+    setEditingBrandContattato(bc)
+    setShowBrandForm(true)
+  }
+
+  const handleSaveBrandContattato = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    let error
+    if (editingBrandContattato) {
+      // UPDATE
+      const result = await updateBrandContattato(editingBrandContattato.id, {
+        ...brandForm,
+        creatorId: creator.id
+      })
+      error = result.error
+    } else {
+      // CREATE
+      const result = await addBrandContattato({
+        ...brandForm,
+        creatorId: creator.id
+      })
+      error = result.error
+    }
+    
+    if (error) {
+      alert('Errore durante il salvataggio')
+      console.error(error)
+    } else {
+      setBrandForm({
+        brandNome: '', settore: '', dataContatto: '', risposta: '', contattatoPer: '',
+        referenti: '', email: '', telefono: '', agente: '', sitoWeb: '', note: '', contrattoChiuso: false
+      })
+      setShowBrandForm(false)
+      setEditingBrandContattato(null)
+      await loadBrandContattati()
+    }
+    setLoading(false)
+  }
+
+  const handleDeleteBrandContattato = async (id) => {
+    if (!confirm('Eliminare questo contatto?')) return
+    setLoading(true)
+    await deleteBrandContattato(id)
+    await loadBrandContattati()
     setLoading(false)
   }
 
@@ -338,17 +456,189 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
 
       {activeTab === 'contattati' && (
         <div className="card">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Brand Contattati</h2>
-            <button className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">
-              <Plus className="w-4 h-4" />
-              Aggiungi Brand
-            </button>
-          </div>
-          <div className="flex items-center gap-3 text-gray-500 py-8">
-            <AlertCircle className="w-5 h-5" />
-            <p>Nessun brand contattato - Feature in sviluppo</p>
-          </div>
+          {showBrandForm ? (
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">
+                {editingBrandContattato ? 'Modifica' : 'Aggiungi'} Brand Contattato
+              </h2>
+              <form onSubmit={handleSaveBrandContattato}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                      <label className="label">Brand *</label>
+                      <select
+                        className="input"
+                        value={brandForm.brandNome}
+                        onChange={(e) => handleBrandSelect(e.target.value)}  // <-- MODIFICA
+                        required
+                      >
+                        <option value="">Seleziona brand...</option>
+                        {brands.map(b => (
+                          <option key={b.id} value={b.nome}>{b.nome}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        I dati del brand verranno compilati automaticamente
+                      </p>
+                    </div>
+                  <div>
+                      <label className="label">Settore</label>
+                      <input 
+                        className="input bg-gray-50" 
+                        value={brandForm.settore} 
+                        onChange={(e) => setBrandForm({...brandForm, settore: e.target.value})} 
+                        placeholder="Auto-compilato da brand"
+                      />
+                    </div>
+                  <div>
+                    <label className="label">Data Contatto</label>
+                    <input type="date" className="input" value={brandForm.dataContatto} onChange={(e) => setBrandForm({...brandForm, dataContatto: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="label">Risposta</label>
+                    <input className="input" value={brandForm.risposta} onChange={(e) => setBrandForm({...brandForm, risposta: e.target.value})} placeholder="Positiva, Negativa..." />
+                  </div>
+                  <div>
+                    <label className="label">Contattato Per</label>
+                    <input className="input" value={brandForm.contattatoPer} onChange={(e) => setBrandForm({...brandForm, contattatoPer: e.target.value})} placeholder="Video, Stories..." />
+                  </div>
+                  <div>
+                    <label className="label">Referenti</label>
+                    <input className="input" value={brandForm.referenti} onChange={(e) => setBrandForm({...brandForm, referenti: e.target.value})} />
+                  </div>
+                  <div>
+                      <label className="label">Email</label>
+                      <input 
+                        type="email" 
+                        className="input bg-gray-50" 
+                        value={brandForm.email} 
+                        onChange={(e) => setBrandForm({...brandForm, email: e.target.value})} 
+                        placeholder="Auto-compilato da brand"
+                      />
+                    </div>
+                  <div>
+                      <label className="label">Telefono</label>
+                      <input 
+                        className="input bg-gray-50" 
+                        value={brandForm.telefono} 
+                        onChange={(e) => setBrandForm({...brandForm, telefono: e.target.value})} 
+                        placeholder="Auto-compilato da brand"
+                      />
+                    </div>
+                  <div>
+                    <label className="label">Agente</label>
+                    <select className="input" value={brandForm.agente} onChange={(e) => setBrandForm({...brandForm, agente: e.target.value})}>
+                      <option value="">Nessuno</option>
+                      {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                      <label className="label">Sito Web</label>
+                      <input 
+                        type="url" 
+                        className="input bg-gray-50" 
+                        value={brandForm.sitoWeb} 
+                        onChange={(e) => setBrandForm({...brandForm, sitoWeb: e.target.value})} 
+                        placeholder="Auto-compilato da brand"
+                      />
+                    </div>
+                  <div className="md:col-span-2">
+                    <label className="label">Note</label>
+                    <textarea className="input" value={brandForm.note} onChange={(e) => setBrandForm({...brandForm, note: e.target.value})} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={brandForm.contrattoChiuso} onChange={(e) => setBrandForm({...brandForm, contrattoChiuso: e.target.checked})} />
+                      <span className="text-sm font-medium">Contratto Chiuso</span>
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-6 flex gap-3 justify-end">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setShowBrandForm(false)
+                      setEditingBrandContattato(null)
+                    }} 
+                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  >
+                    Annulla
+                  </button>
+                  <button type="submit" className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">Salva</button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Brand Contattati</h2>
+                <button onClick={() => setShowBrandForm(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">
+                  <Plus className="w-4 h-4" />
+                  Aggiungi Brand
+                </button>
+              </div>
+              
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+                </div>
+              ) : brandContattati.length === 0 ? (
+                <div className="flex items-center gap-3 text-gray-500 py-8">
+                  <AlertCircle className="w-5 h-5" />
+                  <p>Nessun brand contattato</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4">Brand</th>
+                        <th className="text-left py-3 px-4">Data Contatto</th>
+                        <th className="text-left py-3 px-4">Risposta</th>
+                        <th className="text-left py-3 px-4">Contattato Per</th>
+                        <th className="text-center py-3 px-4">Contratto</th>
+                        <th className="text-right py-3 px-4">Azioni</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {brandContattati.map((bc) => (
+                        <tr key={bc.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium">{bc.brandNome}</td>
+                          <td className="py-3 px-4 text-gray-600">{bc.dataContatto || '-'}</td>
+                          <td className="py-3 px-4 text-gray-600">{bc.risposta || '-'}</td>
+                          <td className="py-3 px-4 text-gray-600">{bc.contattatoPer || '-'}</td>
+                          <td className="py-3 px-4 text-center">
+                            {bc.contrattoChiuso ? (
+                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓ Chiuso</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button 
+                                onClick={() => handleEditBrandContattato(bc)} 
+                                className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
+                                title="Modifica"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteBrandContattato(bc.id)} 
+                                className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                title="Elimina"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
