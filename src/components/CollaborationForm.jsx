@@ -64,17 +64,31 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
         {/* Brand */}
         <div>
-          <label className="label">Brand</label>
-          <input
-            className="input"
-            value={formData.brandNome}
-            onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
-            disabled={!!prefilledBrand}  // <-- AGGIUNGI
-            placeholder="Nome del brand"
-            required
-          />
-          {prefilledBrand && (
-            <p className="text-xs text-gray-500 mt-1">Brand preselezionato</p>
+          <label className="label">Brand *</label>
+          {prefilledBrand ? (
+            // Se pre-compilato, mostra input disabilitato
+            <>
+              <input
+                className="input bg-gray-100"
+                value={formData.brandNome}
+                disabled
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">Brand preselezionato</p>
+            </>
+          ) : (
+            // Altrimenti, dropdown brand censiti
+            <select
+              className="input"
+              value={formData.brandNome}
+              onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
+              required
+            >
+              <option value="">Seleziona brand...</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.nome}>{b.nome}</option>
+              ))}
+            </select>
           )}
         </div>
 

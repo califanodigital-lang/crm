@@ -2,19 +2,27 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByCreator, createCollaboration } from '../services/collaborationService'
+import { getAllBrands } from '../services/brandService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
   const [showCollabForm, setShowCollabForm] = useState(false)
   const [collaborations, setCollaborations] = useState([])
   const [loading, setLoading] = useState(false)
+  const [brands, setBrands] = useState([])
 
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
+      loadBrands()
     }
   }, [activeTab, creator.id])
+
+  const loadBrands = async () => {
+    const { data } = await getAllBrands()
+    setBrands(data || [])
+  }
 
   const loadCollaborations = async () => {
     setLoading(true)
@@ -269,7 +277,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
               <CollaborationForm
                 collaboration={null}
                 creators={[creator]}
-                brands={[]}
+                brands={brands}
                 prefilledCreatorId={creator.id}
                 onSave={handleSaveCollaboration}
                 onCancel={() => setShowCollabForm(false)}

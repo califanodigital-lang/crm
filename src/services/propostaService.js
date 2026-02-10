@@ -205,7 +205,6 @@ export const getProposteStats = async () => {
 // CONVERSIONE: Proposta → Brand
 export const convertPropostaToBrand = async (propostaId) => {
   try {
-    // 1. Recupera proposta
     const { data: proposta, error: propostaError } = await supabase
       .from('proposte_brand')
       .select('*')
@@ -214,21 +213,46 @@ export const convertPropostaToBrand = async (propostaId) => {
 
     if (propostaError) throw propostaError
 
-    // 2. Crea brand con dati proposta
+    // 1. VERIFICA se brand con stesso nome esiste già
+    const { data: existingBrand, error: checkError } = await supabase
+      .from('brands')
+      .select('id, nome')
+      .eq('nome', proposta.brand_nome)
+      .maybeSingle()
+
+    if (checkError) throw checkError
+
+    if (existingBrand) {
+      // Brand già esistente - collega proposta e ritorna errore
+      await supabase
+        .from('proposte_brand')
+        .update({ brand_id: existingBrand.id })
+        .eq('id', propostaId)
+      
+      return { 
+        data: null, 
+        error: { 
+          message: `Brand "${proposta.brand_nome}" esiste già! Collegato alla proposta.`,
+          existingBrand 
+        } 
+      }
+    }
+
+    // 2. Brand NON esiste, crealo
     const brandData = {
       nome: proposta.brand_nome,
       settore: proposta.settore,
       contatto: proposta.contatto,
       telefono: proposta.telefono,
+      sitoWeb: proposta.sito_web,
       agente: proposta.agente,
-      stato: 'CONTATTATO', // Brand già contattato
+      stato: 'CONTATTATO',
       priorita: proposta.priorita,
       dataContatto: proposta.data_contatto,
       note: proposta.note_strategiche,
       creatorSuggeriti: proposta.creator_suggeriti || [],
       riferimento: proposta.riferimento,
-      sitoWeb: proposta.sito_web,
-      propostaId: propostaId // Link alla proposta originale
+      propostaId: propostaId
     }
 
     const { data: brand, error: brandError } = await createBrand(brandData)

@@ -113,12 +113,18 @@ export default function PropostePage() {
     const { data, error } = await convertPropostaToBrand(proposta.id)
     
     if (error) {
-      alert('Errore durante la conversione')
-      console.error(error)
+      // Verifica se è errore duplicato
+      if (error.message?.includes('esiste già')) {
+        alert(`⚠️ ${error.message}\n\nLa proposta è stata collegata al brand esistente.`)
+      } else {
+        alert('Errore durante la conversione')
+        console.error(error)
+      }
     } else {
-      alert(`Brand "${data.nome}" creato con successo!`)
-      await loadData()
+      alert(`✓ Brand "${data.nome}" creato con successo!`)
     }
+    
+    await loadData()
     setLoading(false)
   }
 
