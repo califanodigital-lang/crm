@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllCreators } from '../services/creatorService'
 import { getAllRevenue, upsertRevenue, deleteRevenue, getMonthlyTotals } from '../services/revenueService'
-import { CheckCircle, XCircle, FileText, ExternalLink, DollarSign, TrendingUp, Calendar, Edit, Trash2, Plus } from 'lucide-react'
+import { CheckCircle, XCircle, FileText, ExternalLink, DollarSign, TrendingUp, Calendar, Edit, Trash2, Plus, AlertTriangle } from 'lucide-react'
 import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento, getVersamentiStats } from '../services/versamentoService'
+import { checkRevenueDiscrepancies } from '../services/revenueService'
 
 
 export default function FinancePage() {
@@ -22,10 +23,16 @@ export default function FinancePage() {
     creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', 
     dataFattura: '', linkFattura: '', verificato: false
   })
+  const [discrepancies, setDiscrepancies] = useState([])
 
 
   useEffect(() => {
-  if (userProfile?.role === 'ADMIN') loadData()
+  if (userProfile?.role === 'ADMIN') {
+    loadData()
+    if (activeTab === 'revenue') {
+      loadDiscrepancies()  // <-- AGGIUNGI questa chiamata
+    }
+  }
 }, [userProfile, activeTab, selectedMonth])
 
   const loadData = async () => {
@@ -55,6 +62,11 @@ export default function FinancePage() {
   setLoading(false)
 }
 
+  const loadDiscrepancies = async () => {
+      const { data } = await checkRevenueDiscrepancies()
+      setDiscrepancies(data || [])
+    }
+
   const handleSaveVersamento = async () => {
     if (!versamentoForm.creatorId) return
     
@@ -67,18 +79,18 @@ export default function FinancePage() {
       creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', 
       dataFattura: '', linkFattura: '', verificato: false
     })
-    loadVersamentiData()
+    loadData()
   }
 
   const handleToggleVerificato = async (id, current) => {
     await toggleVerificato(id, current)
-    loadVersamentiData()
+    loadData()
   }
 
   const handleDeleteVersamento = async (id) => {
     if (!confirm('Eliminare?')) return
     await deleteVersamento(id)
-    loadVersamentiData()
+    loadData()
   }
 
   const handleSave = async () => {
@@ -164,6 +176,45 @@ export default function FinancePage() {
           </div>
         </div>
       </div>
+
+      {/* Warning Discrepanze */}
+      {activeTab === 'revenue' && discrepancies.length > 0 && (
+        <div className="card bg-yellow-50 border-yellow-200 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-yellow-900 mb-2">
+                ⚠️ Discrepanze Revenue Rilevate
+              </h3>
+              <p className="text-sm text-yellow-800 mb-3">
+                Alcuni creator/mesi hanno sia revenue manuale che automatica (da collaborazioni). 
+                Verifica se è corretto o elimina i duplicati.
+              </p>
+              <div className="space-y-2">
+                {discrepancies.slice(0, 5).map((d, idx) => (
+                  <div key={idx} className="text-sm bg-white rounded p-2 flex justify-between items-center">
+                    <span className="font-medium text-gray-700">
+                      Mese: {d.mese}
+                    </span>
+                    <div className="flex gap-4 text-xs">
+                      <span className="text-blue-600">Auto: €{d.auto.toLocaleString()}</span>
+                      <span className="text-purple-600">Manuale: €{d.manual.toLocaleString()}</span>
+                      <span className="text-red-600 font-semibold">
+                        Diff: €{Math.abs(d.auto - d.manual).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {discrepancies.length > 5 && (
+                  <p className="text-xs text-yellow-700 text-center">
+                    ... e altre {discrepancies.length - 5} discrepanze
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">

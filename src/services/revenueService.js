@@ -136,3 +136,129 @@ export const getMonthlyTotals = async () => {
     return { data: null, error }
   }
 }
+
+// revenueService.js - AGGIUNGI FUNZIONE SYNC
+
+/**
+ * Sincronizza revenue da collaborazione completata e pagata
+ */
+export const syncRevenueFromCollaboration = async (collaboration) => {
+  try {
+    // Verifica condizioni
+    if (collaboration.stato !== 'COMPLETATO' || !collaboration.pagato) {
+      console.log('Collaboration not ready for revenue sync:', collaboration.id)
+      return { data: null, error: null } // Non è errore, semplicemente non sincronizzare
+    }
+
+    if (!collaboration.dataFirmaContratto) {
+      console.warn('Collaboration missing dataFirmaContratto:', collaboration.id)
+      return { data: null, error: { message: 'Data firma contratto mancante' } }
+    }
+
+    // Calcola mese (YYYY-MM)
+    const dataFirma = new Date(collaboration.dataFirmaContratto)
+    const mese = `${dataFirma.getFullYear()}-${String(dataFirma.getMonth() + 1).padStart(2, '0')}`
+
+    // Verifica se revenue esiste già per questa collaborazione
+    const { data: existingRevenue, error: checkError } = await supabase
+      .from('revenue_mensile')
+      .select('id, importo')
+      .eq('collaborazione_id', collaboration.id)
+      .maybeSingle()
+
+    if (checkError) throw checkError
+
+    const revenueData = {
+      creator_id: collaboration.creatorId,
+      mese: mese,
+      importo: parseFloat(collaboration.pagamento) || 0,
+      collaborazione_id: collaboration.id,
+      brand_nome: collaboration.brandNome,
+      agente: collaboration.agente
+    }
+
+    if (existingRevenue) {
+      // UPDATE revenue esistente
+      const { data, error } = await supabase
+        .from('revenue_mensile')
+        .update(revenueData)
+        .eq('id', existingRevenue.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('Revenue updated from collaboration:', collaboration.id)
+      return { data, error: null }
+    } else {
+      // CREATE nuova revenue
+      const { data, error } = await supabase
+        .from('revenue_mensile')
+        .insert([revenueData])
+        .select()
+        .single()
+
+      if (error) throw error
+      console.log('Revenue created from collaboration:', collaboration.id)
+      return { data, error: null }
+    }
+  } catch (error) {
+    console.error('Error syncing revenue from collaboration:', error)
+    return { data: null, error }
+  }
+}
+
+/**
+ * Rimuove revenue auto-generata se collaborazione non è più completata/pagata
+ */
+export const unsyncRevenueFromCollaboration = async (collaborationId) => {
+  try {
+    const { error } = await supabase
+      .from('revenue_mensile')
+      .delete()
+      .eq('collaborazione_id', collaborationId)
+
+    if (error) throw error
+    console.log('Revenue unsynced from collaboration:', collaborationId)
+    return { error: null }
+  } catch (error) {
+    console.error('Error unsyncing revenue:', error)
+    return { error }
+  }
+}
+
+/**
+ * Verifica discrepanze tra revenue manuale e auto
+ */
+export const checkRevenueDiscrepancies = async () => {
+  try {
+    // Revenue totale per creator/mese
+    const { data: allRevenue, error } = await supabase
+      .from('revenue_mensile')
+      .select('creator_id, mese, importo, collaborazione_id')
+      .order('mese', { ascending: false })
+
+    if (error) throw error
+
+    // Aggrega per creator/mese
+    const grouped = {}
+    allRevenue.forEach(r => {
+      const key = `${r.creator_id}-${r.mese}`
+      if (!grouped[key]) {
+        grouped[key] = { auto: 0, manual: 0, creatorId: r.creator_id, mese: r.mese }
+      }
+      if (r.collaborazione_id) {
+        grouped[key].auto += parseFloat(r.importo) || 0
+      } else {
+        grouped[key].manual += parseFloat(r.importo) || 0
+      }
+    })
+
+    // Trova discrepanze (entrambi presenti)
+    const discrepancies = Object.values(grouped).filter(g => g.auto > 0 && g.manual > 0)
+
+    return { data: discrepancies, error: null }
+  } catch (error) {
+    console.error('Error checking discrepancies:', error)
+    return { data: null, error }
+  }
+}

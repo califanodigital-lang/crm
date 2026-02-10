@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { syncRevenueFromCollaboration, unsyncRevenueFromCollaboration } from './revenueService'
 
 // Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
@@ -159,17 +160,38 @@ export const createCollaboration = async (collabData) => {
 }
 
 // PUT: Aggiorna collaborazione esistente
-export const updateCollaboration = async (id, collabData) => {
+export const updateCollaboration = async (id, collaborationData) => {
   try {
     const { data, error } = await supabase
       .from('collaborations')
-      .update(toSnakeCase(collabData))
+      .update(toSnakeCase(collaborationData))
       .eq('id', id)
       .select()
       .single()
 
     if (error) throw error
-    return { data: toCamelCase(data), error: null }
+
+    // ⭐ SYNC REVENUE - AGGIUNGI QUESTO BLOCCO
+    const collaboration = toCamelCase(data)
+    
+    if (collaboration.stato === 'COMPLETATO' && collaboration.pagato) {
+      // Crea/aggiorna revenue
+      await syncRevenueFromCollaboration(collaboration)
+    } else {
+      // Rimuovi revenue auto se non più valida
+      const { data: existingRev } = await supabase
+        .from('revenue_mensile')
+        .select('id')
+        .eq('collaborazione_id', id)
+        .maybeSingle()
+      
+      if (existingRev) {
+        await unsyncRevenueFromCollaboration(id)
+      }
+    }
+    // ⭐ FINE SYNC
+
+    return { data: collaboration, error: null }
   } catch (error) {
     console.error('Error updating collaboration:', error)
     return { data: null, error }
