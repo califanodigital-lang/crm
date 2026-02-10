@@ -24,6 +24,11 @@ const toCamelCase = (proposta) => {
     contatto: proposta.contatto,           // email o URL form
     sitoWeb: proposta.sito_web,            // URL sito
     dataContatto: proposta.data_contatto,
+    categorie: proposta.categorie || [],        // <-- AGGIUNGI
+    categoriaAdv: proposta.categoria_adv,       // <-- AGGIUNGI
+    target: proposta.target,                    // <-- AGGIUNGI
+    contattatoPer: proposta.contattato_per,     // <-- AGGIUNGI
+    risposta: proposta.risposta,                // <-- AGGIUNGI
     dataUltimaAzione: proposta.data_ultima_azione,
     createdAt: proposta.created_at,
     updatedAt: proposta.updated_at,
@@ -205,70 +210,78 @@ export const getProposteStats = async () => {
 // CONVERSIONE: Proposta → Brand
 export const convertPropostaToBrand = async (propostaId) => {
   try {
-    const { data: proposta, error: propostaError } = await supabase
+    // 1. Ottieni proposta
+    const { data: proposta, error: fetchError } = await supabase
       .from('proposte_brand')
       .select('*')
       .eq('id', propostaId)
       .single()
+    
+    if (fetchError) throw fetchError
 
-    if (propostaError) throw propostaError
-
-    // 1. VERIFICA se brand con stesso nome esiste già
+    // 2. Verifica se brand esiste già
     const { data: existingBrand, error: checkError } = await supabase
       .from('brands')
       .select('id, nome')
       .eq('nome', proposta.brand_nome)
       .maybeSingle()
-
+    
     if (checkError) throw checkError
 
     if (existingBrand) {
-      // Brand già esistente - collega proposta e ritorna errore
-      await supabase
+      // Brand esiste: collega proposta
+      const { error: updateError } = await supabase
         .from('proposte_brand')
         .update({ brand_id: existingBrand.id })
         .eq('id', propostaId)
       
+      if (updateError) throw updateError
+      
       return { 
         data: null, 
-        error: { 
-          message: `Brand "${proposta.brand_nome}" esiste già! Collegato alla proposta.`,
-          existingBrand 
-        } 
+        error: { message: `Brand "${existingBrand.nome}" già esistente. Proposta collegata.` }
       }
     }
 
-    // 2. Brand NON esiste, crealo
-    const brandData = {
-      nome: proposta.brand_nome,
-      settore: proposta.settore,
-      contatto: proposta.contatto,
-      telefono: proposta.telefono,
-      sitoWeb: proposta.sito_web,
-      agente: proposta.agente,
-      stato: 'CONTATTATO',
-      priorita: proposta.priorita,
-      dataContatto: proposta.data_contatto,
-      note: proposta.note_strategiche,
-      creatorSuggeriti: proposta.creator_suggeriti || [],
-      riferimento: proposta.riferimento,
-      propostaId: propostaId
-    }
+    // 3. Crea nuovo brand con TUTTI i campi
+    const { data: newBrand, error: createError } = await supabase
+      .from('brands')
+      .insert([{
+        nome: proposta.brand_nome,
+        settore: proposta.settore,
+        target: proposta.target,                    // <-- NUOVO
+        categorie: proposta.categorie || [],        // <-- NUOVO
+        categoria_adv: proposta.categoria_adv,      // <-- NUOVO
+        referente: proposta.riferimento,
+        contatto: proposta.contatto,
+        telefono: proposta.telefono,
+        sito_web: proposta.sito_web,
+        agente: proposta.agente,
+        priorita: proposta.priorita,
+        stato: 'CONTATTATO',
+        data_contatto: proposta.data_contatto,
+        contattato_per: proposta.contattato_per,    // <-- NUOVO
+        risposta: proposta.risposta,                // <-- NUOVO
+        note: proposta.note_strategiche,
+        creator_suggeriti: proposta.creator_suggeriti || [],
+        proposta_id: propostaId
+      }])
+      .select()
+      .single()
+    
+    if (createError) throw createError
 
-    const { data: brand, error: brandError } = await createBrand(brandData)
-    if (brandError) throw brandError
-
-    // 3. Aggiorna proposta con brand_id
-    const { error: updateError } = await supabase
+    // 4. Collega proposta al brand
+    const { error: linkError } = await supabase
       .from('proposte_brand')
-      .update({ brand_id: brand.id })
+      .update({ brand_id: newBrand.id })
       .eq('id', propostaId)
+    
+    if (linkError) throw linkError
 
-    if (updateError) throw updateError
-
-    return { data: brand, error: null }
+    return { data: newBrand, error: null }
   } catch (error) {
-    console.error('Error converting proposta:', error)
+    console.error('Error converting proposta to brand:', error)
     return { data: null, error }
   }
 }

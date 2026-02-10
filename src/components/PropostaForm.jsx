@@ -16,10 +16,16 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     telefono: '',
     link: '',
     dataContatto: '',
-    sitoWeb:''
+    sitoWeb:'',
+    categorie: proposta?.categorie || [],     // <-- AGGIUNGI
+    categoriaAdv: '',                         // <-- AGGIUNGI
+    target: '',                               // <-- AGGIUNGI
+    contattatoPer: '',                        // <-- AGGIUNGI
+    risposta: '',                             // <-- AGGIUNGI
   })
 
   const [agenti, setAgenti] = useState([])
+  const [categoriaInput, setCategoriaInput] = useState('')
 
   useEffect(() => {
       loadAgenti()
@@ -38,6 +44,18 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     e.preventDefault()
     onSave(formData)
   }
+
+ const handleAddCategoria = () => {
+    if (categoriaInput.trim()) {
+      setFormData({...formData, categorie: [...formData.categorie, categoriaInput.trim()]})
+      setCategoriaInput('')
+    }
+  }
+
+  const handleRemoveCategoria = (index) => {
+    setFormData({...formData, categorie: formData.categorie.filter((_, i) => i !== index)})
+  }
+
 
   return (
     <form onSubmit={handleSubmit}>
@@ -61,6 +79,80 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
             value={formData.settore}
             onChange={(e) => setFormData({...formData, settore: e.target.value})}
             placeholder="es. Gaming, Tech, Food..."
+          />
+        </div>
+        
+        <div>
+          <label className="label">Target</label>
+          <input
+            className="input"
+            value={formData.target}
+            onChange={(e) => setFormData({...formData, target: e.target.value})}
+            placeholder="18-35 anni, Gaming, Tech..."
+          />
+        </div>
+
+        <div>
+          <label className="label">Categoria ADV</label>
+          <input
+            className="input"
+            value={formData.categoriaAdv}
+            onChange={(e) => setFormData({...formData, categoriaAdv: e.target.value})}
+            placeholder="Video, Stories, Partnership..."
+          />
+        </div>
+
+        <div>
+          <label className="label">Categorie</label>
+          <div className="flex gap-2 mb-2">
+            <input
+              className="input flex-1"
+              value={categoriaInput}
+              onChange={(e) => setCategoriaInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategoria())}
+              placeholder="es. Food, Gaming..."
+            />
+            <button
+              type="button"
+              onClick={handleAddCategoria}
+              className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
+            >
+              Aggiungi
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {formData.categorie.map((cat, index) => (
+              <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2">
+                {cat}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCategoria(index)}
+                  className="text-purple-600 hover:text-purple-900"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Contattato Per</label>
+          <input
+            className="input"
+            value={formData.contattatoPer}
+            onChange={(e) => setFormData({...formData, contattatoPer: e.target.value})}
+            placeholder="Video YouTube, Stories Instagram..."
+          />
+        </div>
+
+        <div>
+          <label className="label">Risposta</label>
+          <input
+            className="input"
+            value={formData.risposta}
+            onChange={(e) => setFormData({...formData, risposta: e.target.value})}
+            placeholder="Positiva, Negativa, In attesa..."
           />
         </div>
 
