@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllUsers, updateUserProfile } from '../services/userService'
 import { supabase } from '../lib/supabase'
-import { Shield, User, Plus, X } from 'lucide-react'
+import { Shield, User, Plus, X, Edit } from 'lucide-react'
 
 export default function UsersPage() {
   const { userProfile } = useAuth()
@@ -16,6 +16,7 @@ export default function UsersPage() {
     agenteNome: '',
     role: 'AGENT'
   })
+  const [editingUser, setEditingUser] = useState(null)
 
   useEffect(() => {
     if (userProfile?.role === 'ADMIN') loadUsers()
@@ -27,31 +28,63 @@ export default function UsersPage() {
     setLoading(false)
   }
 
-  const handleCreateUser = async (e) => {
+  const handleEditUser = (user) => {
+    setFormData({
+      email: user.email || '',
+      password: '',  // Non mostriamo password esistente
+      nomeCompleto: user.nomeCompleto,
+      agenteNome: user.agenteNome,
+      role: user.role
+    })
+    setEditingUser(user)
+    setShowForm(true)
+  }
+
+  const handleSaveUser = async (e) => {
     e.preventDefault()
     setLoading(true)
 
-    // 1. Signup normale (crea utente + profilo manualmente)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
+    if (editingUser) {
+      // UPDATE - modifica solo profilo
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
           nome_completo: formData.nomeCompleto,
-          agente_nome: formData.agenteNome
+          agente_nome: formData.agenteNome,
+          role: formData.role
+        })
+        .eq('id', editingUser.id)
+
+      if (error) {
+        alert('Errore aggiornamento utente: ' + error.message)
+        setLoading(false)
+        return
+      }
+
+      // Se password fornita, aggiorna anche auth
+      if (formData.password) {
+        const { error: authError } = await supabase.auth.admin.updateUserById(
+          editingUser.id,
+          { password: formData.password }
+        )
+        if (authError) {
+          alert('Errore aggiornamento password: ' + authError.message)
         }
       }
-    })
+    } else {
+      // CREATE - logica esistente
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        email_confirm: true
+      })
 
-    if (authError) {
-      alert('Errore creazione utente: ' + authError.message)
-      setLoading(false)
-      return
-    }
+      if (authError) {
+        alert('Errore creazione utente: ' + authError.message)
+        setLoading(false)
+        return
+      }
 
-    // 2. Crea profilo in user_profiles (se signup istantaneo)
-    if (authData.user) {
       const { error: profileError } = await supabase
         .from('user_profiles')
         .insert([{
@@ -69,9 +102,10 @@ export default function UsersPage() {
       }
     }
 
-    alert('Utente creato! Controlla email per conferma.')
+    // Reset form e reload
     setFormData({ email: '', password: '', nomeCompleto: '', agenteNome: '', role: 'AGENT' })
     setShowForm(false)
+    setEditingUser(null)
     loadUsers()
   }
 
@@ -109,8 +143,10 @@ export default function UsersPage() {
       {/* Form Nuovo Utente */}
       {showForm && (
         <div className="card mb-6">
-          <h2 className="text-xl font-bold mb-4">Crea Nuovo Utente</h2>
-          <form onSubmit={handleCreateUser}>
+          <h2 className="text-xl font-bold mb-4">
+            {editingUser ? 'Modifica Utente' : 'Crea Nuovo Utente'}
+          </h2>
+          <form onSubmit={handleSaveUser}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="label">Email *</label>
@@ -119,18 +155,23 @@ export default function UsersPage() {
                   className="input"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  required
+                  required={!editingUser}
+                  disabled={!!editingUser}
                 />
+                {editingUser && (
+                  <p className="text-xs text-gray-500 mt-1">Email non modificabile</p>
+                )}
               </div>
               <div>
-                <label className="label">Password *</label>
+                <label className="label">Password {editingUser ? '' : '*'}</label>
                 <input
                   type="password"
                   className="input"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  required
+                  required={!editingUser}
                   minLength={6}
+                  placeholder={editingUser ? 'Lascia vuoto per non modificare' : ''}
                 />
               </div>
               <div>
@@ -166,17 +207,20 @@ export default function UsersPage() {
             </div>
             <div className="mt-4 flex gap-3 justify-end">
               <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Annulla
-              </button>
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingUser(null)
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Annulla
+                </button>
               <button
                 type="submit"
                 className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
               >
-                Crea Utente
+                {editingUser ? 'Aggiorna Utente' : 'Crea Utente'}
               </button>
             </div>
           </form>
@@ -216,23 +260,30 @@ export default function UsersPage() {
                   </span>
                 </td>
                 <td className="py-3 px-4 text-right">
-                  <select 
-                    value={u.role}
-                    onChange={(e) => changeRole(u.id, e.target.value)}
-                    className="text-sm border rounded px-2 py-1 mr-2"
-                  >
-                    <option value="ADMIN">Admin</option>
-                    <option value="AGENT">Agent</option>
-                  </select>
-                  <button
-                    onClick={() => toggleAttivo(u.id, u.attivo)}
-                    className={`text-sm px-3 py-1 rounded ${
-                      u.attivo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {u.attivo ? 'Disattiva' : 'Attiva'}
-                  </button>
-                </td>
+                <button
+                  onClick={() => handleEditUser(u)}
+                  className="text-sm px-3 py-1 rounded bg-yellow-100 text-yellow-700 mr-2 hover:bg-yellow-200"
+                >
+                  <Edit className="w-3 h-3 inline mr-1" />
+                  Modifica
+                </button>
+                <select 
+                  value={u.role}
+                  onChange={(e) => changeRole(u.id, e.target.value)}
+                  className="text-sm border rounded px-2 py-1 mr-2"
+                >
+                  <option value="ADMIN">Admin</option>
+                  <option value="AGENT">Agent</option>
+                </select>
+                <button
+                  onClick={() => toggleAttivo(u.id, u.attivo)}
+                  className={`text-sm px-3 py-1 rounded ${
+                    u.attivo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {u.attivo ? 'Disattiva' : 'Attiva'}
+                </button>
+              </td>
               </tr>
             ))}
           </tbody>

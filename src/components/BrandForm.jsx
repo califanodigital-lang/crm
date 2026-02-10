@@ -16,7 +16,10 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     priorita: 'NORMALE',
     stato: 'DA_CONTATTARE',
     note: '',
-    creatorSuggeriti: []
+    creatorSuggeriti: [],
+    dataContatto: '',        // <-- AGGIUNGI
+    risposta: '',            // <-- AGGIUNGI
+    contattatoPer: ''       // <-- AGGIUNGI
   })
   const [agenti, setAgenti] = useState([])
 
@@ -207,7 +210,35 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
             <option value="CHIUSO">Chiuso</option>
           </select>
         </div>
-        
+        <div>
+          <label className="label">Data Contatto</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataContatto}
+            onChange={(e) => setFormData({...formData, dataContatto: e.target.value})}
+          />
+        </div>
+
+        <div>
+          <label className="label">Risposta</label>
+          <input
+            className="input"
+            value={formData.risposta}
+            onChange={(e) => setFormData({...formData, risposta: e.target.value})}
+            placeholder="Positiva, Negativa, In attesa..."
+          />
+        </div>
+
+        <div>
+          <label className="label">Contattato Per</label>
+          <input
+            className="input"
+            value={formData.contattatoPer}
+            onChange={(e) => setFormData({...formData, contattatoPer: e.target.value})}
+            placeholder="Video, Stories, Partnership..."
+          />
+        </div>
         <div className="md:col-span-2">
           <label className="label">Note</label>
           <textarea

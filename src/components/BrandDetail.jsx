@@ -196,16 +196,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
           >
             Collaborazioni
           </button>
-          <button
-            onClick={() => setActiveTab('storico')}
-            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
-              activeTab === 'storico'
-                ? 'border-yellow-400 text-gray-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Storico Contatti
-          </button>
+
         </div>
       </div>
 
@@ -329,48 +320,6 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               )}
             </>
           )}
-        </div>
-      )}
-
-      {activeTab === 'storico' && (
-        <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">Storico Contatti</h2>
-          <div className="space-y-4">
-            {brand.dataContatto && (
-              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="font-semibold text-gray-900">Primo Contatto</p>
-                    <span className="text-sm text-gray-500">{brand.dataContatto}</span>
-                  </div>
-                  {brand.risposta && (
-                    <p className="text-sm text-gray-600 mb-1">
-                      <span className="font-medium">Risposta:</span> {brand.risposta}
-                    </p>
-                  )}
-                  {brand.contattatoPer && (
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium">Motivo:</span> {brand.contattatoPer}
-                    </p>
-                  )}
-                  {brand.agente && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      <span className="font-medium">Agente:</span> {brand.agente}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-            {!brand.dataContatto && (
-              <div className="flex items-center gap-3 text-gray-500 py-4">
-                <AlertCircle className="w-5 h-5" />
-                <p>Nessun contatto registrato</p>
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

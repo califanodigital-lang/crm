@@ -10,11 +10,13 @@ import {
   getCollaborationStats 
 } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
+import { getAllBrands } from '../services/brandService'
 
 export default function CollaborationsPage() {
   const location = useLocation()
   const [collaborations, setCollaborations] = useState([])
   const [creators, setCreators] = useState([])
+  const [brands, setBrands] = useState([])
   const [view, setView] = useState('list')
   const [selectedCollaboration, setSelectedCollaboration] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
@@ -42,17 +44,17 @@ export default function CollaborationsPage() {
   const loadData = async () => {
     setLoading(true)
     
-    // Carica collaborazioni
-    const { data: collabData } = await getAllCollaborations()
-    setCollaborations(collabData || [])
+    const [collabRes, creatorsRes, brandsRes, statsRes] = await Promise.all([
+      getAllCollaborations(),
+      getAllCreators(),
+      getAllBrands(),        // <-- AGGIUNGI
+      getCollaborationStats()
+    ])
     
-    // Carica creator per il form
-    const { data: creatorsData } = await getAllCreators()
-    setCreators(creatorsData || [])
-    
-    // Carica stats
-    const { data: statsData } = await getCollaborationStats()
-    if (statsData) setStats(statsData)
+    setCollaborations(collabRes.data || [])
+    setCreators(creatorsRes.data || [])
+    setBrands(brandsRes.data || [])   // <-- AGGIUNGI
+    if (statsRes.data) setStats(statsRes.data)
     
     setLoading(false)
   }
@@ -323,6 +325,7 @@ export default function CollaborationsPage() {
         <CollaborationForm
           collaboration={selectedCollaboration || prefilledData}
           creators={creators}
+          brands={brands}
           onSave={handleSave}
           onCancel={handleCancel}
         />
