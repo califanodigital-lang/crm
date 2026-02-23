@@ -244,11 +244,14 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             onChange={(e) => setFormData({...formData, stato: e.target.value})}
             required
           >
-            <option value="IN_TRATTATIVA">In Trattativa</option>
-            <option value="FIRMATO">Firmato</option>
-            <option value="IN_CORSO">In Corso</option>
-            <option value="COMPLETATO">Completato</option>
-            <option value="ANNULLATO">Annullato</option>
+              <option value="IN_TRATTATIVA">In Trattativa</option>
+              <option value="FIRMATO">Firmato</option>
+              <option value="IN_CORSO">In Corso</option>
+              <option value="REVISIONE_VIDEO">Revisione Video</option>
+              <option value="VIDEO_PUBBLICATO">Video Pubblicato</option>
+              <option value="ATTESA_PAGAMENTO">Attesa Pagamento</option>
+              <option value="COMPLETATO">Completato</option>
+              <option value="ANNULLATO">Annullato</option>
           </select>
         </div>
 

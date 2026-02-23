@@ -229,7 +229,7 @@ export const getCollaborationStats = async () => {
 
     const stats = {
       total: data.length,
-      inCorso: data.filter(c => c.stato === 'IN_CORSO').length,
+      inCorso: data.filter(c => ['IN_CORSO','REVISIONE_VIDEO','VIDEO_PUBBLICATO','ATTESA_PAGAMENTO'].includes(c.stato)).length,
       completate: data.filter(c => c.stato === 'COMPLETATO').length,
       totalRevenue: data
         .filter(c => c.stato === 'COMPLETATO' && c.pagato)

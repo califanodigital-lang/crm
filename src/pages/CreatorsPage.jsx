@@ -182,7 +182,7 @@ export default function CreatorsPage() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome Completo</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Tier</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Topic</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee YouTube</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Stato</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
                   </tr>
                 </thead>
@@ -195,8 +195,11 @@ export default function CreatorsPage() {
                         <TierBadge tier={creator.tier} />
                       </td>
                       <td className="py-3 px-4 text-gray-600">{creator.topic || '-'}</td>
-                      <td className="py-3 px-4 text-gray-600">
-                        {creator.feeYoutube ? `€${creator.feeYoutube}` : '-'}
+                      <td className="py-3 px-4">
+                        {creator.stato
+                          ? <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">{creator.stato}</span>
+                          : <span className="text-gray-400">-</span>
+                        }
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">

@@ -126,11 +126,14 @@ export default function CollaborationsPage() {
 
   const StatusBadge = ({ status }) => {
     const config = {
-      IN_TRATTATIVA: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'In Trattativa' },
-      FIRMATO: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Firmato' },
-      IN_CORSO: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'In Corso' },
-      COMPLETATO: { bg: 'bg-green-100', text: 'text-green-800', label: 'Completato' },
-      ANNULLATO: { bg: 'bg-red-100', text: 'text-red-800', label: 'Annullato' },
+      IN_TRATTATIVA:   { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'In Trattativa' },
+      FIRMATO:         { bg: 'bg-blue-100',     text: 'text-blue-800',    label: 'Firmato' },
+      IN_CORSO:        { bg: 'bg-purple-100',   text: 'text-purple-800',  label: 'In Corso' },
+      REVISIONE_VIDEO: { bg: 'bg-orange-100',   text: 'text-orange-800',  label: 'Revisione Video' },
+      VIDEO_PUBBLICATO:{ bg: 'bg-indigo-100',   text: 'text-indigo-800',  label: 'Video Pubblicato' },
+      ATTESA_PAGAMENTO:{ bg: 'bg-pink-100',     text: 'text-pink-800',    label: 'Attesa Pagamento' },
+      COMPLETATO:      { bg: 'bg-green-100',    text: 'text-green-800',   label: 'Completato' },
+      ANNULLATO:       { bg: 'bg-red-100',      text: 'text-red-800',     label: 'Annullato' },
     }
     const { bg, text, label } = config[status] || config.IN_TRATTATIVA
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>{label}</span>
@@ -232,6 +235,9 @@ export default function CollaborationsPage() {
               <option value="IN_TRATTATIVA">In Trattativa</option>
               <option value="FIRMATO">Firmato</option>
               <option value="IN_CORSO">In Corso</option>
+              <option value="REVISIONE_VIDEO">Revisione Video</option>
+              <option value="VIDEO_PUBBLICATO">Video Pubblicato</option>
+              <option value="ATTESA_PAGAMENTO">Attesa Pagamento</option>
               <option value="COMPLETATO">Completato</option>
               <option value="ANNULLATO">Annullato</option>
             </select>

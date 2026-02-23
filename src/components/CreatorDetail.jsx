@@ -6,6 +6,7 @@ import { getAllBrands, updateBrand } from '../services/brandService'
 import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato, updateBrandContattato } from '../services/brandContattatoService'
 import { getActiveAgents } from '../services/userService'
 import { getPartecipazioniByCreator } from '../services/eventoService'
+import { getPiattaformeByCreator } from '../services/piattaformeService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -34,9 +35,11 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   })
   const [editingBrandContattato, setEditingBrandContattato] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
+  const [creatorPiattaforme, setCreatorPiattaforme] = useState([])
 
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
+    loadPiattaformeCreator()
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
       loadBrands()
@@ -54,6 +57,11 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   const loadBrands = async () => {
     const { data } = await getAllBrands()
     setBrands(data || [])
+  }
+
+  const loadPiattaformeCreator = async () => {
+    const { data } = await getPiattaformeByCreator(creator.id)
+    setCreatorPiattaforme(data || [])
   }
 
   const loadPartecipazioni = async () => {
@@ -218,11 +226,14 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
 
   const CollaborationStatusBadge = ({ status }) => {
     const config = {
-      IN_TRATTATIVA: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'In Trattativa' },
-      FIRMATO: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Firmato' },
-      IN_CORSO: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'In Corso' },
-      COMPLETATO: { bg: 'bg-green-100', text: 'text-green-800', label: 'Completato' },
-      ANNULLATO: { bg: 'bg-red-100', text: 'text-red-800', label: 'Annullato' },
+      IN_TRATTATIVA:    { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'In Trattativa' },
+      FIRMATO:          { bg: 'bg-blue-100',     text: 'text-blue-800',    label: 'Firmato' },
+      IN_CORSO:         { bg: 'bg-purple-100',   text: 'text-purple-800',  label: 'In Corso' },
+      REVISIONE_VIDEO:  { bg: 'bg-orange-100',   text: 'text-orange-800',  label: 'Revisione Video' },
+      VIDEO_PUBBLICATO: { bg: 'bg-indigo-100',   text: 'text-indigo-800',  label: 'Video Pubblicato' },
+      ATTESA_PAGAMENTO: { bg: 'bg-pink-100',     text: 'text-pink-800',    label: 'Attesa Pagamento' },
+      COMPLETATO:       { bg: 'bg-green-100',    text: 'text-green-800',   label: 'Completato' },
+      ANNULLATO:        { bg: 'bg-red-100',      text: 'text-red-800',     label: 'Annullato' },
     }
     const { bg, text, label } = config[status] || config.IN_TRATTATIVA
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>{label}</span>
@@ -254,8 +265,18 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{creator.nome}</h1>
             <p className="text-lg text-gray-600 mb-3">{creator.nomeCompleto}</p>
-            <div className="flex gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
               <TierBadge tier={creator.tier} />
+              {creator.stato && (
+                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
+                  {creator.stato}
+                </span>
+              )}
+              {creator.ricontattare && (
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-semibold">
+                  ↩ Da Ricontattare
+                </span>
+              )}
               {creator.topic && (
                 <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
                   {creator.topic}
@@ -329,21 +350,44 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
       {/* Tab Content */}
       {activeTab === 'info' && (
         <div className="space-y-6">
-          {/* Fee & Strategie */}
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Fee & Tariffe
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <InfoRow label="Fee Video YouTube" value={creator.feeYoutube ? `€${creator.feeYoutube}` : '-'} />
-              <InfoRow label="Fee Stories" value={creator.feeStories ? `€${creator.feeStories}` : '-'} />
-              <InfoRow label="Fee Story Set" value={creator.feeStorySet ? `€${creator.feeStorySet}` : '-'} />
-              <InfoRow label="Collaborazioni Lunghe" value={creator.collaborazioniLunghe ? `€${creator.collaborazioniLunghe}` : '-'} />
-              <InfoRow label="Fiere & Eventi" value={creator.fiereEventi ? `€${creator.fiereEventi}` : '-'} />
-              <InfoRow label="Logo Twitch" value={creator.logoTwitch ? `€${creator.logoTwitch}` : '-'} />
+        <div className="card">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Fee & Piattaforme
+          </h2>
+          {creatorPiattaforme.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">Nessuna piattaforma configurata</p>
+          ) : (
+            <div className="space-y-4">
+              {creatorPiattaforme.map(p => (
+                <div key={p.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="font-bold text-gray-900">{p.piattaforma_nome}</span>
+                    {p.tier && (
+                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">{p.tier}</span>
+                    )}
+                  </div>
+                  {p.fees && Object.keys(p.fees).length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {Object.entries(p.fees).map(([key, val]) => val ? (
+                        <div key={key}>
+                          <div className="text-xs text-gray-500 mb-0.5">{key.replace(/_/g, ' ')}</div>
+                          <div className="text-sm font-semibold text-gray-900">€{val}</div>
+                        </div>
+                      ) : null)}
+                    </div>
+                  )}
+                  {p.note && <p className="text-xs text-gray-500 mt-2">{p.note}</p>}
+                </div>
+              ))}
             </div>
+          )}
+          {/* Fee fisse non legate a piattaforma */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+            <InfoRow label="Fiere & Eventi (fee standard)" value={creator.fiereEventi ? `€${creator.fiereEventi}` : '-'} />
+            <InfoRow label="Collaborazioni Lunghe" value={creator.collaborazioniLunghe ? `€${creator.collaborazioniLunghe}` : '-'} />
           </div>
+        </div>
 
           {/* Contratto */}
           <div className="card">
@@ -371,6 +415,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
               <InfoRow label="Preferenze Collaborazioni" value={creator.preferenzaCollaborazioni} />
               <InfoRow label="Obiettivo" value={creator.obiettivo} />
               <InfoRow label="Strategia" value={creator.strategia} />
+              <InfoRow label="Insight" value={creator.insight} />
               <InfoRow label="Mediakit" value={creator.mediakit} />
               <InfoRow label="Ultimo Aggiornamento Mediakit" value={creator.ultimoAggiornamentoMediakit} />
             </div>
