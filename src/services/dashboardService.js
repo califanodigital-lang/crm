@@ -7,7 +7,7 @@ export const getGlobalStats = async () => {
     const [brandsRes, creatorsRes, collabsRes, revenueRes] = await Promise.all([
       supabase.from('brands').select('id', { count: 'exact' }),
       supabase.from('creators').select('id', { count: 'exact' }),
-      supabase.from('collaborazioni').select('id, stato', { count: 'exact' }),
+      supabase.from('collaborations').select('id, stato', { count: 'exact' }),
       supabase.from('revenue_mensile').select('importo')
     ])
 

@@ -26,7 +26,7 @@ const toCamelCase = (proposta) => {
     dataContatto: proposta.data_contatto,
     categorie: proposta.categorie || [],        // <-- AGGIUNGI
     categoriaAdv: proposta.categoria_adv,       // <-- AGGIUNGI
-    target: proposta.target,                    // <-- AGGIUNGI
+    target: proposta.target_dem,                    // <-- AGGIUNGI
     contattatoPer: proposta.contattato_per,     // <-- AGGIUNGI
     risposta: proposta.risposta,                // <-- AGGIUNGI
     dataUltimaAzione: proposta.data_ultima_azione,
@@ -249,10 +249,10 @@ export const convertPropostaToBrand = async (propostaId) => {
       .insert([{
         nome: proposta.brand_nome,
         settore: proposta.settore,
-        target: proposta.target,                    // <-- NUOVO
+        target_dem: proposta.target,                    // <-- NUOVO
         categorie: proposta.categorie || [],        // <-- NUOVO
         categoria_adv: proposta.categoria_adv,      // <-- NUOVO
-        referente: proposta.riferimento,
+        referenti: proposta.riferimento,
         contatto: proposta.contatto,
         telefono: proposta.telefono,
         sito_web: proposta.sito_web,
