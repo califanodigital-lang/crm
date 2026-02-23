@@ -22,6 +22,8 @@ const toCamelCase = (bc) => {
     contrattoChiuso: bc.contratto_chiuso,
     createdAt: bc.created_at,
     updatedAt: bc.updated_at,
+    targetDem: bc.target_dem,
+    topicTarget: bc.topic_target
   }
 }
 
@@ -39,6 +41,8 @@ const toSnakeCase = (bc) => ({
   sito_web: cleanValue(bc.sitoWeb),
   note: cleanValue(bc.note),
   contratto_chiuso: bc.contrattoChiuso || false,
+  target_dem: cleanValue(bc.targetDem),
+  topic_target: cleanValue(bc.topicTarget)
 })
 
 // GET: Brand contattati per creator
@@ -106,5 +110,34 @@ export const deleteBrandContattato = async (id) => {
   } catch (error) {
     console.error('Error:', error)
     return { error }
+  }
+}
+
+// Cerca se esiste già un record brand_contattato per creator+brand
+export const getBrandContattatoByCreatorAndBrand = async (creatorId, brandNome) => {
+  try {
+    const { data, error } = await supabase
+      .from('brand_contattati')
+      .select('*')
+      .eq('creator_id', creatorId)
+      .eq('brand_nome', brandNome)
+      .maybeSingle()
+    if (error) throw error
+    return { data: data ? toCamelCase(data) : null, error: null }
+  } catch (error) {
+    return { data: null, error }
+  }
+}
+
+export const getBrandContattatiByBrandNome = async (brandNome) => {
+  try {
+    const { data, error } = await supabase
+      .from('brand_contattati')
+      .select('*')
+      .eq('brand_nome', brandNome)
+    if (error) throw error
+    return { data: data.map(toCamelCase), error: null }
+  } catch (error) {
+    return { data: null, error }
   }
 }

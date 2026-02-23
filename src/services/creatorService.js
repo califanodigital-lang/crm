@@ -27,10 +27,6 @@ const toCamelCase = (creator) => {
     mediakit: creator.mediakit,
     ultimoAggiornamentoMediakit: creator.ultimo_aggiornamento_mediakit,
     strategia: creator.strategia,
-    feeYoutube: creator.integrazione_video_youtube,
-    feeStories: creator.video_short_form,
-    feeStorySet: creator.story_set,
-    logoTwitch: creator.logo_schermo_twitch,
     collaborazioniLunghe: creator.collaborazioni_lunghe,
     fiereEventi: creator.fiere_eventi,
     obiettivo: creator.obiettivo,
@@ -39,10 +35,6 @@ const toCamelCase = (creator) => {
     dataContratto: creator.data_firma_contratto,
     sales: creator.sales,
     categoriaAdv: creator.categoria_adv,
-    tipoInstagram: creator.tipo_instagram,
-    tipoYoutube: creator.tipo_youtube,
-    tipoTiktok: creator.tipo_tiktok,
-    tipoTwitch: creator.tipo_twitch,
     createdAt: creator.created_at,
     updatedAt: creator.updated_at,
   }
@@ -67,10 +59,6 @@ const toSnakeCase = (creator) => {
     mediakit: cleanValue(creator.mediakit),
     ultimo_aggiornamento_mediakit: cleanValue(creator.ultimoAggiornamentoMediakit),
     strategia: cleanValue(creator.strategia),
-    integrazione_video_youtube: cleanValue(creator.feeYoutube),
-    video_short_form: cleanValue(creator.feeStories),
-    story_set: cleanValue(creator.feeStorySet),
-    logo_schermo_twitch: cleanValue(creator.logoTwitch),
     collaborazioni_lunghe: cleanValue(creator.collaborazioniLunghe),
     fiere_eventi: cleanValue(creator.fiereEventi),
     obiettivo: cleanValue(creator.obiettivo),
@@ -78,11 +66,7 @@ const toSnakeCase = (creator) => {
     preferenza_collaborazioni: cleanValue(creator.preferenzaCollaborazioni),
     data_firma_contratto: cleanValue(creator.dataContratto),
     sales: cleanValue(creator.sales),
-    categoria_adv: cleanValue(creator.categoriaAdv),
-    tipo_instagram: cleanValue(creator.tipoInstagram),
-    tipo_youtube: cleanValue(creator.tipoYoutube),
-    tipo_tiktok: cleanValue(creator.tipoTiktok),
-    tipo_twitch: cleanValue(creator.tipoTwitch),
+    categoria_adv: cleanValue(creator.categoriaAdv)
   }
 }
 

@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import CreatorForm from '../components/CreatorForm'
 import CreatorDetail from '../components/CreatorDetail'
 import { getAllCreators, createCreator, updateCreator, deleteCreator } from '../services/creatorService'
+import { saveCreatorPiattaforme } from '../services/piattaformeService'
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState([])
@@ -29,32 +30,34 @@ export default function CreatorsPage() {
     setLoading(false)
   }
 
-  const handleSave = async (creatorData) => {
+  const handleSave = async (creatorData, piattaforme) => {
     setLoading(true)
-    
+
     if (selectedCreator) {
-      // Update
-      const { data, error } = await updateCreator(selectedCreator.id, creatorData)
+      const { error } = await updateCreator(selectedCreator.id, creatorData)
       if (error) {
         alert('Errore durante l\'aggiornamento del creator')
         console.error(error)
       } else {
+        await saveCreatorPiattaforme(selectedCreator.id, piattaforme || [])
         await loadCreators()
         setView('list')
         setSelectedCreator(null)
       }
     } else {
-      // Create
       const { data, error } = await createCreator(creatorData)
       if (error) {
         alert('Errore durante la creazione del creator')
         console.error(error)
       } else {
+        if (data?.id) {
+          await saveCreatorPiattaforme(data.id, piattaforme || [])
+        }
         await loadCreators()
         setView('list')
       }
     }
-    
+
     setLoading(false)
   }
 

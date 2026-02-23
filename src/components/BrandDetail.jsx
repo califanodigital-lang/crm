@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Edit, Mail, Phone, Globe, Calendar, AlertCircle, Plus } from 'lucide-react'
+import { ArrowLeft, Edit, Mail, Phone, Globe, Calendar, AlertCircle, Plus, Check, UserCheck } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByBrand, createCollaboration } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
+import { getBrandContattatiByBrandNome, addBrandContattato } from '../services/brandContattatoService'
 
 export default function BrandDetail({ brand, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -10,12 +11,46 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
   const [collaborations, setCollaborations] = useState([])
   const [creators, setCreators] = useState([])
   const [loading, setLoading] = useState(false)
+  const [brandContattati, setBrandContattati] = useState([])
 
-  // Carica collaborazioni e creator
+  // Carica creators sempre (serve per info tab — creatorSuggeriti — e per form collaborazione)
+  useEffect(() => {
+    loadCreators()
+    loadBrandContattati()
+  }, [])
+
+  const loadBrandContattati = async () => {
+    const { data } = await getBrandContattatiByBrandNome(brand.nome)
+    setBrandContattati(data || [])
+  }
+
+  const handleToggleCreatorContattato = async (creatorId) => {
+    const creator = creators.find(c => c.id === creatorId)
+    if (!creator) return
+    const esistente = brandContattati.find(bc => bc.creatorId === creatorId)
+    if (esistente) return // già contattato, non rimuovere da qui (gestito dal Creator)
+
+    await addBrandContattato({
+      creatorId: creatorId,
+      brandNome: brand.nome,
+      settore: brand.settore || '',
+      email: brand.contatto || '',
+      telefono: brand.telefono || '',
+      sitoWeb: brand.sitoWeb || '',
+      agente: brand.agente || '',
+      dataContatto: new Date().toISOString().split('T')[0],
+      risposta: '',
+      contattatoPer: '',
+      referenti: brand.referente || '',
+      note: '',
+      contrattoChiuso: false
+    })
+    await loadBrandContattati()
+  }
+
   useEffect(() => {
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
-      loadCreators()
     }
   }, [activeTab, brand.nome])
 
@@ -34,7 +69,6 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
   const handleSaveCollaboration = async (collabData) => {
     setLoading(true)
     const { error } = await createCollaboration(collabData)
-    
     if (error) {
       alert('Errore durante la creazione della collaborazione')
       console.error(error)
@@ -60,8 +94,8 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
       CHIUSO: 'bg-green-100 text-green-800',
     }
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status]}`}>
-        {status.replace('_', ' ')}
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+        {status?.replace('_', ' ')}
       </span>
     )
   }
@@ -94,6 +128,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
 
   return (
     <div className="max-w-6xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button
@@ -114,28 +149,19 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
 
       {/* Brand Header Card */}
       <div className="card mb-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{brand.nome}</h1>
-          {brand.settore && (
-            <p className="text-lg text-gray-600 mb-3">{brand.settore}</p>
-          )}
-          <div className="flex gap-2 mb-4">
-            <StatusBadge status={brand.stato} />
-            <PriorityBadge priority={brand.priorita} />
-            {brand.categorie && brand.categorie.length > 0 && (
-              brand.categorie.map((cat, index) => (
-                <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">
-                  {cat}
-                </span>
-              ))
-            )}
-            {/* AGGIUNGI: Badge se viene da proposta */}
-            {brand.propostaId && (
-              <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                🎯 Da Proposta
-              </span>
-            )}
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{brand.nome}</h1>
+            {brand.settore && <p className="text-lg text-gray-600 mb-3">{brand.settore}</p>}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <StatusBadge status={brand.stato} />
+              <PriorityBadge priority={brand.priorita} />
+              {brand.categorie && brand.categorie.map((cat, i) => (
+                <span key={i} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">{cat}</span>
+              ))}
+              {brand.propostaId && (
+                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">🎯 Da Proposta</span>
+              )}
             </div>
           </div>
           <div className="text-right space-y-2">
@@ -143,30 +169,22 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               <div className="flex items-center gap-2 text-gray-600">
                 <Mail className="w-4 h-4" />
                 {brand.contatto.includes('@') ? (
-                  <a href={`mailto:${brand.contatto}`} className="text-sm hover:text-yellow-600">
-                    {brand.contatto}
-                  </a>
+                  <a href={`mailto:${brand.contatto}`} className="text-sm hover:text-yellow-600">{brand.contatto}</a>
                 ) : (
-                  <a href={brand.contatto} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-yellow-600">
-                    Form Contatto
-                  </a>
+                  <a href={brand.contatto} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-yellow-600">Form Contatto</a>
                 )}
               </div>
             )}
             {brand.telefono && (
               <div className="flex items-center gap-2 text-gray-600">
                 <Phone className="w-4 h-4" />
-                <a href={`tel:${brand.telefono}`} className="text-sm hover:text-yellow-600">
-                  {brand.telefono}
-                </a>
+                <a href={`tel:${brand.telefono}`} className="text-sm hover:text-yellow-600">{brand.telefono}</a>
               </div>
             )}
             {brand.sitoWeb && (
               <div className="flex items-center gap-2 text-gray-600">
                 <Globe className="w-4 h-4" />
-                <a href={brand.sitoWeb} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-yellow-600">
-                  Visita sito
-                </a>
+                <a href={brand.sitoWeb} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-yellow-600">Visita sito</a>
               </div>
             )}
           </div>
@@ -176,34 +194,27 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <div className="flex gap-6">
-          <button
-            onClick={() => setActiveTab('info')}
-            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
-              activeTab === 'info'
-                ? 'border-yellow-400 text-gray-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Informazioni
-          </button>
-          <button
-            onClick={() => setActiveTab('collaborazioni')}
-            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
-              activeTab === 'collaborazioni'
-                ? 'border-yellow-400 text-gray-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Collaborazioni
-          </button>
-
+          {['info', 'collaborazioni'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+                activeTab === tab
+                  ? 'border-yellow-400 text-gray-900'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab === 'info' ? 'Informazioni' : 'Collaborazioni'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* ── TAB INFO ── */}
       {activeTab === 'info' && (
         <div className="space-y-6">
-          {/* Informazioni Generali */}
+
+          {/* Informazioni generali */}
           <div className="card">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Informazioni Generali</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -216,31 +227,63 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
             </div>
           </div>
 
-          {/* Contatto */}
+          {/* Pipeline contatti */}
           <div className="card">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5" />
-              Dettagli Contatto
+              Pipeline Contatti
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoRow label="Data Ultimo Contatto" value={brand.dataContatto} />
               <InfoRow label="Contattato Per" value={brand.contattatoPer} />
               <InfoRow label="Risposta" value={brand.risposta} />
+
+              {/* Timeline follow-up visuale */}
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className={`p-3 rounded-lg border-2 ${brand.dataContatto ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">📧 Primo Contatto</p>
+                    <p className="text-sm font-medium text-gray-900">{brand.dataContatto || 'Non impostato'}</p>
+                  </div>
+                  <div className={`p-3 rounded-lg border-2 ${brand.dataFollowup1 ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">📩 1° Follow-up</p>
+                    <p className="text-sm font-medium text-gray-900">{brand.dataFollowup1 || 'Non impostato'}</p>
+                  </div>
+                  <div className={`p-3 rounded-lg border-2 ${brand.dataFollowup2 ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">📨 2° Follow-up</p>
+                    <p className="text-sm font-medium text-gray-900">{brand.dataFollowup2 || 'Non impostato'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Creator Suggeriti */}
+          {/* Creator suggeriti — caricati da DB */}
           {brand.creatorSuggeriti && brand.creatorSuggeriti.length > 0 && (
             <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Creator Suggeriti</h2>
-              <div className="flex flex-wrap gap-2">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Creator Suggeriti</h2>
+              <p className="text-sm text-gray-500 mb-4">Clicca <strong>Segna Contattato</strong> per registrare il contatto attivo su questo brand per quel creator.</p>
+              <div className="space-y-2">
                 {brand.creatorSuggeriti.map(creatorId => {
                   const creator = creators.find(c => c.id === creatorId)
-                  return creator ? (
-                    <span key={creatorId} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                      {creator.nome}
-                    </span>
-                  ) : null
+                  if (!creator) return null
+                  const contattato = brandContattati.find(bc => bc.creatorId === creatorId)
+                  return (
+                    <div key={creatorId} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50">
+                      <span className="font-medium text-gray-900">{creator.nome}</span>
+                      {contattato ? (
+                        <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                          <Check className="w-3 h-3" /> Contattato · {contattato.dataContatto || ''}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleCreatorContattato(creatorId)}
+                          className="flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold hover:bg-yellow-200 transition-colors"
+                        >
+                          <UserCheck className="w-3 h-3" /> Segna Contattato
+                        </button>
+                      )}
+                    </div>
+                  )
                 })}
               </div>
             </div>
@@ -253,9 +296,11 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               <p className="text-gray-700 whitespace-pre-wrap">{brand.note}</p>
             </div>
           )}
+
         </div>
       )}
 
+      {/* ── TAB COLLABORAZIONI ── */}
       {activeTab === 'collaborazioni' && (
         <div className="card">
           {showCollabForm ? (
@@ -274,7 +319,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
             <>
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Collaborazioni Attive</h2>
-                <button 
+                <button
                   onClick={() => setShowCollabForm(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
                 >
@@ -322,6 +367,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
           )}
         </div>
       )}
+
     </div>
   )
 }

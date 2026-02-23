@@ -105,18 +105,19 @@ export default function BrandsPage() {
     return matchesSearch && matchesAgente
   })
 
-  const StatusBadge = ({ status }) => {
-    const colors = {
-      DA_CONTATTARE: 'bg-gray-100 text-gray-800',
-      CONTATTATO: 'bg-blue-100 text-blue-800',
-      IN_TRATTATIVA: 'bg-yellow-100 text-yellow-800',
-      CHIUSO: 'bg-green-100 text-green-800',
-    }
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${colors[status]}`}>
-        {status.replace('_', ' ')}
-      </span>
-    )
+  const getStatoBrand = (brand) => {
+    if (!brand) return { label: 'N/D', style: 'bg-gray-100 text-gray-800' }
+    if (brand.propostaId) return { label: 'Chiuso', style: 'bg-green-100 text-green-800' }
+    if (brand.dataFollowup2) return { label: '2° Follow-up', style: 'bg-orange-100 text-orange-800' }
+    if (brand.dataFollowup1) return { label: '1° Follow-up', style: 'bg-yellow-100 text-yellow-800' }
+    if (brand.dataContatto) return { label: 'Contattato', style: 'bg-blue-100 text-blue-800' }
+    // Fallback: brand censiti prima del nuovo sistema o senza date
+    return { label: 'Contattato', style: 'bg-blue-100 text-blue-800' }
+  }
+
+  const StatusBadge = ({ brand }) => {
+    const { label, style } = getStatoBrand(brand)
+    return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${style}`}>{label}</span>
   }
 
   // Loading state
@@ -205,7 +206,7 @@ export default function BrandsPage() {
                       <td className="py-3 px-4 font-medium">{brand.nome}</td>
                       <td className="py-3 px-4 text-gray-600">{brand.settore || '-'}</td>
                       <td className="py-3 px-4">
-                        <StatusBadge status={brand.stato} />
+                        <StatusBadge brand={brand} />
                       </td>
                       <td className="py-3 px-4 text-gray-600">{brand.agente || '-'}</td>
                       <td className="py-3 px-4">

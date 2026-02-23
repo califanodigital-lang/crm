@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2 } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByCreator, createCollaboration } from '../services/collaborationService'
-import { getAllBrands } from '../services/brandService'
+import { getAllBrands, updateBrand } from '../services/brandService'
 import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato, updateBrandContattato } from '../services/brandContattatoService'
 import { getActiveAgents } from '../services/userService'
 import { getPartecipazioniByCreator } from '../services/eventoService'
@@ -19,6 +19,8 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [brandForm, setBrandForm] = useState({
     brandNome: '',
     settore: '',
+    targetDem: '',
+    topicTarget: '',
     dataContatto: '',
     risposta: '',
     contattatoPer: '',
@@ -104,6 +106,8 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
         ...brandForm,
         brandNome: selectedBrand.nome,
         settore: selectedBrand.settore || brandForm.settore,
+        targetDem: selectedBrand.target || brandForm.targetDem,
+        topicTarget: selectedBrand.topicTarget || brandForm.topicTarget,
         email: selectedBrand.contatto || brandForm.email,
         telefono: selectedBrand.telefono || brandForm.telefono,
         sitoWeb: selectedBrand.sitoWeb || brandForm.sitoWeb,
@@ -152,6 +156,20 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
         creatorId: creator.id
       })
       error = result.error
+
+      // BIDIREZIONALITÀ: aggiungi creator a creator_suggeriti del brand
+      if (!error) {
+        const brandObj = brands.find(b => b.nome === brandForm.brandNome)
+        if (brandObj) {
+          const suggeriti = brandObj.creatorSuggeriti || []
+          if (!suggeriti.includes(creator.id)) {
+            await updateBrand(brandObj.id, {
+              ...brandObj,
+              creatorSuggeriti: [...suggeriti, creator.id]
+            })
+          }
+        }
+      }
     }
     
     if (error) {
@@ -511,17 +529,35 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
                         placeholder="Auto-compilato da brand"
                       />
                     </div>
+                    <div>
+                      <label className="label">Target Demografico</label>
+                      <input className="input bg-gray-50" value={brandForm.targetDem}
+                        onChange={(e) => setBrandForm({...brandForm, targetDem: e.target.value})}
+                        placeholder="Auto-compilato da brand" />
+                    </div>
+                    <div>
+                      <label className="label">Topic del Target</label>
+                      <input className="input bg-gray-50" value={brandForm.topicTarget}
+                        onChange={(e) => setBrandForm({...brandForm, topicTarget: e.target.value})}
+                        placeholder="Auto-compilato da brand" />
+                    </div>
                   <div>
                     <label className="label">Data Contatto</label>
                     <input type="date" className="input" value={brandForm.dataContatto} onChange={(e) => setBrandForm({...brandForm, dataContatto: e.target.value})} />
                   </div>
                   <div>
                     <label className="label">Risposta</label>
-                    <input className="input" value={brandForm.risposta} onChange={(e) => setBrandForm({...brandForm, risposta: e.target.value})} placeholder="Positiva, Negativa..." />
+                    <select className="input" value={brandForm.risposta} onChange={(e) => setBrandForm({...brandForm, risposta: e.target.value})}>
+                      <option value="">Seleziona...</option>
+                      {['In Attesa','Positiva','Negativa','Nessuna Risposta','Follow-up 1 Inviato','Follow-up 2 Inviato','Appuntamento Fissato','Non Interessato'].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="label">Contattato Per</label>
-                    <input className="input" value={brandForm.contattatoPer} onChange={(e) => setBrandForm({...brandForm, contattatoPer: e.target.value})} placeholder="Video, Stories..." />
+                      <select className="input" value={brandForm.contattatoPer} onChange={(e) => setBrandForm({...brandForm, contattatoPer: e.target.value})}>
+                        <option value="">Seleziona...</option>
+                        {['Video YouTube','Stories Instagram','Story Set Instagram','Post Instagram','Reel Instagram','TikTok','Twitch','Partnership Lunga','Fiera / Evento','Pacchetto Multi-Piattaforma','Altro'].map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
                   </div>
                   <div>
                     <label className="label">Referenti</label>

@@ -8,6 +8,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     pagamento: '',
     feeManagement: '',
     dataFirma: '',
+    dataPubblicazione: '',
+    durataContratto: '',
     adv: '',
     agente: '',
     sales: '',
@@ -53,19 +55,32 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     }
   }
 
+  const handleCreatorSelect = (creatorId) => {
+    const selectedCreator = creators.find(c => c.id === creatorId)
+    setFormData(prev => {
+      const pagamento = parseFloat(prev.pagamento) || 0
+      const proviggioni = selectedCreator?.proviggioni ? parseFloat(selectedCreator.proviggioni) / 100 : 0.25
+      return {
+        ...prev,
+        creatorId,
+        feeManagement: pagamento && proviggioni ? (pagamento * proviggioni).toFixed(2) : prev.feeManagement
+      }
+    })
+  }
+
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Creator */}
         <div>
           <label className="label">Creator *</label>
-          <select
-            className="input"
-            value={formData.creatorId}
-            onChange={(e) => setFormData({...formData, creatorId: e.target.value})}
-            disabled={!!prefilledCreatorId}  // <-- AGGIUNGI
-            required
-          >
+            <select
+              className="input"
+              value={formData.creatorId}
+              onChange={(e) => handleCreatorSelect(e.target.value)}
+              disabled={!!prefilledCreatorId}
+              required
+            >
             <option value="">Seleziona creator...</option>
             {creators.map(c => (
               <option key={c.id} value={c.id}>{c.nome}</option>
@@ -112,7 +127,16 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             step="0.01"
             className="input"
             value={formData.pagamento}
-            onChange={(e) => setFormData({...formData, pagamento: e.target.value})}
+            onChange={(e) => {
+              const pagamento = parseFloat(e.target.value) || 0
+              const creator = creators.find(c => c.id === formData.creatorId)
+              const prov = creator?.proviggioni ? parseFloat(creator.proviggioni) / 100 : 0.25
+              setFormData({
+                ...formData,
+                pagamento: e.target.value,
+                feeManagement: pagamento ? (pagamento * prov).toFixed(2) : formData.feeManagement
+              })
+            }}
           />
         </div>
 
@@ -122,10 +146,12 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           <input
             type="number"
             step="0.01"
-            className="input"
+            className="input bg-gray-50"
             value={formData.feeManagement}
             onChange={(e) => setFormData({...formData, feeManagement: e.target.value})}
+            placeholder="Auto-calcolata da pagamento × proviggioni"
           />
+          <p className="text-xs text-gray-500 mt-1">Modificabile manualmente se necessario</p>
         </div>
 
         {/* Data Firma */}
@@ -136,6 +162,26 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             className="input"
             value={formData.dataFirma}
             onChange={(e) => setFormData({...formData, dataFirma: e.target.value})}
+          />
+        </div>
+
+        <div>
+          <label className="label">Data Pubblicazione Contenuti</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataPubblicazione}
+            onChange={(e) => setFormData({...formData, dataPubblicazione: e.target.value})}
+          />
+        </div>
+
+        <div>
+          <label className="label">Durata Contratto</label>
+          <input
+            className="input"
+            value={formData.durataContratto}
+            onChange={(e) => setFormData({...formData, durataContratto: e.target.value})}
+            placeholder="es. 30 giorni, 3 mesi..."
           />
         </div>
 

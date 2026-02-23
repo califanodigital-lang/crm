@@ -1,13 +1,11 @@
 import { supabase } from '../lib/supabase'
 import { createBrand } from './brandService'
 
-// Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
   if (value === '' || value === undefined) return null
   return value
 }
 
-// Utility da snake_case a camelCase
 const toCamelCase = (proposta) => {
   if (!proposta) return null
   return {
@@ -21,21 +19,23 @@ const toCamelCase = (proposta) => {
     noteStrategiche: proposta.note_strategiche,
     riferimento: proposta.riferimento,
     telefono: proposta.telefono,
-    contatto: proposta.contatto,           // email o URL form
-    sitoWeb: proposta.sito_web,            // URL sito
+    contatto: proposta.contatto,
+    sitoWeb: proposta.sito_web,
     dataContatto: proposta.data_contatto,
-    categorie: proposta.categorie || [],        // <-- AGGIUNGI
-    categoriaAdv: proposta.categoria_adv,       // <-- AGGIUNGI
-    target: proposta.target_dem,                    // <-- AGGIUNGI
-    contattatoPer: proposta.contattato_per,     // <-- AGGIUNGI
-    risposta: proposta.risposta,                // <-- AGGIUNGI
+    dataFollowup1: proposta.data_followup_1,   // B.1
+    dataFollowup2: proposta.data_followup_2,   // B.1
+    categorie: proposta.categorie || [],
+    categoriaAdv: proposta.categoria_adv,
+    target: proposta.target,
+    contattatoPer: proposta.contattato_per,
+    risposta: proposta.risposta,
     dataUltimaAzione: proposta.data_ultima_azione,
+    brandId: proposta.brand_id,
     createdAt: proposta.created_at,
     updatedAt: proposta.updated_at,
   }
 }
 
-// Utility da camelCase a snake_case
 const toSnakeCase = (proposta) => {
   return {
     brand_nome: proposta.brandNome,
@@ -47,14 +47,15 @@ const toSnakeCase = (proposta) => {
     note_strategiche: cleanValue(proposta.noteStrategiche),
     riferimento: cleanValue(proposta.riferimento),
     telefono: cleanValue(proposta.telefono),
-    contatto: cleanValue(proposta.contatto),           // email o URL form
-    sito_web: cleanValue(proposta.sitoWeb),           // URL sito
+    contatto: cleanValue(proposta.contatto),
+    sito_web: cleanValue(proposta.sitoWeb),
     data_contatto: cleanValue(proposta.dataContatto),
+    data_followup_1: cleanValue(proposta.dataFollowup1),   // B.1
+    data_followup_2: cleanValue(proposta.dataFollowup2),   // B.1
     data_ultima_azione: cleanValue(proposta.dataUltimaAzione),
   }
 }
 
-// GET: Tutte le proposte
 export const getAllProposte = async () => {
   try {
     const { data, error } = await supabase
@@ -70,7 +71,6 @@ export const getAllProposte = async () => {
   }
 }
 
-// GET: Proposte per agente
 export const getProposteByAgente = async (agente) => {
   try {
     const { data, error } = await supabase
@@ -87,7 +87,6 @@ export const getProposteByAgente = async (agente) => {
   }
 }
 
-// GET: Proposte per stato
 export const getProposteByStato = async (stato) => {
   try {
     const { data, error } = await supabase
@@ -104,7 +103,6 @@ export const getProposteByStato = async (stato) => {
   }
 }
 
-// GET: Proposta singola
 export const getPropostaById = async (id) => {
   try {
     const { data, error } = await supabase
@@ -121,7 +119,6 @@ export const getPropostaById = async (id) => {
   }
 }
 
-// POST: Crea proposta
 export const createProposta = async (propostaData) => {
   try {
     const { data, error } = await supabase
@@ -138,7 +135,6 @@ export const createProposta = async (propostaData) => {
   }
 }
 
-// PUT: Aggiorna proposta
 export const updateProposta = async (id, propostaData) => {
   try {
     const { data, error } = await supabase
@@ -156,7 +152,6 @@ export const updateProposta = async (id, propostaData) => {
   }
 }
 
-// DELETE: Elimina proposta
 export const deleteProposta = async (id) => {
   try {
     const { error } = await supabase
@@ -172,7 +167,6 @@ export const deleteProposta = async (id) => {
   }
 }
 
-// STATS: Statistiche pipeline
 export const getProposteStats = async () => {
   try {
     const { data, error } = await supabase
@@ -190,12 +184,9 @@ export const getProposteStats = async () => {
       perAgente: {}
     }
 
-    // Raggruppa per agente
     data.forEach(p => {
       if (p.agente) {
-        if (!stats.perAgente[p.agente]) {
-          stats.perAgente[p.agente] = 0
-        }
+        if (!stats.perAgente[p.agente]) stats.perAgente[p.agente] = 0
         stats.perAgente[p.agente]++
       }
     })
@@ -208,51 +199,48 @@ export const getProposteStats = async () => {
 }
 
 // CONVERSIONE: Proposta → Brand
+// Fix Fase A: referente→referenti, target→target_dem
 export const convertPropostaToBrand = async (propostaId) => {
   try {
-    // 1. Ottieni proposta
     const { data: proposta, error: fetchError } = await supabase
       .from('proposte_brand')
       .select('*')
       .eq('id', propostaId)
       .single()
-    
+
     if (fetchError) throw fetchError
 
-    // 2. Verifica se brand esiste già
     const { data: existingBrand, error: checkError } = await supabase
       .from('brands')
       .select('id, nome')
       .eq('nome', proposta.brand_nome)
       .maybeSingle()
-    
+
     if (checkError) throw checkError
 
     if (existingBrand) {
-      // Brand esiste: collega proposta
       const { error: updateError } = await supabase
         .from('proposte_brand')
         .update({ brand_id: existingBrand.id })
         .eq('id', propostaId)
-      
+
       if (updateError) throw updateError
-      
-      return { 
-        data: null, 
+
+      return {
+        data: null,
         error: { message: `Brand "${existingBrand.nome}" già esistente. Proposta collegata.` }
       }
     }
 
-    // 3. Crea nuovo brand con TUTTI i campi
     const { data: newBrand, error: createError } = await supabase
       .from('brands')
       .insert([{
         nome: proposta.brand_nome,
         settore: proposta.settore,
-        target_dem: proposta.target,                    // <-- NUOVO
-        categorie: proposta.categorie || [],        // <-- NUOVO
-        categoria_adv: proposta.categoria_adv,      // <-- NUOVO
-        referenti: proposta.riferimento,
+        target_dem: proposta.target,              // Fix Fase A
+        categorie: proposta.categorie || [],
+        categoria_adv: proposta.categoria_adv,
+        referenti: proposta.riferimento,          // Fix Fase A
         contatto: proposta.contatto,
         telefono: proposta.telefono,
         sito_web: proposta.sito_web,
@@ -260,23 +248,24 @@ export const convertPropostaToBrand = async (propostaId) => {
         priorita: proposta.priorita,
         stato: 'CONTATTATO',
         data_contatto: proposta.data_contatto,
-        contattato_per: proposta.contattato_per,    // <-- NUOVO
-        risposta: proposta.risposta,                // <-- NUOVO
+        data_followup_1: proposta.data_followup_1,  // B.1
+        data_followup_2: proposta.data_followup_2,  // B.1
+        contattato_per: proposta.contattato_per,
+        risposta: proposta.risposta,
         note: proposta.note_strategiche,
         creator_suggeriti: proposta.creator_suggeriti || [],
         proposta_id: propostaId
       }])
       .select()
       .single()
-    
+
     if (createError) throw createError
 
-    // 4. Collega proposta al brand
     const { error: linkError } = await supabase
       .from('proposte_brand')
       .update({ brand_id: newBrand.id })
       .eq('id', propostaId)
-    
+
     if (linkError) throw linkError
 
     return { data: newBrand, error: null }

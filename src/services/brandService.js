@@ -1,12 +1,10 @@
 import { supabase } from '../lib/supabase'
 
-// Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
   if (value === '' || value === undefined) return null
   return value
 }
 
-// Utility per convertire da snake_case (DB) a camelCase (Frontend)
 const toCamelCase = (brand) => {
   if (!brand) return null
   return {
@@ -16,6 +14,8 @@ const toCamelCase = (brand) => {
     target: brand.target_dem,
     topicTarget: brand.topic_target,
     dataContatto: brand.data_contatto,
+    dataFollowup1: brand.data_followup_1,   // B.1
+    dataFollowup2: brand.data_followup_2,   // B.1
     categoria: brand.categoria,
     categorie: brand.categorie || [],
     risposta: brand.risposta,
@@ -36,7 +36,6 @@ const toCamelCase = (brand) => {
   }
 }
 
-// Utility per convertire da camelCase (Frontend) a snake_case (DB)
 const toSnakeCase = (brand) => {
   return {
     nome: brand.nome,
@@ -44,6 +43,8 @@ const toSnakeCase = (brand) => {
     target_dem: cleanValue(brand.target),
     topic_target: cleanValue(brand.topicTarget),
     data_contatto: cleanValue(brand.dataContatto),
+    data_followup_1: cleanValue(brand.dataFollowup1),   // B.1
+    data_followup_2: cleanValue(brand.dataFollowup2),   // B.1
     categoria: brand.categoria,
     categorie: brand.categorie || [],
     risposta: cleanValue(brand.risposta),
@@ -62,7 +63,6 @@ const toSnakeCase = (brand) => {
   }
 }
 
-// GET: Tutti i brand
 export const getAllBrands = async () => {
   try {
     const { data, error } = await supabase
@@ -78,7 +78,6 @@ export const getAllBrands = async () => {
   }
 }
 
-// GET: Brand singolo per ID
 export const getBrandById = async (id) => {
   try {
     const { data, error } = await supabase
@@ -95,7 +94,6 @@ export const getBrandById = async (id) => {
   }
 }
 
-// POST: Crea nuovo brand
 export const createBrand = async (brandData) => {
   try {
     const { data, error } = await supabase
@@ -112,7 +110,6 @@ export const createBrand = async (brandData) => {
   }
 }
 
-// PUT: Aggiorna brand esistente
 export const updateBrand = async (id, brandData) => {
   try {
     const { data, error } = await supabase
@@ -130,7 +127,6 @@ export const updateBrand = async (id, brandData) => {
   }
 }
 
-// DELETE: Elimina brand
 export const deleteBrand = async (id) => {
   try {
     const { error } = await supabase
@@ -146,7 +142,6 @@ export const deleteBrand = async (id) => {
   }
 }
 
-// SEARCH: Cerca brand per nome o settore
 export const searchBrands = async (searchTerm) => {
   try {
     const { data, error } = await supabase

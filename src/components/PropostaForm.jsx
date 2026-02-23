@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
 import CreatorMultiSelect from './CreatorMultiSelect'
+import { RISPOSTE_OPTIONS, CONTATTATO_PER_OPTIONS } from '../constants/constants'
 
 export default function PropostaForm({ proposta = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -14,80 +15,80 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
     riferimento: '',
     contatto: '',
     telefono: '',
-    link: '',
+    sitoWeb: '',
     dataContatto: '',
-    sitoWeb:'',
-    categorie: proposta?.categorie || [],     // <-- AGGIUNGI
-    categoriaAdv: '',                         // <-- AGGIUNGI
-    target: '',                               // <-- AGGIUNGI
-    contattatoPer: '',                        // <-- AGGIUNGI
-    risposta: '',                             // <-- AGGIUNGI
+    dataFollowup1: '',
+    dataFollowup2: '',
+    categorie: proposta?.categorie || [],
+    categoriaAdv: '',
+    target: '',
+    contattatoPer: '',
+    risposta: '',
   })
 
   const [agenti, setAgenti] = useState([])
   const [categoriaInput, setCategoriaInput] = useState('')
 
   useEffect(() => {
-      loadAgenti()
-    }, [])
-
-    const loadAgenti = async () => {
-      const { data } = await getActiveAgents()
-      setAgenti(data || [])
-    }
+    loadAgenti()
+  }, [])
 
   useEffect(() => {
     if (proposta) setFormData(proposta)
   }, [proposta])
+
+  const loadAgenti = async () => {
+    const { data } = await getActiveAgents()
+    setAgenti(data || [])
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault()
     onSave(formData)
   }
 
- const handleAddCategoria = () => {
+  const handleAddCategoria = () => {
     if (categoriaInput.trim()) {
-      setFormData({...formData, categorie: [...formData.categorie, categoriaInput.trim()]})
+      setFormData({ ...formData, categorie: [...formData.categorie, categoriaInput.trim()] })
       setCategoriaInput('')
     }
   }
 
   const handleRemoveCategoria = (index) => {
-    setFormData({...formData, categorie: formData.categorie.filter((_, i) => i !== index)})
+    setFormData({ ...formData, categorie: formData.categorie.filter((_, i) => i !== index) })
   }
-
 
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Brand Nome */}
+
+        {/* ── DATI PRINCIPALI ── */}
         <div>
           <label className="label">Nome Brand *</label>
           <input
             className="input"
             value={formData.brandNome}
-            onChange={(e) => setFormData({...formData, brandNome: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, brandNome: e.target.value })}
             required
           />
         </div>
 
-        {/* Settore */}
         <div>
           <label className="label">Settore Merceologico</label>
           <input
             className="input"
             value={formData.settore}
-            onChange={(e) => setFormData({...formData, settore: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, settore: e.target.value })}
             placeholder="es. Gaming, Tech, Food..."
           />
         </div>
-        
+
         <div>
           <label className="label">Target</label>
           <input
             className="input"
             value={formData.target}
-            onChange={(e) => setFormData({...formData, target: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, target: e.target.value })}
             placeholder="18-35 anni, Gaming, Tech..."
           />
         </div>
@@ -97,11 +98,12 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           <input
             className="input"
             value={formData.categoriaAdv}
-            onChange={(e) => setFormData({...formData, categoriaAdv: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, categoriaAdv: e.target.value })}
             placeholder="Video, Stories, Partnership..."
           />
         </div>
 
+        {/* ── CATEGORIE ── */}
         <div>
           <label className="label">Categorie</label>
           <div className="flex gap-2 mb-2">
@@ -116,53 +118,25 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
               type="button"
               onClick={handleAddCategoria}
               className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
-            >
-              Aggiungi
-            </button>
+            >+</button>
           </div>
           <div className="flex flex-wrap gap-2">
             {formData.categorie.map((cat, index) => (
               <span key={index} className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm flex items-center gap-2">
                 {cat}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveCategoria(index)}
-                  className="text-purple-600 hover:text-purple-900"
-                >
-                  ×
-                </button>
+                <button type="button" onClick={() => handleRemoveCategoria(index)} className="text-purple-600 hover:text-purple-900">×</button>
               </span>
             ))}
           </div>
         </div>
 
-        <div>
-          <label className="label">Contattato Per</label>
-          <input
-            className="input"
-            value={formData.contattatoPer}
-            onChange={(e) => setFormData({...formData, contattatoPer: e.target.value})}
-            placeholder="Video YouTube, Stories Instagram..."
-          />
-        </div>
-
-        <div>
-          <label className="label">Risposta</label>
-          <input
-            className="input"
-            value={formData.risposta}
-            onChange={(e) => setFormData({...formData, risposta: e.target.value})}
-            placeholder="Positiva, Negativa, In attesa..."
-          />
-        </div>
-
-        {/* Priorità */}
+        {/* ── STATO & PRIORITÀ ── */}
         <div>
           <label className="label">Priorità *</label>
           <select
             className="input"
             value={formData.priorita}
-            onChange={(e) => setFormData({...formData, priorita: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, priorita: e.target.value })}
             required
           >
             <option value="BASSA">BASSA</option>
@@ -172,13 +146,12 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           </select>
         </div>
 
-        {/* Stato */}
         <div>
           <label className="label">Stato *</label>
           <select
             className="input"
             value={formData.stato}
-            onChange={(e) => setFormData({...formData, stato: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, stato: e.target.value })}
             required
           >
             <option value="DA_CONTATTARE">Da Contattare</option>
@@ -189,13 +162,13 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           </select>
         </div>
 
-        {/* Agente */}
+        {/* ── AGENTE — solo dal gestionale ── */}
         <div>
           <label className="label">Agente Assegnato</label>
           <select
             className="input"
             value={formData.agente}
-            onChange={(e) => setFormData({...formData, agente: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, agente: e.target.value })}
           >
             <option value="">Nessuno</option>
             {agenti.map(a => (
@@ -204,21 +177,21 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           </select>
         </div>
 
-        {/* Creator Suggeriti */}
+        {/* ── CREATOR SUGGERITI — solo dal gestionale ── */}
         <div>
           <CreatorMultiSelect
             selectedIds={formData.creatorSuggeriti || []}
-            onChange={(ids) => setFormData({...formData, creatorSuggeriti: ids})}
+            onChange={(ids) => setFormData({ ...formData, creatorSuggeriti: ids })}
           />
         </div>
 
-        {/* Riferimento */}
+        {/* ── CONTATTI ── */}
         <div>
-          <label className="label">Riferimento</label>
+          <label className="label">Riferimento (Referente Brand)</label>
           <input
             className="input"
             value={formData.riferimento}
-            onChange={(e) => setFormData({...formData, riferimento: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, riferimento: e.target.value })}
             placeholder="Nome referente brand"
           />
         </div>
@@ -228,57 +201,109 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           <input
             className="input"
             value={formData.contatto}
-            onChange={(e) => setFormData({...formData, contatto: e.target.value})}
-            placeholder="Email o link form di contatto"
+            onChange={(e) => setFormData({ ...formData, contatto: e.target.value })}
+            placeholder="Email o URL form di contatto"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Inserisci email o URL del form di contatto
-          </p>
+          <p className="text-xs text-gray-500 mt-1">Email o URL form di contatto</p>
         </div>
 
-        {/* Telefono */}
         <div>
           <label className="label">Telefono</label>
           <input
             className="input"
             value={formData.telefono}
-            onChange={(e) => setFormData({...formData, telefono: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
           />
         </div>
 
-        {/* Sito Web */}
         <div>
           <label className="label">Sito Web</label>
           <input
             type="url"
             className="input"
             value={formData.sitoWeb}
-            onChange={(e) => setFormData({...formData, sitoWeb: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, sitoWeb: e.target.value })}
             placeholder="https://esempio.com"
           />
         </div>
 
-        {/* Data Contatto */}
+        {/* ── PIPELINE CONTATTI ── */}
+        <div>
+          <label className="label">Contattato Per</label>
+          <select
+            className="input"
+            value={formData.contattatoPer}
+            onChange={(e) => setFormData({ ...formData, contattatoPer: e.target.value })}
+          >
+            <option value="">Seleziona...</option>
+            {CONTATTATO_PER_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="label">Risposta</label>
+          <select
+            className="input"
+            value={formData.risposta}
+            onChange={(e) => setFormData({ ...formData, risposta: e.target.value })}
+          >
+            <option value="">Seleziona...</option>
+            {RISPOSTE_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── DATE FOLLOW-UP ── */}
         <div>
           <label className="label">Data Contatto</label>
           <input
             type="date"
             className="input"
             value={formData.dataContatto}
-            onChange={(e) => setFormData({...formData, dataContatto: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, dataContatto: e.target.value })}
           />
         </div>
 
-        {/* Note Strategiche */}
+        <div>
+          {/* spacer */}
+        </div>
+
+        <div>
+          <label className="label">Data 1° Follow-up</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataFollowup1}
+            onChange={(e) => setFormData({ ...formData, dataFollowup1: e.target.value })}
+          />
+          <p className="text-xs text-gray-500 mt-1">Dopo ~7 giorni senza risposta</p>
+        </div>
+
+        <div>
+          <label className="label">Data 2° Follow-up</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataFollowup2}
+            onChange={(e) => setFormData({ ...formData, dataFollowup2: e.target.value })}
+          />
+          <p className="text-xs text-gray-500 mt-1">Dopo ~7-10 giorni dal primo</p>
+        </div>
+
+        {/* ── NOTE ── */}
         <div className="md:col-span-2">
           <label className="label">Note Strategiche</label>
           <textarea
             className="input min-h-[100px]"
             value={formData.noteStrategiche}
-            onChange={(e) => setFormData({...formData, noteStrategiche: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, noteStrategiche: e.target.value })}
             placeholder="Note, obiettivi, strategia di approccio..."
           />
         </div>
+
       </div>
 
       <div className="mt-6 flex gap-3 justify-end">
