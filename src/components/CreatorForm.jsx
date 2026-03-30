@@ -70,11 +70,9 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-
-      {/* ── INFORMAZIONI GENERALI ── */}
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Informazioni Generali</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <form onSubmit={handleSubmit} className="space-y-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
+        <div className="md:col-span-2"><p className="form-section-title">Anagrafica</p></div>
 
         <div>
           <label className="label">Nome Creator *</label>
@@ -124,7 +122,8 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             <option value="">Seleziona...</option>
             <option value="NANO">NANO (5-10K)</option>
             <option value="MICRO">MICRO (10-50K)</option>
-            <option value="MID">MID TIER (50-300K)</option>
+            <option value="MACRO">MACRO (100-500K)</option>
+            <option value="MEGA">MEGA (500K-3M)</option>
             <option value="CELEBRITY">CELEBRITY (3M+)</option>
           </select>
         </div>
@@ -170,30 +169,32 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             onChange={(e) => setFormData({ ...formData, categoriaAdv: e.target.value })}
           />
         </div>
-      </div>
 
-      <div>
-        <label className="label">Stato</label>
-        <select className="input" value={formData.stato}
-          onChange={(e) => setFormData({...formData, stato: e.target.value})}>
-          <option value="">Seleziona...</option>
-          <option value="1 Sotto contratto">Sotto Contratto</option>
-          <option value="2 Ex cliente">Ex Cliente</option>
-          <option value="3 Prospect">Prospect</option>
-        </select>
-      </div>
+        <div>
+          <label className="label">Stato</label>
+          <select className="input" value={formData.stato}
+            onChange={(e) => setFormData({...formData, stato: e.target.value})}>
+            <option value="">Seleziona...</option>
+            <option value="1 Sotto contratto">Sotto Contratto</option>
+            <option value="2 Proposta in carico">Proposta in Carico</option>
+            <option value="3 Trattativa">Trattativa</option>
+            <option value="4 Possibilità future">Possibilità future</option>
+            <option value="5 Perso">Perso</option>
+          </select>
+        </div>
 
-      <div className="flex items-center gap-3 pt-6">
-        <input type="checkbox" id="ricontattare"
-          checked={formData.ricontattare}
-          onChange={(e) => setFormData({...formData, ricontattare: e.target.checked})}
-          className="w-4 h-4 text-yellow-400 border-gray-300 rounded" />
-        <label htmlFor="ricontattare" className="label mb-0">Da Ricontattare</label>
+        <div className="flex items-center gap-3 pt-6">
+          <input type="checkbox" id="ricontattare"
+            checked={formData.ricontattare}
+            onChange={(e) => setFormData({...formData, ricontattare: e.target.checked})}
+            className="w-4 h-4 text-yellow-400 border-gray-300 rounded" />
+          <label htmlFor="ricontattare" className="label mb-0">Da Ricontattare</label>
+        </div>
       </div>
 
       {/* ── FEE & CONTRATTO ── */}
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Contratto</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Contratto</p></div>
         <div>
           <label className="label">Tipo Contratto</label>
           <select className="input" value={formData.tipoContratto}
@@ -254,8 +255,8 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
       </div>
 
       {/* ── STRATEGIA ── */}
-      <h3 className="text-lg font-bold text-gray-900 mb-4">Strategia & Preferenze</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Strategia & Preferenze</p></div>
 
         <div>
           <label className="label">Obiettivo</label>
@@ -295,7 +296,7 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
         />
       </div>
 
-      <div className="mt-6 flex gap-3 justify-end">
+      <div className="flex gap-3 justify-end pt-2">
         <button
           type="button"
           onClick={onCancel}

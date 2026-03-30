@@ -221,7 +221,7 @@ export default function CollaborationsPage() {
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Revenue</p>
+                <p className="text-sm text-gray-600">Valore Deal Pagati</p>
                 <p className="text-2xl font-bold text-gray-900">€{stats.totalRevenue.toLocaleString()}</p>
               </div>
               <div className="bg-yellow-100 p-3 rounded-lg">

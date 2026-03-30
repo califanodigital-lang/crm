@@ -66,8 +66,8 @@ export default function CreatorsPage() {
   }
 
   const handleDelete = async (id) => {
-    const ok = await confirm('Sei sicuro di voler eliminare questo creator?', {
-      title: 'Elimina Brand',
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Sei sicuro di voler eliminare questo creator?',
       confirmLabel: 'Elimina'
     })
     if (!ok) return
@@ -113,12 +113,14 @@ export default function CreatorsPage() {
       NANO: 'bg-gray-100 text-gray-800',
       MICRO: 'bg-blue-100 text-blue-800',
       MID: 'bg-purple-100 text-purple-800',
+      MEGA: 'bg-pink-100 text-pink-800',
       CELEBRITY: 'bg-pink-100 text-pink-800',
     }
     const labels = {
       NANO: 'Nano (5-10K)',
       MICRO: 'Micro (10-50K)',
-      MID: 'Mid (50-300K)',
+      MACRO: 'Macro (100-500K)',
+      MEGA: 'Mega (500K-3M)',
       CELEBRITY: 'Celebrity (3M+)',
     }
     return (
@@ -174,15 +176,18 @@ export default function CreatorsPage() {
               onChange={(e) => setFilterStato(e.target.value)}>
               <option value="ALL">Tutti gli stati</option>
               <option value="1 Sotto contratto">Sotto Contratto</option>
-              <option value="2 Ex cliente">Ex Cliente</option>
-              <option value="3 Prospect">Prospect</option>
+              <option value="2 Proposta in carico">Proposta in Carico</option>
+              <option value="3 Trattativa">Trattativa</option>
+              <option value="4 Possibilità future">Possibilità future</option>
+              <option value="5 Perso">Perso</option>
             </select>
             <select className="input sm:w-40" value={filterTier}
               onChange={(e) => setFilterTier(e.target.value)}>
               <option value="ALL">Tutti i tier</option>
               <option value="NANO">NANO</option>
               <option value="MICRO">MICRO</option>
-              <option value="MID">MID TIER</option>
+              <option value="MACRO">MACRO</option>
+              <option value="MEGA">MEGA</option>
               <option value="CELEBRITY">CELEBRITY</option>
             </select>
           </div>

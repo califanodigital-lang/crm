@@ -4,42 +4,66 @@ import { getAllUsers, updateUserProfile } from '../services/userService'
 import { supabase } from '../lib/supabase'
 import { Shield, User, Plus, X, Edit } from 'lucide-react'
 import { toast } from '../components/Toast'
-import { confirm } from '../components/ConfirmModal'
+
+const DEFAULT_FORM = {
+  email: '',
+  password: '',
+  nomeCompleto: '',
+  agenteNome: '',
+  role: 'AGENT',
+  feeRicerca: 5,
+  feeContatto: 10,
+  feeChiusura: 15
+}
 
 export default function UsersPage() {
   const { userProfile } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    nomeCompleto: '',
-    agenteNome: '',
-    role: 'AGENT',
-    feeRicerca: 5,
-    feeContatto: 10,
-    feeChiusura: 15
-  })
+  const [formData, setFormData] = useState(DEFAULT_FORM)
   const [editingUser, setEditingUser] = useState(null)
 
   useEffect(() => {
-    if (userProfile?.role === 'ADMIN') loadUsers()
+    if (userProfile?.role === 'ADMIN') {
+      loadUsers()
+    }
   }, [userProfile])
 
   const loadUsers = async () => {
-    const { data } = await getAllUsers()
-    setUsers(data || [])
-    setLoading(false)
+    try {
+      setLoading(true)
+      const { data, error } = await getAllUsers()
+
+      if (error) {
+        toast.error('Errore caricamento utenti: ' + error.message)
+        setUsers([])
+        return
+      }
+
+      setUsers(data || [])
+    } catch (err) {
+      toast.error('Errore caricamento utenti: ' + err.message)
+      setUsers([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData(DEFAULT_FORM)
+    setEditingUser(null)
+    setShowForm(false)
   }
 
   const handleEditUser = (user) => {
     setFormData({
       email: user.email || '',
-      password: '',  // Non mostriamo password esistente
-      nomeCompleto: user.nomeCompleto,
-      agenteNome: user.agenteNome,
-      role: user.role,
+      password: '',
+      nomeCompleto: user.nomeCompleto || '',
+      agenteNome: user.agenteNome || '',
+      role: user.role || 'AGENT',
       feeRicerca: user.feeRicerca ?? 5,
       feeContatto: user.feeContatto ?? 10,
       feeChiusura: user.feeChiusura ?? 15
@@ -48,86 +72,96 @@ export default function UsersPage() {
     setShowForm(true)
   }
 
-  const handleSaveUser = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
-    if (editingUser) {
-      // UPDATE - modifica solo profilo
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          nome_completo: formData.nomeCompleto,
-          agente_nome: formData.agenteNome,
-          role: formData.role
-        })
-        .eq('id', editingUser.id)
-
-      if (error) {
-        toast.error('Errore aggiornamento utente: ' + error.message)
-        setLoading(false)
-        return
-      }
-
-      // Se password fornita, aggiorna anche auth
-      if (formData.password) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          editingUser.id,
-          { password: formData.password }
-        )
-        if (authError) {
-          toast.error('Errore aggiornamento password: ' + authError.message)
-        }
-      }
-    } else {
-      // CREATE - logica esistente
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  const createUserViaEdgeFunction = async () => {
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: {
         email: formData.email,
         password: formData.password,
-        email_confirm: true
-      })
-
-      if (authError) {
-        toast.error('Errore creazione utente: ' + authError.message)
-        setLoading(false)
-        return
+        nomeCompleto: formData.nomeCompleto,
+        agenteNome: formData.agenteNome,
+        role: formData.role,
+        feeRicerca: formData.feeRicerca,
+        feeContatto: formData.feeContatto,
+        feeChiusura: formData.feeChiusura
       }
+    })
 
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert([{
-          id: authData.user.id,
-          role: formData.role,
-          nome_completo: formData.nomeCompleto,
-          agente_nome: formData.agenteNome,
-          fee_ricerca: formData.feeRicerca,
-          fee_contatto: formData.feeContatto,
-          fee_chiusura: formData.feeChiusura,
-          attivo: true
-        }])
-
-      if (profileError) {
-        toast.error('Errore creazione profilo: ' + profileError.message)
-        setLoading(false)
-        return
-      }
+    if (error) {
+      throw new Error(error.message || 'Errore chiamata funzione')
     }
 
-    // Reset form e reload
-    setFormData({ email: '', password: '', nomeCompleto: '', agenteNome: '', role: 'AGENT' })
-    setShowForm(false)
-    setEditingUser(null)
-    loadUsers()
+    if (!data?.success) {
+      throw new Error(data?.error || 'Errore creazione utente')
+    }
+
+    return data
+  }
+
+  const handleSaveUser = async (e) => {
+    e.preventDefault()
+
+    try {
+      setSaving(true)
+
+      if (editingUser) {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            nome_completo: formData.nomeCompleto,
+            agente_nome: formData.agenteNome,
+            role: formData.role,
+            fee_ricerca: formData.feeRicerca,
+            fee_contatto: formData.feeContatto,
+            fee_chiusura: formData.feeChiusura,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingUser.id)
+
+        if (error) {
+          throw error
+        }
+
+        toast.success('Utente aggiornato con successo')
+      } else {
+        if (!formData.email || !formData.password) {
+          throw new Error('Email e password sono obbligatorie')
+        }
+
+        await createUserViaEdgeFunction()
+        toast.success('Utente creato con successo')
+      }
+
+      resetForm()
+      await loadUsers()
+    } catch (err) {
+      toast.error(err.message || 'Errore salvataggio utente')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const toggleAttivo = async (userId, currentStatus) => {
-    await updateUserProfile(userId, { attivo: !currentStatus })
-    loadUsers()
+    try {
+      const { error } = await updateUserProfile(userId, { attivo: !currentStatus })
+      if (error) throw error
+
+      toast.success(!currentStatus ? 'Utente attivato' : 'Utente disattivato')
+      await loadUsers()
+    } catch (err) {
+      toast.error('Errore aggiornamento stato: ' + err.message)
+    }
   }
 
   const changeRole = async (userId, newRole) => {
-    await updateUserProfile(userId, { role: newRole })
-    loadUsers()
+    try {
+      const { error } = await updateUserProfile(userId, { role: newRole })
+      if (error) throw error
+
+      toast.success('Ruolo aggiornato')
+      await loadUsers()
+    } catch (err) {
+      toast.error('Errore aggiornamento ruolo: ' + err.message)
+    }
   }
 
   if (userProfile?.role !== 'ADMIN') {
@@ -135,7 +169,11 @@ export default function UsersPage() {
   }
 
   if (loading) {
-    return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div></div>
+    return (
+      <div className="flex justify-center py-8">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+      </div>
+    )
   }
 
   return (
@@ -143,7 +181,15 @@ export default function UsersPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Gestione Utenti</h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) {
+              resetForm()
+            } else {
+              setFormData(DEFAULT_FORM)
+              setEditingUser(null)
+              setShowForm(true)
+            }
+          }}
           className="flex items-center gap-2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500"
         >
           {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -151,131 +197,157 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Form Nuovo Utente */}
       {showForm && (
         <div className="card mb-6">
           <h2 className="text-xl font-bold mb-4">
             {editingUser ? 'Modifica Utente' : 'Crea Nuovo Utente'}
           </h2>
+
           <form onSubmit={handleSaveUser}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="label">Email *</label>
+                <label className="label">Email {!editingUser && '*'}</label>
                 <input
                   type="email"
                   className="input"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required={!editingUser}
                   disabled={!!editingUser}
                 />
                 {editingUser && (
-                  <p className="text-xs text-gray-500 mt-1">Email non modificabile</p>
+                  <p className="text-xs text-gray-500 mt-1">Email non modificabile da questa schermata</p>
                 )}
               </div>
-              <div>
-                <label className="label">Password {editingUser ? '' : '*'}</label>
-                <input
-                  type="password"
-                  className="input"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  required={!editingUser}
-                  minLength={6}
-                  placeholder={editingUser ? 'Lascia vuoto per non modificare' : ''}
-                />
-              </div>
+
+              {!editingUser && (
+                <div>
+                  <label className="label">Password *</label>
+                  <input
+                    type="password"
+                    className="input"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="label">Nome Completo *</label>
                 <input
                   className="input"
                   value={formData.nomeCompleto}
-                  onChange={(e) => setFormData({...formData, nomeCompleto: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, nomeCompleto: e.target.value })}
                   required
                 />
               </div>
+
               <div>
                 <label className="label">Nome Agente *</label>
                 <input
                   className="input"
                   value={formData.agenteNome}
-                  onChange={(e) => setFormData({...formData, agenteNome: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, agenteNome: e.target.value })}
                   required
                   placeholder="Es. Mario, Luca..."
                 />
               </div>
+
               <div>
                 <label className="label">Ruolo *</label>
                 <select
                   className="input"
                   value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 >
                   <option value="AGENT">Agent</option>
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
             </div>
-            {editingUser && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Percentuali Commissioni</p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="label">% Ricerca Brand</label>
-                    <div className="flex items-center gap-2">
-                      <input type="number" step="0.5" min="0" max="100" className="input"
-                        value={formData.feeRicerca}
-                        onChange={(e) => setFormData({...formData, feeRicerca: parseFloat(e.target.value)})} />
-                      <span className="text-gray-500 text-sm">%</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">Default: 5%</p>
+
+            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-sm font-semibold text-gray-700 mb-3">Percentuali Commissioni</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="label">% Ricerca Brand</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="100"
+                      className="input"
+                      value={formData.feeRicerca}
+                      onChange={(e) => setFormData({ ...formData, feeRicerca: parseFloat(e.target.value || 0) })}
+                    />
+                    <span className="text-gray-500 text-sm">%</span>
                   </div>
-                  <div>
-                    <label className="label">% Contatto</label>
-                    <div className="flex items-center gap-2">
-                      <input type="number" step="0.5" min="0" max="100" className="input"
-                        value={formData.feeContatto}
-                        onChange={(e) => setFormData({...formData, feeContatto: parseFloat(e.target.value)})} />
-                      <span className="text-gray-500 text-sm">%</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">Default: 10%</p>
+                </div>
+
+                <div>
+                  <label className="label">% Contatto</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="100"
+                      className="input"
+                      value={formData.feeContatto}
+                      onChange={(e) => setFormData({ ...formData, feeContatto: parseFloat(e.target.value || 0) })}
+                    />
+                    <span className="text-gray-500 text-sm">%</span>
                   </div>
-                  <div>
-                    <label className="label">% Chiusura</label>
-                    <div className="flex items-center gap-2">
-                      <input type="number" step="0.5" min="0" max="100" className="input"
-                        value={formData.feeChiusura}
-                        onChange={(e) => setFormData({...formData, feeChiusura: parseFloat(e.target.value)})} />
-                      <span className="text-gray-500 text-sm">%</span>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">Default: 15%</p>
+                </div>
+
+                <div>
+                  <label className="label">% Chiusura</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      max="100"
+                      className="input"
+                      value={formData.feeChiusura}
+                      onChange={(e) => setFormData({ ...formData, feeChiusura: parseFloat(e.target.value || 0) })}
+                    />
+                    <span className="text-gray-500 text-sm">%</span>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {editingUser && (
+              <p className="text-xs text-gray-500 mt-3">
+                Cambio password non gestito da questa pagina. Va fatto con funzione dedicata o reset password.
+              </p>
             )}
+
             <div className="mt-4 flex gap-3 justify-end">
               <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false)
-                    setEditingUser(null)
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Annulla
-                </button>
+                type="button"
+                onClick={resetForm}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={saving}
+              >
+                Annulla
+              </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
+                disabled={saving}
+                className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 disabled:opacity-50"
               >
-                {editingUser ? 'Aggiorna Utente' : 'Crea Utente'}
+                {saving ? 'Salvataggio...' : editingUser ? 'Aggiorna Utente' : 'Crea Utente'}
               </button>
             </div>
           </form>
         </div>
       )}
-      
-      {/* Tabella Utenti */}
+
       <div className="card">
         <table className="w-full">
           <thead>
@@ -293,45 +365,53 @@ export default function UsersPage() {
                 <td className="py-3 px-4 font-medium">{u.nomeCompleto}</td>
                 <td className="py-3 px-4">{u.agenteNome}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    u.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {u.role === 'ADMIN' ? <Shield className="w-3 h-3 inline mr-1" /> : <User className="w-3 h-3 inline mr-1" />}
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      u.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
+                    {u.role === 'ADMIN'
+                      ? <Shield className="w-3 h-3 inline mr-1" />
+                      : <User className="w-3 h-3 inline mr-1" />}
                     {u.role}
                   </span>
                 </td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    u.attivo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      u.attivo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
                     {u.attivo ? 'Attivo' : 'Disattivo'}
                   </span>
                 </td>
                 <td className="py-3 px-4 text-right">
-                <button
-                  onClick={() => handleEditUser(u)}
-                  className="text-sm px-3 py-1 rounded bg-yellow-100 text-yellow-700 mr-2 hover:bg-yellow-200"
-                >
-                  <Edit className="w-3 h-3 inline mr-1" />
-                  Modifica
-                </button>
-                <select 
-                  value={u.role}
-                  onChange={(e) => changeRole(u.id, e.target.value)}
-                  className="text-sm border rounded px-2 py-1 mr-2"
-                >
-                  <option value="ADMIN">Admin</option>
-                  <option value="AGENT">Agent</option>
-                </select>
-                <button
-                  onClick={() => toggleAttivo(u.id, u.attivo)}
-                  className={`text-sm px-3 py-1 rounded ${
-                    u.attivo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  {u.attivo ? 'Disattiva' : 'Attiva'}
-                </button>
-              </td>
+                  <button
+                    onClick={() => handleEditUser(u)}
+                    className="text-sm px-3 py-1 rounded bg-yellow-100 text-yellow-700 mr-2 hover:bg-yellow-200"
+                  >
+                    <Edit className="w-3 h-3 inline mr-1" />
+                    Modifica
+                  </button>
+
+                  <select
+                    value={u.role}
+                    onChange={(e) => changeRole(u.id, e.target.value)}
+                    className="text-sm border rounded px-2 py-1 mr-2"
+                  >
+                    <option value="ADMIN">Admin</option>
+                    <option value="AGENT">Agent</option>
+                  </select>
+
+                  <button
+                    onClick={() => toggleAttivo(u.id, u.attivo)}
+                    className={`text-sm px-3 py-1 rounded ${
+                      u.attivo ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {u.attivo ? 'Disattiva' : 'Attiva'}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

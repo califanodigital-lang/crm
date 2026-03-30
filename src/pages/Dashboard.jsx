@@ -13,10 +13,11 @@ export default function Dashboard() {
   const [topCreators, setTopCreators] = useState([])
   const [revenueChart, setRevenueChart] = useState([])
   const [proposteStats, setProposteStats] = useState(null)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
 
   useEffect(() => {
     loadData()
-  }, [userProfile])
+  }, [userProfile, selectedMonth])
 
   const loadData = async () => {
     setLoading(true)
@@ -24,8 +25,8 @@ export default function Dashboard() {
     if (userProfile?.role === 'AGENT') {
       // Agent: carica sue stats
       const [statsRes, collabsRes] = await Promise.all([
-        getAgentStats(userProfile.agenteNome),
-        getAgentCollaborations(userProfile.agenteNome)
+        getAgentStats(userProfile.agenteNome, selectedMonth),
+        getAgentCollaborations(userProfile.agenteNome, selectedMonth)
       ])
       setAgentStats(statsRes.data)
       setAgentCollabs(collabsRes.data || [])
@@ -60,8 +61,20 @@ export default function Dashboard() {
           <p className="text-gray-600 mt-1">Benvenuto, {userProfile.nomeCompleto}</p>
         </div>
 
+        <div className="mb-6 flex justify-end">
+          <div>
+            <label className="label">Mese di riferimento</label>
+            <input
+              type="month"
+              className="input"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            />
+          </div>
+        </div>
+
         {/* Stats Cards Agent */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
@@ -89,23 +102,11 @@ export default function Dashboard() {
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Tua Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">€{agentStats.totalRevenue.toLocaleString()}</p>
+                <p className="text-sm text-gray-600">Valore Deal Pagati del Mese</p>
+                <p className="text-2xl font-bold text-gray-900">€{(agentStats.totalDealValue || 0).toLocaleString()}</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg">
                 <DollarSign className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Conversion Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{agentStats.conversionRate}%</p>
-              </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-yellow-600" />
               </div>
             </div>
           </div>
@@ -115,7 +116,7 @@ export default function Dashboard() {
         <div className="card mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 font-semibold">Le Tue Commissioni</p>
+              <p className="text-sm text-gray-600 font-semibold">Le Tue Commissioni del Mese</p>
               <p className="text-4xl font-bold text-gray-900 mt-2">€{agentStats.totalCommissioni.toLocaleString()}</p>
               <p className="text-sm text-gray-600 mt-1">Da deal completati e pagati</p>
             </div>
@@ -134,16 +135,18 @@ export default function Dashboard() {
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4">Creator</th>
                   <th className="text-left py-3 px-4">Brand</th>
+                  <th className="text-left py-3 px-4">Ruoli</th>
                   <th className="text-left py-3 px-4">Stato</th>
                   <th className="text-right py-3 px-4">Pagamento</th>
-                  <th className="text-right py-3 px-4">Tua Fee</th>
+                  <th className="text-right py-3 px-4">Tua Commissione</th>
                 </tr>
               </thead>
               <tbody>
                 {agentCollabs.slice(0, 10).map((c) => (
                   <tr key={c.id} className="border-b border-gray-100">
                     <td className="py-3 px-4 font-medium">{c.creatorNome}</td>
-                    <td className="py-3 px-4">{c.brand_nome}</td>
+                    <td className="py-3 px-4">{c.brandNome}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{c.rolesLabel || '-'}</td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         c.stato === 'COMPLETATO' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
@@ -153,7 +156,7 @@ export default function Dashboard() {
                     </td>
                     <td className="py-3 px-4 text-right">€{parseFloat(c.pagamento || 0).toLocaleString()}</td>
                     <td className="py-3 px-4 text-right font-semibold text-green-600">
-                      €{parseFloat(c.fee_management || 0).toLocaleString()}
+                      €{parseFloat(c.personalCommission || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))}

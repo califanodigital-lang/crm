@@ -71,8 +71,8 @@ export default function PropostePage() {
   }
 
   const handleDelete = async (id) => {
-    const ok = await confirm('Eliminare questa proposta?', {
-      title: 'Eliminare?',
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Eliminare questa proposta?',
       confirmLabel: 'Elimina'
     })
     if (!ok) return

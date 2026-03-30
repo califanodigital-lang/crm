@@ -7,6 +7,16 @@ const cleanValue = (value) => {
   return value
 }
 
+const toNumber = (value) => parseFloat(value || 0) || 0
+
+const deriveFeeManagement = (collab) => {
+  const explicitFee = cleanValue(collab.feeManagement)
+  if (explicitFee !== null) return explicitFee
+
+  const pagamento = toNumber(collab.pagamento)
+  return pagamento > 0 ? +(pagamento * 0.25).toFixed(2) : null
+}
+
 // Utility per convertire da snake_case (DB) a camelCase (Frontend)
 const toCamelCase = (collab) => {
   if (!collab) return null
@@ -20,6 +30,7 @@ const toCamelCase = (collab) => {
     dataFirma: collab.data_firma,
     dataPubblicazione: collab.data_pubblicazione,
     durataContratto: collab.durata_contratto,
+    dataPagamento: collab.data_pagamento,
     adv: collab.adv,
     agente: collab.agente,
     sales: collab.sales,
@@ -42,10 +53,11 @@ const toSnakeCase = (collab) => {
     creator_id: collab.creatorId,
     brand_nome: collab.brandNome,
     pagamento: cleanValue(collab.pagamento),
-    fee_management: cleanValue(collab.feeManagement),
+    fee_management: deriveFeeManagement(collab),
     data_firma: cleanValue(collab.dataFirma),
     data_pubblicazione: cleanValue(collab.dataPubblicazione),
     durata_contratto: cleanValue(collab.durataContratto),
+    data_pagamento: collab.pagato ? cleanValue(collab.dataPagamento) : null,
     adv: cleanValue(collab.adv),
     agente: cleanValue(collab.agente),
     sales: cleanValue(collab.sales),
@@ -164,7 +176,14 @@ export const createCollaboration = async (collabData) => {
       .single()
 
     if (error) throw error
-    return { data: toCamelCase(data), error: null }
+
+    const collaboration = toCamelCase(data)
+
+    if (collaboration.stato === 'COMPLETATO' && collaboration.pagato) {
+      await syncRevenueFromCollaboration(collaboration)
+    }
+
+    return { data: collaboration, error: null }
   } catch (error) {
     console.error('Error creating collaboration:', error)
     return { data: null, error }
@@ -183,25 +202,13 @@ export const updateCollaboration = async (id, collaborationData) => {
 
     if (error) throw error
 
-    // ⭐ SYNC REVENUE - AGGIUNGI QUESTO BLOCCO
     const collaboration = toCamelCase(data)
-    
+
     if (collaboration.stato === 'COMPLETATO' && collaboration.pagato) {
-      // Crea/aggiorna revenue
       await syncRevenueFromCollaboration(collaboration)
     } else {
-      // Rimuovi revenue auto se non più valida
-      const { data: existingRev } = await supabase
-        .from('revenue_mensile')
-        .select('id')
-        .eq('collaborazione_id', id)
-        .maybeSingle()
-      
-      if (existingRev) {
-        await unsyncRevenueFromCollaboration(id)
-      }
+      await unsyncRevenueFromCollaboration(id)
     }
-    // ⭐ FINE SYNC
 
     return { data: collaboration, error: null }
   } catch (error) {
@@ -213,6 +220,8 @@ export const updateCollaboration = async (id, collaborationData) => {
 // DELETE: Elimina collaborazione
 export const deleteCollaboration = async (id) => {
   try {
+    await unsyncRevenueFromCollaboration(id)
+
     const { error } = await supabase
       .from('collaborations')
       .delete()

@@ -59,8 +59,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form onSubmit={handleSubmit} className="space-y-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
+        <div className="md:col-span-2"><p className="form-section-title">Anagrafica</p></div>
 
         {/* ── DATI PRINCIPALI ── */}
         <div>
@@ -131,6 +132,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
         </div>
 
         {/* ── STATO & PRIORITÀ ── */}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Gestione</p></div>
         <div>
           <label className="label">Priorità *</label>
           <select
@@ -184,7 +188,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
             onChange={(ids) => setFormData({ ...formData, creatorSuggeriti: ids })}
           />
         </div>
-
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+          <div className="md:col-span-2"><p className="form-section-title">Contatti</p></div>
         {/* ── CONTATTI ── */}
         <div>
           <label className="label">Riferimento (Referente Brand)</label>
@@ -227,6 +233,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           />
         </div>
 
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Pipeline</p></div>
         {/* ── PIPELINE CONTATTI ── */}
         <div>
           <label className="label">Contattato Per</label>
@@ -293,6 +302,9 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
           <p className="text-xs text-gray-500 mt-1">Dopo ~7-10 giorni dal primo</p>
         </div>
 
+      </div>
+      <div className="pt-6 border-t border-gray-100 mb-8">
+        <p className="form-section-title">Note</p>
         {/* ── NOTE ── */}
         <div className="md:col-span-2">
           <label className="label">Note Strategiche</label>
@@ -306,7 +318,7 @@ export default function PropostaForm({ proposta = null, onSave, onCancel }) {
 
       </div>
 
-      <div className="mt-6 flex gap-3 justify-end">
+      <div className="flex gap-3 justify-end pt-2">
         <button
           type="button"
           onClick={onCancel}

@@ -7,6 +7,8 @@ import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato,
 import { getActiveAgents } from '../services/userService'
 import { getPartecipazioniByCreator } from '../services/eventoService'
 import { getPiattaformeByCreator } from '../services/piattaformeService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -211,7 +213,8 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     const colors = {
       NANO: 'bg-gray-100 text-gray-800',
       MICRO: 'bg-blue-100 text-blue-800',
-      MID: 'bg-purple-100 text-purple-800',
+      MACRO: 'bg-purple-100 text-purple-800',
+      MEGA: 'bg-pink-100 text-pink-800',
       CELEBRITY: 'bg-pink-100 text-pink-800',
     }
     return (

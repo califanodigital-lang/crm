@@ -6,14 +6,15 @@ export default function AgentDashboardPage() {
   const { userProfile } = useAuth()
   const [allAgents, setAllAgents] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
 
-  useEffect(() => {
-    if (userProfile?.role === 'ADMIN') loadData()
-  }, [userProfile])
+    useEffect(() => {
+      if (userProfile?.role === 'ADMIN') loadData()
+    }, [userProfile, selectedMonth])
 
   const loadData = async () => {
     setLoading(true)
-    const { data } = await getAllAgentsStats()
+    const { data } = await getAllAgentsStats(selectedMonth)
     setAllAgents(data || [])
     setLoading(false)
   }
@@ -33,7 +34,18 @@ export default function AgentDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Classifica Agenti</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Tutti gli Agenti</h1>
+        <div className="mb-6 flex justify-end">
+          <div>
+            <label className="label">Mese di riferimento</label>
+            <input
+              type="month"
+              className="input"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            />
+          </div>
+        </div>
 
       <div className="card">
         <table className="w-full">
@@ -43,12 +55,10 @@ export default function AgentDashboardPage() {
               <th className="text-left py-3 px-4">Agente</th>
               <th className="text-right py-3 px-4">Deal</th>
               <th className="text-right py-3 px-4">Completati</th>
-              <th className="text-right py-3 px-4">Revenue</th>
               <th className="text-right py-3 px-4">Comm. Totali</th>
               <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Ricerca</th>
               <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Contatto</th>
               <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Chiusura</th>
-              <th className="text-right py-3 px-4">Conversion %</th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +68,6 @@ export default function AgentDashboardPage() {
                 <td className="py-3 px-4 font-semibold">{agent.agente}</td>
                 <td className="py-3 px-4 text-right">{agent.totaleDeal}</td>
                 <td className="py-3 px-4 text-right">{agent.completati}</td>
-                <td className="py-3 px-4 text-right font-semibold">€{agent.totalRevenue.toLocaleString()}</td>
                 <td className="py-3 px-4 text-right font-semibold text-green-600">
                   €{agent.totalCommissioni.toLocaleString()}
                 </td>
@@ -70,13 +79,6 @@ export default function AgentDashboardPage() {
                 </td>
                 <td className="py-3 px-4 text-right text-xs text-gray-500">
                   €{(agent.commissioniChiusura || 0).toLocaleString()}
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    agent.conversionRate >= 50 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {agent.conversionRate}%
-                  </span>
                 </td>
               </tr>
             ))}

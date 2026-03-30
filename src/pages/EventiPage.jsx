@@ -4,6 +4,7 @@ import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../servi
 import { getPartecipazioniByEvento, addPartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
 import { Calendar, MapPin, Plus, Edit, Trash2, Users, X } from 'lucide-react'
+import { confirm } from '../components/ConfirmModal'
 
 export default function EventiPage() {
   const { userProfile } = useAuth()

@@ -5,6 +5,7 @@ import { getAllRevenue, upsertRevenue, deleteRevenue, getMonthlyTotals } from '.
 import { CheckCircle, XCircle, FileText, ExternalLink, DollarSign, TrendingUp, Calendar, Edit, Trash2, Plus, AlertTriangle } from 'lucide-react'
 import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento, getVersamentiStats } from '../services/versamentoService'
 import { checkRevenueDiscrepancies } from '../services/revenueService'
+import { confirm } from '../components/ConfirmModal'
 
 
 export default function FinancePage() {

@@ -9,6 +9,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     feeManagement: '',
     dataFirma: '',
     dataPubblicazione: '',
+    dataPagamento: '',
     durataContratto: '',
     adv: '',
     agente: '',
@@ -18,6 +19,9 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     contatto: '',
     note: '',
     senior: '',
+    feeSalesCalc: 0,
+    feeAgenteCalc: 0,
+    feeSeniorCalc: 0,
   })
 
   const [agenti, setAgenti] = useState([])
@@ -31,58 +35,90 @@ export default function CollaborationForm({ collaboration = null, creators = [],
       setAgenti(data || [])
     }
 
-  useEffect(() => {
-    if (collaboration) {
-      setFormData(collaboration)
-    }
-  }, [collaboration])
+    useEffect(() => {
+      if (!collaboration) return
+
+      setFormData(prev => ({
+        ...prev,
+        ...collaboration,
+        pagamento: collaboration.pagamento ?? '',
+        feeManagement: collaboration.feeManagement ?? '',
+        dataFirma: collaboration.dataFirma ?? '',
+        dataPubblicazione: collaboration.dataPubblicazione ?? '',
+        dataPagamento: collaboration.dataPagamento ?? '',
+        durataContratto: collaboration.durataContratto ?? '',
+        adv: collaboration.adv ?? '',
+        agente: collaboration.agente ?? '',
+        sales: collaboration.sales ?? '',
+        stato: collaboration.stato ?? 'IN_TRATTATIVA',
+        pagato: collaboration.pagato ?? false,
+        contatto: collaboration.contatto ?? '',
+        note: collaboration.note ?? '',
+        senior: collaboration.senior ?? '',
+        feeSalesCalc: collaboration.feeSalesCalc ?? 0,
+        feeAgenteCalc: collaboration.feeAgenteCalc ?? 0,
+        feeSeniorCalc: collaboration.feeSeniorCalc ?? 0,
+      }))
+    }, [collaboration])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     onSave(formData)
   }
 
-  const handleBrandSelect = (brandNome) => {
-    const selectedBrand = brands.find(b => b.nome === brandNome)
-    
-    if (selectedBrand) {
-      setFormData({
+    const handleBrandSelect = (brandNome) => {
+      const selectedBrand = brands.find(b => b.nome === brandNome)
+
+      const upd = {
         ...formData,
-        brandNome: selectedBrand.nome,
-        agente: selectedBrand.agente || formData.agente,
+        brandNome,
+        agente: selectedBrand?.agente || formData.agente,
+      }
+
+      setFormData({
+        ...upd,
+        ...ricalcolaFee(upd)
       })
-    } else {
-      setFormData({...formData, brandNome})
     }
-  }
 
   const handleCreatorSelect = (creatorId) => {
-    const selectedCreator = creators.find(c => c.id === creatorId)
-    setFormData(prev => {
-      const fee = calcolaFeeAgente(prev.pagamento, prev.stato, prev.agente, agenti, selectedCreator)
-      return { ...prev, creatorId, feeManagement: fee || prev.feeManagement }
-    })
+    setFormData(prev => ({
+      ...prev,
+      creatorId
+    }))
   }
+  const toNumber = (value) => parseFloat(value || 0) || 0
 
-  const calcolaFeeAgente = (feeMan, agenti, nomeAgente, tipo) => {
-    const ag = agenti.find(a => a.agenteNome === nomeAgente)
-    if (!ag || !feeMan) return 0
-    const feeMan_n = parseFloat(feeMan) || 0
-    if (tipo === 'ricerca')  return +(feeMan_n * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
-    if (tipo === 'contatto') return +(feeMan_n * (ag.feeContatto ?? 10) / 100).toFixed(2)
-    if (tipo === 'chiusura') return +(feeMan_n * (ag.feeChiusura ?? 15) / 100).toFixed(2)
+  const calcolaFeeAgente = (baseImporto, agentiList, nomeAgente, tipo) => {
+    const ag = Array.isArray(agentiList)
+      ? agentiList.find(a => a.agenteNome === nomeAgente)
+      : null
+
+    if (!ag || !baseImporto) return 0
+
+    const importo = parseFloat(baseImporto) || 0
+
+    if (tipo === 'ricerca')  return +(importo * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
+    if (tipo === 'contatto') return +(importo * (ag.feeContatto ?? 10) / 100).toFixed(2)
+    if (tipo === 'chiusura') return +(importo * (ag.feeChiusura ?? 15) / 100).toFixed(2)
+
     return 0
   }
 
-  const ricalcolaFee = (data) => ({
-    feeSalesCalc:  calcolaFeeAgente(data.feeManagement, agenti, data.sales,   'ricerca'),
-    feeAgenteCalc: calcolaFeeAgente(data.feeManagement, agenti, data.agente,  'contatto'),
-    feeSeniorCalc: calcolaFeeAgente(data.feeManagement, agenti, data.senior,  'chiusura'),
-  })
+    const ricalcolaFee = (data) => {
+      const feeBase = toNumber(data.feeManagement)
+
+      return {
+        feeSalesCalc: data.sales ? calcolaFeeAgente(feeBase, agenti, data.sales, 'ricerca') : 0,
+        feeAgenteCalc: data.agente ? calcolaFeeAgente(feeBase, agenti, data.agente, 'contatto') : 0,
+        feeSeniorCalc: data.senior ? calcolaFeeAgente(feeBase, agenti, data.senior, 'chiusura') : 0,
+      }
+    }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <form onSubmit={handleSubmit} className="space-y-0">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
+      <div className="md:col-span-2"><p className="form-section-title">Parti coinvolte</p></div>
         {/* Creator */}
         <div>
           <label className="label">Creator *</label>
@@ -130,7 +166,9 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             </>
           )}
         </div>
-
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Dati economici</p></div>
         {/* Pagamento */}
         <div>
           <label className="label">Pagamento Totale (€)</label>
@@ -140,10 +178,19 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             className="input"
             value={formData.pagamento}
             onChange={(e) => {
-              const pag = e.target.value
-              const creator = creators.find(c => c.id === formData.creatorId)
-              const fee = calcolaFeeAgente(pag, formData.stato, formData.agente, agenti, creator)
-              setFormData({ ...formData, pagamento: pag, feeManagement: fee || formData.feeManagement })
+              const pag = parseFloat(e.target.value) || 0
+              const feeManagement = +(pag * 0.25).toFixed(2)
+
+              const upd = {
+                ...formData,
+                pagamento: e.target.value,
+                feeManagement
+              }
+
+              setFormData({
+                ...upd,
+                ...ricalcolaFee(upd)
+              })
             }}
           />
         </div>
@@ -157,14 +204,16 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             className="input bg-gray-50"
             value={formData.feeManagement}
             onChange={(e) => {
-              const upd = {...formData, feeManagement: e.target.value}
-              setFormData({...upd, ...ricalcolaFee(upd)})
+              const upd = { ...formData, feeManagement: e.target.value }
+              setFormData({ ...upd, ...ricalcolaFee(upd) })
             }}
-            placeholder="Auto-calcolata da pagamento × proviggioni"
+            placeholder="Auto-calcolata come 25% del pagamento brand, modificabile se necessario"
           />
           <p className="text-xs text-gray-500 mt-1">Modificabile manualmente se necessario</p>
         </div>
-
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-3"><p className="form-section-title">Date</p></div>
         {/* Data Firma */}
         <div>
           <label className="label">Data Firma Contratto</label>
@@ -184,6 +233,22 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             value={formData.dataPubblicazione}
             onChange={(e) => setFormData({...formData, dataPubblicazione: e.target.value})}
           />
+        </div>
+
+        <div>
+          <label className="label">Data Pagamento</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataPagamento || ''}
+            onChange={(e) => setFormData({ ...formData, dataPagamento: e.target.value })}
+            disabled={!formData.pagato}
+          />
+          {!formData.pagato && (
+            <p className="text-xs text-gray-500 mt-1">
+              Si compila quando la collaborazione viene segnata come pagata
+            </p>
+          )}
         </div>
 
         <div>
@@ -214,7 +279,9 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             <option value="COLLABORAZIONE_LUNGA">Collaborazione Lunga</option>
           </select>
         </div>
-
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-3"><p className="form-section-title">Responsabili</p></div>
         {/* Sales — Ricerca brand (5%) */}
         <div>
           <label className="label">Sales / Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
@@ -264,12 +331,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           <select
             className="input"
             value={formData.stato}
-            onChange={(e) => {
-              const nuovoStato = e.target.value
-              const creator = creators.find(c => c.id === formData.creatorId)
-              const fee = calcolaFeeAgente(formData.pagamento, nuovoStato, formData.agente, agenti, creator)
-              setFormData({ ...formData, stato: nuovoStato, feeManagement: fee || formData.feeManagement })
-            }}
+            onChange={(e) => setFormData({ ...formData, stato: e.target.value })}
             required
           >
               <option value="IN_TRATTATIVA">In Trattativa</option>
@@ -285,16 +347,26 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
         {/* Pagato */}
         <div className="flex items-center gap-3 pt-6">
-          <input
-            type="checkbox"
-            id="pagato"
-            checked={formData.pagato}
-            onChange={(e) => setFormData({...formData, pagato: e.target.checked})}
-            className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
-          />
+        <input
+          type="checkbox"
+          id="pagato"
+          checked={formData.pagato}
+          onChange={(e) => {
+            const checked = e.target.checked
+            setFormData({
+              ...formData,
+              pagato: checked,
+              dataPagamento: checked ? (formData.dataPagamento || new Date().toISOString().split('T')[0]) : ''
+            })
+          }}
+          className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
+        />
           <label htmlFor="pagato" className="label mb-0">Pagato</label>
         </div>
 
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+        <div className="md:col-span-2"><p className="form-section-title">Note</p></div>
         {/* Contatto */}
         <div>
           <label className="label">Contatto</label>
@@ -317,7 +389,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         </div>
       </div>
 
-      <div className="mt-6 flex gap-3 justify-end">
+      <div className="flex gap-3 justify-end pt-2">
         <button
           type="button"
           onClick={onCancel}

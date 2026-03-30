@@ -31,7 +31,7 @@ export const getGlobalStats = async () => {
 
     // Revenue mese corrente da revenue_mensile
     const monthlyRevenue = revenueRes.data
-      ?.filter(r => r.mese === meseCorrente)
+      ?.filter(r => r.mese?.startsWith(meseCorrente))
       .reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0) || 0
 
     return {
@@ -71,34 +71,38 @@ export const getTopCreators = async () => {
     return { data: null, error }
   }
 }
-// Revenue ultimi 6 mesi (per grafico)
-export const getRevenueChart = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('collaborations')
-      .select('data_firma, pagamento, stato, pagato')
-      .eq('stato', 'COMPLETATO')
-      .eq('pagato', true)
-      .not('data_firma', 'is', null)
 
-    if (error) throw error
+  // Revenue ultimi 6 mesi (per grafico)
+  export const getRevenueChart = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('revenue_mensile')
+        .select('mese, importo')
+        .order('mese', { ascending: true })
 
-    const monthlyMap = {}
-    data.forEach(c => {
-      const mese = c.data_firma.substring(0, 7) // YYYY-MM
-      monthlyMap[mese] = (monthlyMap[mese] || 0) + parseFloat(c.pagamento || 0)
-    })
+      if (error) throw error
 
-    const chartData = Object.keys(monthlyMap)
-      .sort()
-      .slice(-6)
-      .map(mese => ({ mese, revenue: monthlyMap[mese] }))
+      const monthlyMap = {}
 
-    return { data: chartData, error: null }
-  } catch (error) {
-    return { data: null, error }
+      data.forEach(r => {
+        const mese = (r.mese || '').substring(0, 7)
+        if (!mese) return
+        monthlyMap[mese] = (monthlyMap[mese] || 0) + (parseFloat(r.importo) || 0)
+      })
+
+      const chartData = Object.keys(monthlyMap)
+        .sort()
+        .slice(-6)
+        .map(mese => ({
+          mese,
+          revenue: monthlyMap[mese]
+        }))
+
+      return { data: chartData, error: null }
+    } catch (error) {
+      return { data: null, error }
+    }
   }
-}
 
 // Proposte stats
 export const getProposteStats = async () => {

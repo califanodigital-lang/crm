@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { Upload, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Upload, CheckCircle, XCircle, AlertTriangle,FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../lib/supabase'
 
@@ -20,6 +20,63 @@ export default function ImportPage() {
     return val
   }
 
+  const appendFieldToNotes = (baseNote, fieldName, rawValue) => {
+    if (!rawValue) return baseNote || null
+    const line = `[${fieldName}]: ${rawValue}`
+    return [baseNote, line].filter(Boolean).join('\n')
+  }
+
+  const parseSafeDateField = (rawValue, fieldName, note, results) => {
+    const cleaned = cleanValue(rawValue)
+    if (!cleaned) {
+      return { value: null, note }
+    }
+
+    const parsed = parseExcelDate(cleaned)
+    if (parsed) {
+      return { value: parsed, note }
+    }
+
+    if (results) results.legacyMovedToNotes++
+    return {
+      value: null,
+      note: appendFieldToNotes(note, fieldName, cleaned)
+    }
+  }
+
+  const parseSafeNumericField = (rawValue, fieldName, note, results) => {
+    const cleaned = cleanValue(rawValue)
+    if (!cleaned) {
+      return { value: null, note }
+    }
+
+    const parsed = parseSafeNumeric(cleaned)
+    if (parsed !== null) {
+      return { value: parsed, note }
+    }
+
+    if (results) results.legacyMovedToNotes++
+    return {
+      value: null,
+      note: appendFieldToNotes(note, fieldName, cleaned)
+    }
+  }
+
+  const isNumericLike = (value) => {
+    if (value === null || value === undefined || value === '') return false
+    return !isNaN(Number(String(value).replace(',', '.')))
+  }
+
+  const parseSafeNumeric = (value) => {
+    if (!isNumericLike(value)) return null
+    return Number(String(value).replace(',', '.'))
+  }
+
+  const appendLegacyNote = (baseNote, extraLine) => {
+    if (!extraLine) return baseNote || null
+    return [baseNote, extraLine].filter(Boolean).join('\n')
+  }
+
   const parseExcelDate = (v) => {
   if (v === null || v === undefined || v === '') return null
 
@@ -33,8 +90,8 @@ export default function ImportPage() {
     const s = v.trim()
     if (!s) return null
     const d = new Date(s)
-    if (!isNaN(d)) return d.toISOString().split('T')[0]
-    return s
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+    return null
   }
 
   // Excel serial
@@ -49,43 +106,55 @@ export default function ImportPage() {
 
   const handleImportCreators = async (file) => {
       setImporting(true)
-      const results = { success: 0, errors: [] }
+      const results = { success: 0, errors: [], skipped: 0, legacyMovedToNotes: 0 }
 
       try {
         const data = await file.arrayBuffer()
         const workbook = XLSX.read(data)
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+        const worksheet = workbook.Sheets['Clienti']
+        if (!worksheet) {
+          throw new Error('Foglio "Clienti" non trovato nel file _CLIENTI.xlsx')
+        }
         const rows = XLSX.utils.sheet_to_json(worksheet)
 
         console.log(`Processing ${rows.length} creators...`)
 
         for (const row of rows) {
           try {
+
+              let note = cleanValue(row['NOTE'])
+
+              const ricontattareParsed = parseSafeDateField(row['RICONTATTARE'], 'RICONTATTARE', note, results)
+              note = ricontattareParsed.note
+
+              const inizioCollabParsed = parseSafeDateField(row['INIZIO COLLABORAZIONE'], 'INIZIO COLLABORAZIONE', note, results)
+              note = inizioCollabParsed.note
+
+              const scadenzaParsed = parseSafeDateField(row['SCADENZA CONTRATTO'], 'SCADENZA CONTRATTO', note, results)
+              note = scadenzaParsed.note
+
+              const provvigioniParsed = parseSafeNumericField(row['PROVIGGIONI'], 'PROVIGGIONI', note, results)
+              note = provvigioniParsed.note
+
               const creator = {
-                nome:                   cleanValue(row['NOME']),
-                nome_completo:          cleanValue(row['NOME COMPLETO']),
-                stato:                  cleanValue(row['STATO']),
-                ricontattare:           row['RICONTATTARE'] === true || row['RICONTATTARE'] === 1 || false,
-                data_firma_contratto:   parseExcelDate(row['INIZIO COLLABORAZIONE']),
-                scadenza_contratto:     parseExcelDate(row['SCADENZA CONTRATTO']),
-                tipo_contratto:         cleanValue(row['TIPO CONTRATTO']),
-                proviggioni:            cleanValue(row['PROVIGGIONI']),
-                topic:                  cleanValue(row['TOPIC']),
-                tier:                   cleanValue(row['Tier']),
-                cellulare:              cleanValue(row['CELLULARE'])?.toString(),
-                email:                  cleanValue(row['EMAIL']),
-                note:                   cleanValue(row['NOTE']),
-                insight:                cleanValue(row['INSIGHT']),
-                tipo_instagram:         cleanValue(row['TIPO INSTAGRAM']),
-                tipo_youtube:           cleanValue(row['TIPO YOUTUBE']),
-                tipo_tiktok:            cleanValue(row['TIPO TIKTOK']),
-                tipo_twitch:            cleanValue(row['TIPO TWITCH']),
-                // Campi fee legacy rimossi — ora gestiti da creator_piattaforme
-                // collaborazioni_lunghe e fiere_eventi sono nel form Creator separatamente
+                nome: cleanValue(row['NOME']),
+                nome_completo: cleanValue(row['NOME COMPLETO']),
+                stato: cleanValue(row['STATO']),
+                ricontattare: ricontattareParsed.value,
+                inizio_collaborazione: inizioCollabParsed.value,
+                scadenza_contratto: scadenzaParsed.value,
+                tipo_contratto: cleanValue(row['TIPO CONTRATTO']),
+                proviggioni: provvigioniParsed.value,
+                topic: cleanValue(row['TOPIC']),
+                tier: cleanValue(row['Tier']),
+                cellulare: cleanValue(row['CELLULARE'])?.toString(),
+                email: cleanValue(row['EMAIL']),
+                note,
+                insight: cleanValue(row['INSIGHT']),
               }
 
             if (!creator.nome) {
-              results.errors.push(`Row skipped: missing NOME`)
+              results.skipped++
               continue
             }
 
@@ -94,7 +163,11 @@ export default function ImportPage() {
               .insert([creator])
 
             if (error) {
-              results.errors.push(`${creator.nome}: ${error.message}`)
+              if (error.code === '23505') {
+                results.skipped++
+              } else {
+                results.errors.push(`${creator.nome}: ${error.message}`)
+              }
             } else {
               results.success++
             }
@@ -111,13 +184,16 @@ export default function ImportPage() {
     }
 
     const handleImportBrands = async (file) => {
-  setImporting(true)
-  const results = { success: 0, errors: [], skipped: 0 }
+    setImporting(true)
+    const results = { success: 0, errors: [], skipped: 0, legacyMovedToNotes: 0, skippedItems: [] }
 
   try {
     const data = await file.arrayBuffer()
     const workbook = XLSX.read(data)
-    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+    const worksheet = workbook.Sheets['BRAND']
+    if (!worksheet) {
+      throw new Error('Foglio "BRAND" non trovato nel file _BRAND.xlsx')
+    }
     const rows = XLSX.utils.sheet_to_json(worksheet)
 
     console.log(`Processing ${rows.length} brands...`)
@@ -128,31 +204,51 @@ export default function ImportPage() {
         const nome = cleanValue(row['BRAND'])
         if (!nome) {
           results.skipped++
+          results.skippedItems.push(`Row ${i + 1}: brand senza nome`)
           continue
         }
+        let note = cleanValue(row['NOTE'])
 
-        // Brand object - MAPPING CORRETTO
+        const dataContattoParsed = parseSafeDateField(row['DATA CONTATTO'], 'DATA CONTATTO', note, results)
+        note = dataContattoParsed.note
+
+        const followup1Parsed = parseSafeDateField(
+          row['DATA 1° FOLLOW-UP'] || row['DATA FOLLOWUP 1'],
+          'DATA FOLLOWUP 1',
+          note,
+          results
+        )
+        note = followup1Parsed.note
+
+        const followup2Parsed = parseSafeDateField(
+          row['DATA 2° FOLLOW-UP'] || row['DATA FOLLOWUP 2'],
+          'DATA FOLLOWUP 2',
+          note,
+          results
+        )
+        note = followup2Parsed.note
+
         const brand = {
-          nome: nome,
+          nome,
           settore: cleanValue(row['SETTORE']),
-          target_dem: cleanValue(row['TARGET DEM']),              // ✅ target_dem
+          target_dem: cleanValue(row['TARGET DEM']),
           topic_target: cleanValue(row['TOPIC EL TARGET']),
-          data_contatto: parseExcelDate(row['DATA CONTATTO']),
-          categoria: cleanValue(row['Categoria']),                // ✅ text, non array
+          data_contatto: dataContattoParsed.value,
+          categoria: cleanValue(row['Categoria']),
           risposta: cleanValue(row['RISPOSTA']),
           contattato_per: cleanValue(row['CONTATTATO PER']),
           referenti: cleanValue(row['REFERENTI E RUOLO']),
-          contatto: cleanValue(row['MAIL']),                         // ✅ email, non contatto
-          data_followup_1: parseExcelDate(row['DATA 1° FOLLOW-UP']) || parseExcelDate(row['DATA FOLLOWUP 1']),
-          data_followup_2: parseExcelDate(row['DATA 2° FOLLOW-UP']) || parseExcelDate(row['DATA FOLLOWUP 2']),
+          contatto: cleanValue(row['MAIL']),
           telefono: cleanValue(row['TELEFONO']),
           agente: cleanValue(row['AGENTE']),
           sito_web: cleanValue(row['SITO WEB']),
-          note: cleanValue(row['NOTE']),
+          note,
           categoria_adv: cleanValue(row['CATEGORIA ADV']),
-          creator_suggeriti: cleanValue(row['CREATOR SUGGERITI']), // ✅ text, non array
-          priorita: 'NORMALE'
-          // stato: RIMOSSO - non esiste in DB
+          creator_suggeriti: [],
+          priorita: 'NORMALE',
+          stato: 'DA_CONTATTARE',
+          data_followup_1: followup1Parsed.value,
+          data_followup_2: followup2Parsed.value,
         }
 
         const { error } = await supabase
@@ -171,6 +267,7 @@ export default function ImportPage() {
           
           if (error.code === '23505') {
             results.skipped++
+            results.skippedItems.push(`Row ${i + 1}: ${nome} (duplicato)`)
           } else {
             results.errors.push(`Row ${i + 1} (${nome}): ${error.message}`)
           }
@@ -256,7 +353,7 @@ export default function ImportPage() {
         <div className="card">
           <h3 className="text-lg font-bold mb-4">Risultati Importazione</h3>
           
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
               <CheckCircle className="w-8 h-8 text-green-600" />
               <div>
@@ -270,6 +367,35 @@ export default function ImportPage() {
                 <p className="text-2xl font-bold text-red-900">{results.errors.length}</p>
                 <p className="text-sm text-red-700">Errori</p>
               </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-4 bg-yellow-50 rounded-lg">
+            <AlertTriangle className="w-8 h-8 text-yellow-600" />
+            <div>
+              <p className="text-2xl font-bold text-yellow-900">{results.skipped || 0}</p>
+              <p className="text-sm text-yellow-700">Saltati</p>
+            </div>
+          </div>
+
+          {results.skippedItems && results.skippedItems.length > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-4">
+              <div className="flex items-start gap-3 mb-3">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <h4 className="font-semibold text-yellow-900">Saltati:</h4>
+              </div>
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {results.skippedItems.map((item, idx) => (
+                  <p key={idx} className="text-sm text-yellow-700">• {item}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+            <FileText className="w-8 h-8 text-blue-600" />
+            <div>
+              <p className="text-2xl font-bold text-blue-900">{results.legacyMovedToNotes || 0}</p>
+              <p className="text-sm text-blue-700">Valori spostati in note</p>
             </div>
           </div>
 

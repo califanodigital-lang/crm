@@ -92,6 +92,7 @@ export const PIATTAFORME_FEE_CONFIG = {
 export const TIER_OPTIONS = [
   { value: 'NANO',      label: 'NANO (5-10K)' },
   { value: 'MICRO',     label: 'MICRO (10-50K)' },
-  { value: 'MID',       label: 'MID TIER (50-300K)' },
+  { value: 'MACRO',       label: 'MACRO (100-500K)' },
+  { value: 'MEGA',       label: 'MEGA (500K-3M)' },
   { value: 'CELEBRITY', label: 'CELEBRITY (3M+)' },
 ]
