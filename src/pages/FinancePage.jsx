@@ -88,7 +88,11 @@ export default function FinancePage() {
   }
 
   const handleDeleteVersamento = async (id) => {
-    if (!confirm('Eliminare?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Eliminare il versamento?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     await deleteVersamento(id)
     loadData()
   }
@@ -118,7 +122,11 @@ export default function FinancePage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Eliminare?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Eliminare?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     await deleteRevenue(id)
     loadData()
   }

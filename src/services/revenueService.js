@@ -150,7 +150,7 @@ export const syncRevenueFromCollaboration = async (collaboration) => {
       return { data: null, error: null } // Non è errore, semplicemente non sincronizzare
     }
 
-    if (!collaboration.dataFirmaContratto) {
+    if (!collaboration.dataFirma) {
       console.warn('Collaboration missing dataFirmaContratto:', collaboration.id)
       return { data: null, error: { message: 'Data firma contratto mancante' } }
     }

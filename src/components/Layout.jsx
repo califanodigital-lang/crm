@@ -1,169 +1,210 @@
+// src/components/Layout.jsx
 import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  LayoutDashboard,
-  Briefcase,
-  Users,
-  Handshake,
-  DollarSign,
-  Target,
-  LogOut,
-  Menu,
-  X,
-  BarChart3,
-  Calendar,
-  Import
+  LayoutDashboard, Briefcase, Users, Handshake,
+  DollarSign, Target, LogOut, Menu, X,
+  BarChart3, Calendar, Import, ChevronRight
 } from 'lucide-react'
+import { ToastContainer } from './Toast'
+import { ConfirmContainer } from './ConfirmModal'
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Brand', href: '/brands', icon: Briefcase },
-  { name: 'Creator', href: '/creators', icon: Users },
-  { name: 'Collaborazioni', href: '/collaborations', icon: Handshake },
-  { name: 'Proposte', href: '/proposte', icon: Target },
-  { name: 'Fiere & Eventi', href: '/eventi', icon: Calendar},
-  { name: 'Finance', href: '/finance', icon: DollarSign, adminOnly:true },
-  { name: 'Dashboard Agenti',href: '/agenti',icon: BarChart3, adminOnly:true},
-  { name: 'Utenti', href: '/users', icon: Users, adminOnly:true },
-  { name: 'Import', href: '/import', icon: Import, adminOnly:true }
+const NAV_GROUPS = [
+  {
+    label: 'Operativo',
+    items: [
+      { name: 'Dashboard',       href: '/dashboard',     icon: LayoutDashboard },
+      { name: 'Brand',           href: '/brands',        icon: Briefcase },
+      { name: 'Creator',         href: '/creators',      icon: Users },
+      { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
+      { name: 'Proposte',        href: '/proposte',      icon: Target },
+      { name: 'Fiere & Eventi',  href: '/eventi',        icon: Calendar },
+    ]
+  },
+  {
+    label: 'Amministrazione',
+    adminOnly: true,
+    items: [
+      { name: 'Finance',          href: '/finance',  icon: DollarSign },
+      { name: 'Dashboard Agenti', href: '/agenti',   icon: BarChart3 },
+      { name: 'Utenti',           href: '/users',    icon: Users },
+      { name: 'Import',           href: '/import',   icon: Import },
+    ]
+  }
 ]
 
-export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+function NavItem({ item, active, onClick }) {
+  const Icon = item.icon
+  return (
+    <Link
+      to={item.href}
+      onClick={onClick}
+      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+        active
+          ? 'bg-yellow-400 text-gray-900 shadow-sm'
+          : 'text-gray-400 hover:text-white hover:bg-white/5'
+      }`}
+    >
+      <Icon className={`w-4 h-4 flex-shrink-0 ${active ? 'text-gray-900' : ''}`} />
+      <span className="flex-1">{item.name}</span>
+      {active && <ChevronRight className="w-3 h-3 opacity-60" />}
+    </Link>
+  )
+}
+
+function SidebarContent({ onClose }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, userProfile, signOut } = useAuth()
 
-  const filteredNavigation = navigation.filter(item => 
-    !item.adminOnly || userProfile?.role === 'ADMIN'
-  )
+  const isActive = (href) =>
+    location.pathname === href || location.pathname.startsWith(href + '/')
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
 
+  const isAdmin = userProfile?.role === 'ADMIN'
+
+  return (
+    <div className="flex flex-col h-full bg-gray-950 border-r border-white/5">
+      {/* Logo */}
+      <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/20">
+            <span className="text-sm font-black text-gray-900">C3</span>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white leading-none">C3 Agency</p>
+            <p className="text-xs text-gray-500 mt-0.5">CRM</p>
+          </div>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="text-gray-500 hover:text-white lg:hidden">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        {NAV_GROUPS.map(group => {
+          if (group.adminOnly && !isAdmin) return null
+          return (
+            <div key={group.label}>
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-widest mb-2 px-3">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map(item => (
+                  <NavItem
+                    key={item.href}
+                    item={item}
+                    active={isActive(item.href)}
+                    onClick={onClose}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </nav>
+
+      {/* User footer */}
+      <div className="p-3 border-t border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">
+          <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0 shadow-sm">
+            <span className="text-xs font-black text-gray-900">
+              {(userProfile?.nomeCompleto || user?.email)?.[0]?.toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white truncate leading-none mb-0.5">
+              {userProfile?.nomeCompleto || 'Utente'}
+            </p>
+            <span className={`text-xs px-1.5 py-0.5 rounded font-semibold ${
+              isAdmin
+                ? 'bg-yellow-400/20 text-yellow-400'
+                : 'bg-blue-400/20 text-blue-400'
+            }`}>
+              {userProfile?.role || 'AGENT'}
+            </span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="p-1.5 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { userProfile } = useAuth()
+  const location = useLocation()
+
+  // Trova il nome della pagina corrente
+  const allItems = NAV_GROUPS.flatMap(g => g.items)
+  const currentPage = allItems.find(i =>
+    location.pathname === i.href || location.pathname.startsWith(i.href + '/')
+  )
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-gray-900/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex flex-col w-64 bg-gray-900">
-          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-400 px-2 py-1 rounded">
-                <span className="text-lg font-bold text-gray-900">C3</span>
-              </div>
-              <span className="text-lg font-bold text-white">C3 Agency</span>
-            </div>
-            <button onClick={() => setSidebarOpen(false)} className="text-gray-400">
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-1">
-            {filteredNavigation.map((item) => {
-              const Icon = item.icon
-              const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-yellow-400 text-gray-900'
-                      : 'text-gray-300 hover:bg-gray-800'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 lg:hidden transition-transform duration-300 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <SidebarContent onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 min-h-0 bg-gray-900 border-r border-gray-800">
-          <div className="flex items-center h-16 px-4 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="bg-yellow-400 px-2 py-1 rounded">
-                <span className="text-lg font-bold text-gray-900">C3</span>
-              </div>
-              <span className="text-lg font-bold text-white">C3 Agency</span>
-            </div>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-1">
-            {navigation.map((item) => {
-              const Icon = item.icon
-              const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/')
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-yellow-400 text-gray-900'
-                      : 'text-gray-300 hover:bg-gray-800'
-                  }`}
-                >
-                  <Icon className="w-5 h-5 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </nav>
-          <div className="p-4 border-t border-gray-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center">
-                  <span className="text-sm font-bold text-gray-900">
-                    {user?.email?.[0]?.toUpperCase()}
-                  </span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-white">Admin</p>
-                  <p className="text-xs text-gray-400">{user?.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex lg:flex-col">
+        <SidebarContent />
       </div>
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top bar mobile */}
-        <div className="sticky top-0 z-10 flex h-16 bg-white border-b lg:hidden">
+      {/* Main */}
+      <div className="lg:pl-64 flex flex-col min-h-screen">
+        {/* Mobile topbar */}
+        <div className="sticky top-0 z-30 flex items-center h-14 px-4 bg-white border-b border-gray-200 shadow-sm lg:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="px-4 text-gray-500 focus:outline-none"
+            className="p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-lg"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center flex-1 px-4 gap-2">
-            <div className="bg-yellow-400 px-2 py-1 rounded">
-              <span className="text-sm font-bold text-gray-900">C3</span>
+          <div className="flex items-center gap-2 ml-3">
+            <div className="bg-yellow-400 w-6 h-6 rounded flex items-center justify-center">
+              <span className="text-xs font-black text-gray-900">C3</span>
             </div>
-            <span className="text-lg font-bold text-gray-900">C3 Agency</span>
+            <span className="font-bold text-gray-900 text-sm">
+              {currentPage?.name || 'C3 Agency'}
+            </span>
           </div>
         </div>
 
         {/* Page content */}
-        <main className="p-4 lg:p-8">
+        <main className="flex-1 p-4 lg:p-8">
           <Outlet />
         </main>
       </div>
+      <ToastContainer />
+      <ConfirmContainer />
     </div>
   )
 }

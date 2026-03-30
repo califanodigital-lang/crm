@@ -4,6 +4,8 @@ import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByBrand, createCollaboration } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
 import { getBrandContattatiByBrandNome, addBrandContattato } from '../services/brandContattatoService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function BrandDetail({ brand, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -70,7 +72,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
     setLoading(true)
     const { error } = await createCollaboration(collabData)
     if (error) {
-      alert('Errore durante la creazione della collaborazione')
+      toast.error('Errore durante la creazione della collaborazione')
       console.error(error)
     } else {
       setShowCollabForm(false)

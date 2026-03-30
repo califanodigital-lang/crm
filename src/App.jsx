@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ToastProvider } from './components/Toast'
+import { ConfirmProvider } from './components/ConfirmModal'
 import Layout from './components/Layout'
 import Login from './components/Login'
 import Dashboard from './pages/Dashboard'
@@ -13,41 +15,25 @@ import AgentDashboardPage from './pages/AgentDashboardPage'
 import EventiPage from './pages/EventiPage'
 import ImportPage from './pages/ImportPage'
 
-// Protected Route wrapper
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+    </div>
+  )
+  if (!user) return <Navigate to="/login" replace />
   return children
 }
 
-// Public Route wrapper
 function PublicRoute({ children }) {
   const { user, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
-      </div>
-    )
-  }
-
-  if (user) {
-    return <Navigate to="/dashboard" replace />
-  }
-
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
+    </div>
+  )
+  if (user) return <Navigate to="/dashboard" replace />
   return children
 }
 
@@ -55,42 +41,27 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          {/* Public routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-
-          {/* Protected routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="brands" element={<BrandsPage />} />
-            <Route path="creators" element={<CreatorsPage />} />
-            <Route path="collaborations" element={<CollaborationsPage />} />
-            <Route path="proposte" element={<PropostePage />} />
-            <Route path="eventi" element={<EventiPage />} />
-            <Route path="finance" element={<FinancePage />} />
-            <Route path="agenti" element={<AgentDashboardPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="/import" element={<ImportPage />} />
-          </Route>
-
-          {/* Fallback route */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+        <ToastProvider>
+          <ConfirmProvider>
+            <Routes>
+              <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard"      element={<Dashboard />} />
+                <Route path="brands"         element={<BrandsPage />} />
+                <Route path="creators"       element={<CreatorsPage />} />
+                <Route path="collaborations" element={<CollaborationsPage />} />
+                <Route path="proposte"       element={<PropostePage />} />
+                <Route path="eventi"         element={<EventiPage />} />
+                <Route path="finance"        element={<FinancePage />} />
+                <Route path="agenti"         element={<AgentDashboardPage />} />
+                <Route path="users"          element={<UsersPage />} />
+                <Route path="import"         element={<ImportPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </ConfirmProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   )

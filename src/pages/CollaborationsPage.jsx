@@ -11,6 +11,8 @@ import {
 } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
 import { getAllBrands } from '../services/brandService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function CollaborationsPage() {
   const location = useLocation()
@@ -21,6 +23,8 @@ export default function CollaborationsPage() {
   const [selectedCollaboration, setSelectedCollaboration] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
+  const [filterAgente, setFilterAgente] = useState('ALL')
+  const [agenti, setAgenti] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, inCorso: 0, completate: 0, totalRevenue: 0 })
   const [prefilledData, setPrefilledData] = useState(null)
@@ -35,6 +39,12 @@ export default function CollaborationsPage() {
       setView('add')
     }
   }, [location.state])
+
+  useEffect(() => {
+    import('../services/userService').then(({ getActiveAgents }) => {
+      getActiveAgents().then(({ data }) => setAgenti(data || []))
+    })
+  }, [])
 
   // Carica dati da Supabase
   useEffect(() => {
@@ -66,7 +76,7 @@ export default function CollaborationsPage() {
       // Update
       const { error } = await updateCollaboration(selectedCollaboration.id, collaborationData)
       if (error) {
-        alert('Errore durante l\'aggiornamento della collaborazione')
+        toast.error('Errore durante l\'aggiornamento della collaborazione')
         console.error(error)
       } else {
         await loadData()
@@ -78,7 +88,7 @@ export default function CollaborationsPage() {
       // Create
       const { error } = await createCollaboration(collaborationData)
       if (error) {
-        alert('Errore durante la creazione della collaborazione')
+        toast.error('Errore durante la creazione della collaborazione')
         console.error(error)
       } else {
         await loadData()
@@ -91,13 +101,17 @@ export default function CollaborationsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Sei sicuro di voler eliminare questa collaborazione?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Sei sicuro di voler eliminare questa collaborazione?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     
     setLoading(true)
     const { error } = await deleteCollaboration(id)
     
     if (error) {
-      alert('Errore durante l\'eliminazione della collaborazione')
+      toast.error('Errore durante l\'eliminazione della collaborazione')
       console.error(error)
     } else {
       await loadData()
@@ -121,7 +135,11 @@ export default function CollaborationsPage() {
     const matchesSearch = c.creatorNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.brandNome?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'ALL' || c.stato === filterStatus
-    return matchesSearch && matchesStatus
+    const matchesAgente = filterAgente === 'ALL' ||
+      c.agente === filterAgente ||
+      c.sales === filterAgente ||
+      c.senior === filterAgente
+    return matchesSearch && matchesStatus && matchesAgente
   })
 
   const StatusBadge = ({ status }) => {
@@ -215,22 +233,26 @@ export default function CollaborationsPage() {
 
         {/* Filters */}
         <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Cerca per creator o brand..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="input"
-            >
+            <select className="input sm:w-44" value={filterAgente}
+              onChange={(e) => setFilterAgente(e.target.value)}>
+              <option value="ALL">Tutti gli agenti</option>
+              {agenti.map(a => (
+                <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+              ))}
+            </select>
+            <select className="input sm:w-48" value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="ALL">Tutti gli stati</option>
               <option value="IN_TRATTATIVA">In Trattativa</option>
               <option value="FIRMATO">Firmato</option>
@@ -243,7 +265,6 @@ export default function CollaborationsPage() {
             </select>
           </div>
         </div>
-
         {/* Table */}
         <div className="card">
           {filteredCollaborations.length === 0 ? (

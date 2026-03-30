@@ -216,15 +216,32 @@ export default function Dashboard() {
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Revenue Mensile</p>
-                <p className="text-2xl font-bold text-gray-900">€{(globalStats?.monthlyRevenue || 0).toLocaleString()}</p>
+                <p className="text-sm text-gray-600">Completate & Pagate</p>
+                <p className="text-2xl font-bold text-gray-900">{globalStats?.completate || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">€{(globalStats?.revenueCollabs || 0).toLocaleString()} totali</p>
               </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-yellow-600" />
+              <div className="bg-green-100 p-3 rounded-lg">
+                <DollarSign className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </div>
         </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="card bg-blue-50 border-blue-100">
+              <p className="text-sm font-medium text-blue-700 mb-2">Brand Contattati (totale)</p>
+              <p className="text-3xl font-bold text-blue-900">{globalStats?.totalBrandContattati || 0}</p>
+            </div>
+            <div className="card bg-purple-50 border-purple-100">
+              <p className="text-sm font-medium text-purple-700 mb-2">Collaborazioni Attive</p>
+              <p className="text-3xl font-bold text-purple-900">{globalStats?.activeCollabs || 0}</p>
+              <p className="text-xs text-purple-500 mt-1">Firmato → Attesa Pagamento</p>
+            </div>
+            <div className="card bg-green-50 border-green-100">
+              <p className="text-sm font-medium text-green-700 mb-2">Revenue Mese Corrente</p>
+              <p className="text-3xl font-bold text-green-900">€{(globalStats?.monthlyRevenue || 0).toLocaleString()}</p>
+            </div>
+          </div>
 
         {/* Pipeline Proposte */}
         {proposteStats && (

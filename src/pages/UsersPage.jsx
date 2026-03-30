@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { getAllUsers, updateUserProfile } from '../services/userService'
 import { supabase } from '../lib/supabase'
 import { Shield, User, Plus, X, Edit } from 'lucide-react'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function UsersPage() {
   const { userProfile } = useAuth()
@@ -62,7 +64,7 @@ export default function UsersPage() {
         .eq('id', editingUser.id)
 
       if (error) {
-        alert('Errore aggiornamento utente: ' + error.message)
+        toast.error('Errore aggiornamento utente: ' + error.message)
         setLoading(false)
         return
       }
@@ -74,7 +76,7 @@ export default function UsersPage() {
           { password: formData.password }
         )
         if (authError) {
-          alert('Errore aggiornamento password: ' + authError.message)
+          toast.error('Errore aggiornamento password: ' + authError.message)
         }
       }
     } else {
@@ -86,7 +88,7 @@ export default function UsersPage() {
       })
 
       if (authError) {
-        alert('Errore creazione utente: ' + authError.message)
+        toast.error('Errore creazione utente: ' + authError.message)
         setLoading(false)
         return
       }
@@ -105,7 +107,7 @@ export default function UsersPage() {
         }])
 
       if (profileError) {
-        alert('Errore creazione profilo: ' + profileError.message)
+        toast.error('Errore creazione profilo: ' + profileError.message)
         setLoading(false)
         return
       }

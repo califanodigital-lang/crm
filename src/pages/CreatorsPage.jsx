@@ -4,12 +4,16 @@ import CreatorForm from '../components/CreatorForm'
 import CreatorDetail from '../components/CreatorDetail'
 import { getAllCreators, createCreator, updateCreator, deleteCreator } from '../services/creatorService'
 import { saveCreatorPiattaforme } from '../services/piattaformeService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState([])
   const [view, setView] = useState('list')
   const [selectedCreator, setSelectedCreator] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [filterStato, setFilterStato] = useState('ALL')
+  const [filterTier, setFilterTier] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -36,7 +40,7 @@ export default function CreatorsPage() {
     if (selectedCreator) {
       const { error } = await updateCreator(selectedCreator.id, creatorData)
       if (error) {
-        alert('Errore durante l\'aggiornamento del creator')
+        toast.error('Errore durante l\'aggiornamento del creator')
         console.error(error)
       } else {
         await saveCreatorPiattaforme(selectedCreator.id, piattaforme || [])
@@ -47,7 +51,7 @@ export default function CreatorsPage() {
     } else {
       const { data, error } = await createCreator(creatorData)
       if (error) {
-        alert('Errore durante la creazione del creator')
+        toast.error('Errore durante la creazione del creator')
         console.error(error)
       } else {
         if (data?.id) {
@@ -62,13 +66,17 @@ export default function CreatorsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Sei sicuro di voler eliminare questo creator?')) return
+    const ok = await confirm('Sei sicuro di voler eliminare questo creator?', {
+      title: 'Elimina Brand',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     
     setLoading(true)
     const { error } = await deleteCreator(id)
     
     if (error) {
-      alert('Errore durante l\'eliminazione del creator')
+      toast.error('Errore durante l\'eliminazione del creator')
       console.error(error)
     } else {
       await loadCreators()
@@ -92,10 +100,13 @@ export default function CreatorsPage() {
     setSelectedCreator(null)
   }
 
-  const filteredCreators = creators.filter(c =>
-    c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.nomeCompleto && c.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const filteredCreators = creators.filter(c => {
+    const matchesSearch = c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.nomeCompleto && c.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesStato = filterStato === 'ALL' || c.stato === filterStato
+    const matchesTier  = filterTier === 'ALL' || c.tier === filterTier
+    return matchesSearch && matchesStato && matchesTier
+  })
 
   const TierBadge = ({ tier }) => {
     const colors = {
@@ -148,15 +159,32 @@ export default function CreatorsPage() {
         )}
 
         <div className="card mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cerca creator per nome..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Cerca creator per nome..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              />
+            </div>
+            <select className="input sm:w-44" value={filterStato}
+              onChange={(e) => setFilterStato(e.target.value)}>
+              <option value="ALL">Tutti gli stati</option>
+              <option value="1 Sotto contratto">Sotto Contratto</option>
+              <option value="2 Ex cliente">Ex Cliente</option>
+              <option value="3 Prospect">Prospect</option>
+            </select>
+            <select className="input sm:w-40" value={filterTier}
+              onChange={(e) => setFilterTier(e.target.value)}>
+              <option value="ALL">Tutti i tier</option>
+              <option value="NANO">NANO</option>
+              <option value="MICRO">MICRO</option>
+              <option value="MID">MID TIER</option>
+              <option value="CELEBRITY">CELEBRITY</option>
+            </select>
           </div>
         </div>
 

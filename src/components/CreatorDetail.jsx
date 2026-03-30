@@ -97,7 +97,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     const { error } = await createCollaboration(dataWithCreator)
     
     if (error) {
-      alert('Errore durante la creazione della collaborazione')
+      toast.error('Errore durante la creazione della collaborazione')
       console.error(error)
     } else {
       setShowCollabForm(false)
@@ -181,7 +181,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     }
     
     if (error) {
-      alert('Errore durante il salvataggio')
+      toast.error('Errore durante il salvataggio')
       console.error(error)
     } else {
       setBrandForm({
@@ -196,7 +196,11 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   }
 
   const handleDeleteBrandContattato = async (id) => {
-    if (!confirm('Eliminare questo contatto?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Eliminare questo contatto?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     setLoading(true)
     await deleteBrandContattato(id)
     await loadBrandContattati()

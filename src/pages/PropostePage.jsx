@@ -11,6 +11,8 @@ import {
 import { convertPropostaToBrand } from '../services/propostaService'
 import { getActiveAgents } from '../services/userService'
 import { getAllCreators } from '../services/creatorService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function PropostePage() {
   const [proposte, setProposte] = useState([])
@@ -51,13 +53,13 @@ export default function PropostePage() {
     if (selectedProposta) {
       const { error } = await updateProposta(selectedProposta.id, propostaData)
       if (error) {
-        alert('Errore aggiornamento')
+        toast.error('Errore aggiornamento')
         console.error(error)
       }
     } else {
       const { error } = await createProposta(propostaData)
       if (error) {
-        alert('Errore creazione')
+        toast.error('Errore creazione')
         console.error(error)
       }
     }
@@ -69,7 +71,11 @@ export default function PropostePage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Eliminare questa proposta?')) return
+    const ok = await confirm('Eliminare questa proposta?', {
+      title: 'Eliminare?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     
     setLoading(true)
     await deleteProposta(id)
@@ -107,7 +113,11 @@ export default function PropostePage() {
   }
 
   const handleConvertToBrand = async (proposta) => {
-    if (!confirm(`Convertire "${proposta.brandNome}" in Brand?`)) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: `Convertire "${proposta.brandNome}" in Brand?`,
+      confirmLabel: 'Converti'
+    })
+    if (!ok) return
     
     setLoading(true)
     const { data, error } = await convertPropostaToBrand(proposta.id)
@@ -115,13 +125,13 @@ export default function PropostePage() {
     if (error) {
       // Verifica se è errore duplicato
       if (error.message?.includes('esiste già')) {
-        alert(`⚠️ ${error.message}\n\nLa proposta è stata collegata al brand esistente.`)
+        toast.error(`⚠️ ${error.message}\n\nLa proposta è stata collegata al brand esistente.`)
       } else {
-        alert('Errore durante la conversione')
+        toast.error('Errore durante la conversione')
         console.error(error)
       }
     } else {
-      alert(`✓ Brand "${data.nome}" creato con successo!`)
+      toast.success(`✓ Brand "${data.nome}" creato con successo!`)
     }
     
     await loadData()

@@ -60,7 +60,11 @@ export default function EventiPage() {
   }
 
   const handleDeleteEvento = async (id) => {
-    if (!confirm('Eliminare evento?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Eliminare evento?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     await deleteEvento(id)
     loadData()
   }
@@ -83,7 +87,11 @@ export default function EventiPage() {
   }
 
   const handleDeletePartecipazione = async (id) => {
-    if (!confirm('Rimuovere partecipazione?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Rimuovere partecipazione?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     await deletePartecipazione(id)
     loadPartecipazioni(selectedEvento.id)
   }

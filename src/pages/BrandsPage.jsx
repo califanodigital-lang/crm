@@ -4,6 +4,8 @@ import BrandForm from '../components/BrandForm'
 import BrandDetail from '../components/BrandDetail'
 import { getAllBrands, createBrand, updateBrand, deleteBrand } from '../services/brandService'
 import { getActiveAgents } from '../services/userService'
+import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState([])
@@ -14,6 +16,7 @@ export default function BrandsPage() {
   const [error, setError] = useState(null)
   const [agenti, setAgenti] = useState([])
   const [filterAgente, setFilterAgente] = useState('ALL')
+  const [filterContattato, setFilterContattato] = useState('ALL')
 
   // Carica brand da Supabase
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function BrandsPage() {
       // Update
       const { data, error } = await updateBrand(selectedBrand.id, brandData)
       if (error) {
-        alert('Errore durante l\'aggiornamento del brand')
+        toast.error('Errore durante l\'aggiornamento del brand')
         console.error(error)
       } else {
         await loadBrands()
@@ -56,7 +59,7 @@ export default function BrandsPage() {
       // Create
       const { data, error } = await createBrand(brandData)
       if (error) {
-        alert('Errore durante la creazione del brand')
+        toast.error('Errore durante la creazione del brand')
         console.error(error)
       } else {
         await loadBrands()
@@ -68,13 +71,17 @@ export default function BrandsPage() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Sei sicuro di voler eliminare questo brand?')) return
+    const ok = await confirm('Questa azione è irreversibile.', {
+      title: 'Sei sicuro di voler eliminare questo brand?',
+      confirmLabel: 'Elimina'
+    })
+    if (!ok) return
     
     setLoading(true)
     const { error } = await deleteBrand(id)
     
     if (error) {
-      alert('Errore durante l\'eliminazione del brand')
+      toast.error('Errore durante l\'eliminazione del brand')
       console.error(error)
     } else {
       await loadBrands()
@@ -102,7 +109,11 @@ export default function BrandsPage() {
     const matchesSearch = b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (b.settore && b.settore.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesAgente = filterAgente === 'ALL' || b.agente === filterAgente
-    return matchesSearch && matchesAgente
+    const matchesContattato =
+      filterContattato === 'ALL' ||
+      (filterContattato === 'SI' && b.dataContatto) ||
+      (filterContattato === 'NO' && !b.dataContatto)
+    return matchesSearch && matchesAgente && matchesContattato
   })
 
   const getStatoBrand = (brand) => {
@@ -151,22 +162,25 @@ export default function BrandsPage() {
         )}
 
         <div className="card mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Cerca brand per nome o settore..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
-            <select
-              value={filterAgente}
-              onChange={(e) => setFilterAgente(e.target.value)}
-              className="input"
-            >
+            <select className="input sm:w-44" value={filterContattato}
+              onChange={(e) => setFilterContattato(e.target.value)}>
+              <option value="ALL">Tutti</option>
+              <option value="SI">Già Contattati</option>
+              <option value="NO">Da Contattare</option>
+            </select>
+            <select className="input sm:w-44" value={filterAgente}
+              onChange={(e) => setFilterAgente(e.target.value)}>
               <option value="ALL">Tutti gli agenti</option>
               {agenti.map(a => (
                 <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>

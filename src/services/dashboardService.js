@@ -4,35 +4,45 @@ import { supabase } from '../lib/supabase'
 // KPI Globali
 export const getGlobalStats = async () => {
   try {
-    const [brandsRes, creatorsRes, collabsRes, revenueRes] = await Promise.all([
+    const now = new Date()
+    const meseCorrente = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    const [brandsRes, creatorsRes, collabsRes, revenueRes, brandContattatoRes] = await Promise.all([
       supabase.from('brands').select('id', { count: 'exact' }),
       supabase.from('creators').select('id', { count: 'exact' }),
-      supabase.from('collaborations').select('id, stato', { count: 'exact' }),
-      supabase.from('revenue_mensile').select('importo')
+      supabase.from('collaborations').select('id, stato, pagamento, pagato'),
+      supabase.from('revenue_mensile').select('importo, mese'),
+      supabase.from('brand_contattati').select('id', { count: 'exact' })
     ])
 
-    const totalBrands = brandsRes.count || 0
-    const totalCreators = creatorsRes.count || 0
-    const totalCollabs = collabsRes.count || 0
-    const activeCollabs = collabsRes.data?.filter(c => 
-      c.stato === 'IN_CORSO' || c.stato === 'FIRMATO'
-    ).length || 0
+    const STATI_ATTIVI = ['FIRMATO','IN_CORSO','REVISIONE_VIDEO','VIDEO_PUBBLICATO','ATTESA_PAGAMENTO']
 
-    // Revenue mensile totale (ultimi 30 giorni)
-    const monthlyRevenue = revenueRes.data?.reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0) || 0
+    const totalBrands    = brandsRes.count || 0
+    const totalCreators  = creatorsRes.count || 0
+    const totalCollabs   = collabsRes.data?.length || 0
+    const activeCollabs  = collabsRes.data?.filter(c => STATI_ATTIVI.includes(c.stato)).length || 0
+    const completate     = collabsRes.data?.filter(c => c.stato === 'COMPLETATO' && c.pagato).length || 0
+    const totalBrandContattati = brandContattatoRes.count || 0
+
+    // Revenue da collaborazioni completate (fonte primaria)
+    const revenueCollabs = collabsRes.data
+      ?.filter(c => c.stato === 'COMPLETATO' && c.pagato)
+      .reduce((sum, c) => sum + (parseFloat(c.pagamento) || 0), 0) || 0
+
+    // Revenue mese corrente da revenue_mensile
+    const monthlyRevenue = revenueRes.data
+      ?.filter(r => r.mese === meseCorrente)
+      .reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0) || 0
 
     return {
       data: {
-        totalBrands,
-        totalCreators,
-        totalCollabs,
-        activeCollabs,
-        monthlyRevenue
+        totalBrands, totalCreators, totalCollabs,
+        activeCollabs, completate, monthlyRevenue,
+        revenueCollabs, totalBrandContattati
       },
       error: null
     }
   } catch (error) {
-    console.error('Error:', error)
     return { data: null, error }
   }
 }
@@ -41,74 +51,51 @@ export const getGlobalStats = async () => {
 export const getTopCreators = async () => {
   try {
     const { data, error } = await supabase
-      .from('revenue_mensile')
-      .select('creator_id, importo')
+      .from('collaborations')
+      .select('creator_id, pagamento, stato, pagato, creators(nome)')
+      .eq('stato', 'COMPLETATO')
+      .eq('pagato', true)
 
     if (error) throw error
 
-    // Aggrega per creator
-    const creatorRevenue = {}
-    data.forEach(r => {
-      if (!creatorRevenue[r.creator_id]) {
-        creatorRevenue[r.creator_id] = 0
-      }
-      creatorRevenue[r.creator_id] += parseFloat(r.importo) || 0
+    const map = {}
+    data.forEach(c => {
+      const id = c.creator_id
+      if (!map[id]) map[id] = { id, nome: c.creators?.nome || '?', revenue: 0 }
+      map[id].revenue += parseFloat(c.pagamento || 0)
     })
 
-    // Ordina e prendi top 5
-    const sorted = Object.entries(creatorRevenue)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-
-    // Prendi nomi creator
-    const creatorIds = sorted.map(([id]) => id)
-    const { data: creators } = await supabase
-      .from('creators')
-      .select('id, nome')
-      .in('id', creatorIds)
-
-    const topCreators = sorted.map(([id, revenue]) => ({
-      id,
-      nome: creators?.find(c => c.id === id)?.nome || 'Unknown',
-      revenue
-    }))
-
-    return { data: topCreators, error: null }
+    const top = Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
+    return { data: top, error: null }
   } catch (error) {
-    console.error('Error:', error)
     return { data: null, error }
   }
 }
-
 // Revenue ultimi 6 mesi (per grafico)
 export const getRevenueChart = async () => {
   try {
     const { data, error } = await supabase
-      .from('revenue_mensile')
-      .select('mese, importo')
-      .order('mese', { ascending: true })
+      .from('collaborations')
+      .select('data_firma, pagamento, stato, pagato')
+      .eq('stato', 'COMPLETATO')
+      .eq('pagato', true)
+      .not('data_firma', 'is', null)
 
     if (error) throw error
 
-    // Aggrega per mese
-    const monthlyData = {}
-    data.forEach(r => {
-      if (!monthlyData[r.mese]) {
-        monthlyData[r.mese] = 0
-      }
-      monthlyData[r.mese] += parseFloat(r.importo) || 0
+    const monthlyMap = {}
+    data.forEach(c => {
+      const mese = c.data_firma.substring(0, 7) // YYYY-MM
+      monthlyMap[mese] = (monthlyMap[mese] || 0) + parseFloat(c.pagamento || 0)
     })
 
-    // Prendi ultimi 6 mesi
-    const months = Object.keys(monthlyData).sort().slice(-6)
-    const chartData = months.map(mese => ({
-      mese,
-      revenue: monthlyData[mese]
-    }))
+    const chartData = Object.keys(monthlyMap)
+      .sort()
+      .slice(-6)
+      .map(mese => ({ mese, revenue: monthlyMap[mese] }))
 
     return { data: chartData, error: null }
   } catch (error) {
-    console.error('Error:', error)
     return { data: null, error }
   }
 }
