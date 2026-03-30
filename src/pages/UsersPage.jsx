@@ -14,7 +14,10 @@ export default function UsersPage() {
     password: '',
     nomeCompleto: '',
     agenteNome: '',
-    role: 'AGENT'
+    role: 'AGENT',
+    feeRicerca: 5,
+    feeContatto: 10,
+    feeChiusura: 15
   })
   const [editingUser, setEditingUser] = useState(null)
 
@@ -34,7 +37,10 @@ export default function UsersPage() {
       password: '',  // Non mostriamo password esistente
       nomeCompleto: user.nomeCompleto,
       agenteNome: user.agenteNome,
-      role: user.role
+      role: user.role,
+      feeRicerca: user.feeRicerca ?? 5,
+      feeContatto: user.feeContatto ?? 10,
+      feeChiusura: user.feeChiusura ?? 15
     })
     setEditingUser(user)
     setShowForm(true)
@@ -92,6 +98,9 @@ export default function UsersPage() {
           role: formData.role,
           nome_completo: formData.nomeCompleto,
           agente_nome: formData.agenteNome,
+          fee_ricerca: formData.feeRicerca,
+          fee_contatto: formData.feeContatto,
+          fee_chiusura: formData.feeChiusura,
           attivo: true
         }])
 
@@ -205,6 +214,43 @@ export default function UsersPage() {
                 </select>
               </div>
             </div>
+            {editingUser && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Percentuali Commissioni</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="label">% Ricerca Brand</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" step="0.5" min="0" max="100" className="input"
+                        value={formData.feeRicerca}
+                        onChange={(e) => setFormData({...formData, feeRicerca: parseFloat(e.target.value)})} />
+                      <span className="text-gray-500 text-sm">%</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Default: 5%</p>
+                  </div>
+                  <div>
+                    <label className="label">% Contatto</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" step="0.5" min="0" max="100" className="input"
+                        value={formData.feeContatto}
+                        onChange={(e) => setFormData({...formData, feeContatto: parseFloat(e.target.value)})} />
+                      <span className="text-gray-500 text-sm">%</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Default: 10%</p>
+                  </div>
+                  <div>
+                    <label className="label">% Chiusura</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" step="0.5" min="0" max="100" className="input"
+                        value={formData.feeChiusura}
+                        onChange={(e) => setFormData({...formData, feeChiusura: parseFloat(e.target.value)})} />
+                      <span className="text-gray-500 text-sm">%</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Default: 15%</p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="mt-4 flex gap-3 justify-end">
               <button
                   type="button"

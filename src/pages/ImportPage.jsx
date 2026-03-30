@@ -61,24 +61,28 @@ export default function ImportPage() {
 
         for (const row of rows) {
           try {
-            const creator = {
-              nome: cleanValue(row['NOME']),
-              nome_completo: cleanValue(row['NOME COMPLETO']),
-              integrazione_video_youtube: parseFloat(row['INTEGRAZIONE VIDEO YUTUBE']) || null,
-              video_short_form: parseFloat(row['VIDEO SHORT FORM + STORIES']) || null,
-              story_set: parseFloat(row['STORY SET ']) || null,
-              logo_schermo_twitch: parseFloat(row['LOGO A SCHERMO + CTA TWITCH']) || null,
-              collaborazioni_lunghe: parseFloat(row['COLLABORAZIONI LUNGHE']) || null,
-              fiere_eventi: parseFloat(row['FIERE ED EVENTI']) || null,
-              obiettivo: cleanValue(row['OBIETTIVO']),
-              preferenza_collaborazioni: cleanValue(row['PREFERENZA COLLABORAZIONI ']),
-              strategia: cleanValue(row['STRATEGIA']),
-              mediakit: cleanValue(row['MEDIAKIT']),
-              ultimo_aggiornamento_mediakit: parseExcelDate(row['ULTIMO AGGIORNAMENTO MEDIAKIT']),
-              data_firma_contratto: parseExcelDate(row['DATA FIRMA CONTRATTO']),
-              sales: cleanValue(row['SALES']),
-              categoria_adv: cleanValue(row['CATEGORIA ADV']),
-            }
+              const creator = {
+                nome:                   cleanValue(row['NOME']),
+                nome_completo:          cleanValue(row['NOME COMPLETO']),
+                stato:                  cleanValue(row['STATO']),
+                ricontattare:           row['RICONTATTARE'] === true || row['RICONTATTARE'] === 1 || false,
+                data_firma_contratto:   parseExcelDate(row['INIZIO COLLABORAZIONE']),
+                scadenza_contratto:     parseExcelDate(row['SCADENZA CONTRATTO']),
+                tipo_contratto:         cleanValue(row['TIPO CONTRATTO']),
+                proviggioni:            cleanValue(row['PROVIGGIONI']),
+                topic:                  cleanValue(row['TOPIC']),
+                tier:                   cleanValue(row['Tier']),
+                cellulare:              cleanValue(row['CELLULARE'])?.toString(),
+                email:                  cleanValue(row['EMAIL']),
+                note:                   cleanValue(row['NOTE']),
+                insight:                cleanValue(row['INSIGHT']),
+                tipo_instagram:         cleanValue(row['TIPO INSTAGRAM']),
+                tipo_youtube:           cleanValue(row['TIPO YOUTUBE']),
+                tipo_tiktok:            cleanValue(row['TIPO TIKTOK']),
+                tipo_twitch:            cleanValue(row['TIPO TWITCH']),
+                // Campi fee legacy rimossi — ora gestiti da creator_piattaforme
+                // collaborazioni_lunghe e fiere_eventi sono nel form Creator separatamente
+              }
 
             if (!creator.nome) {
               results.errors.push(`Row skipped: missing NOME`)
@@ -139,6 +143,8 @@ export default function ImportPage() {
           contattato_per: cleanValue(row['CONTATTATO PER']),
           referenti: cleanValue(row['REFERENTI E RUOLO']),
           contatto: cleanValue(row['MAIL']),                         // ✅ email, non contatto
+          data_followup_1: parseExcelDate(row['DATA 1° FOLLOW-UP']) || parseExcelDate(row['DATA FOLLOWUP 1']),
+          data_followup_2: parseExcelDate(row['DATA 2° FOLLOW-UP']) || parseExcelDate(row['DATA FOLLOWUP 2']),
           telefono: cleanValue(row['TELEFONO']),
           agente: cleanValue(row['AGENTE']),
           sito_web: cleanValue(row['SITO WEB']),
@@ -204,9 +210,9 @@ export default function ImportPage() {
             <Upload className="w-6 h-6 text-blue-600" />
             <h2 className="text-xl font-bold">Import Creator</h2>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Carica file _CLIENTI.xlsx per importare tutti i creator
-          </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Carica il file <strong>_CLIENTI.xlsx</strong> (foglio "Clienti")
+            </p>
           <input
             type="file"
             accept=".xlsx,.xls"

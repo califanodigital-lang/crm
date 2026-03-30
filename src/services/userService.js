@@ -8,6 +8,9 @@ const toCamelCase = (profile) => {
     nomeCompleto: profile.nome_completo,
     agenteNome: profile.agente_nome,
     attivo: profile.attivo,
+    feeRicerca: profile.fee_ricerca ?? 5,
+    feeContatto: profile.fee_contatto ?? 10,
+    feeChiusura: profile.fee_chiusura ?? 15,
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
   }
@@ -19,6 +22,9 @@ const toSnakeCase = (profile) => {
     nome_completo: profile.nomeCompleto,
     agente_nome: profile.agenteNome,
     attivo: profile.attivo,
+    fee_ricerca: profile.feeRicerca ?? 5,
+    fee_contatto: profile.feeContatto ?? 10,
+    fee_chiusura: profile.feeChiusura ?? 15,
   }
 }
 

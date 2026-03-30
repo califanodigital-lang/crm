@@ -47,26 +47,35 @@ export const getAllAgentsStats = async () => {
     const agentsMap = {}
     
     collabs.forEach(c => {
-      if (!c.agente) return
-      
-      if (!agentsMap[c.agente]) {
-        agentsMap[c.agente] = {
-          agente: c.agente,
-          totaleDeal: 0,
-          completati: 0,
-          totalRevenue: 0,
-          totalCommissioni: 0
+      const addAgent = (nome, tipo, importo) => {
+        if (!nome) return
+        if (!agentsMap[nome]) agentsMap[nome] = {
+          agente: nome, totaleDeal: 0, completati: 0,
+          totalRevenue: 0, totalCommissioni: 0,
+          commissioniRicerca: 0, commissioniContatto: 0, commissioniChiusura: 0
         }
+        if (tipo === 'deal') { agentsMap[nome].totaleDeal++ }
+        if (tipo === 'revenue' && c.pagato) {
+          agentsMap[nome].totalRevenue += importo
+          agentsMap[nome].completati++
+        }
+        if (tipo === 'ricerca')  agentsMap[nome].commissioniRicerca  += parseFloat(c.fee_sales_calc  || 0)
+        if (tipo === 'contatto') agentsMap[nome].commissioniContatto += parseFloat(c.fee_agente_calc || 0)
+        if (tipo === 'chiusura') agentsMap[nome].commissioniChiusura += parseFloat(c.fee_senior_calc || 0)
+        agentsMap[nome].totalCommissioni =
+          agentsMap[nome].commissioniRicerca +
+          agentsMap[nome].commissioniContatto +
+          agentsMap[nome].commissioniChiusura
       }
-      
-      agentsMap[c.agente].totaleDeal++
-      
+
+      addAgent(c.sales,  'deal', 0)
+      addAgent(c.agente, 'deal', 0)
+      addAgent(c.senior, 'deal', 0)
       if (c.stato === 'COMPLETATO') {
-        agentsMap[c.agente].completati++
-        if (c.pagato) {
-          agentsMap[c.agente].totalRevenue += parseFloat(c.pagamento || 0)
-          agentsMap[c.agente].totalCommissioni += parseFloat(c.fee_management || 0)
-        }
+        addAgent(c.sales,  'revenue', parseFloat(c.pagamento || 0))
+        addAgent(c.sales,  'ricerca',  0)
+        addAgent(c.agente, 'contatto', 0)
+        addAgent(c.senior, 'chiusura', 0)
       }
     })
 

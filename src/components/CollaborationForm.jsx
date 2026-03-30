@@ -17,6 +17,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     pagato: false,
     contatto: '',
     note: '',
+    senior: '',
   })
 
   const [agenti, setAgenti] = useState([])
@@ -58,15 +59,26 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const handleCreatorSelect = (creatorId) => {
     const selectedCreator = creators.find(c => c.id === creatorId)
     setFormData(prev => {
-      const pagamento = parseFloat(prev.pagamento) || 0
-      const proviggioni = selectedCreator?.proviggioni ? parseFloat(selectedCreator.proviggioni) / 100 : 0.25
-      return {
-        ...prev,
-        creatorId,
-        feeManagement: pagamento && proviggioni ? (pagamento * proviggioni).toFixed(2) : prev.feeManagement
-      }
+      const fee = calcolaFeeAgente(prev.pagamento, prev.stato, prev.agente, agenti, selectedCreator)
+      return { ...prev, creatorId, feeManagement: fee || prev.feeManagement }
     })
   }
+
+  const calcolaFeeAgente = (feeMan, agenti, nomeAgente, tipo) => {
+    const ag = agenti.find(a => a.agenteNome === nomeAgente)
+    if (!ag || !feeMan) return 0
+    const feeMan_n = parseFloat(feeMan) || 0
+    if (tipo === 'ricerca')  return +(feeMan_n * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
+    if (tipo === 'contatto') return +(feeMan_n * (ag.feeContatto ?? 10) / 100).toFixed(2)
+    if (tipo === 'chiusura') return +(feeMan_n * (ag.feeChiusura ?? 15) / 100).toFixed(2)
+    return 0
+  }
+
+  const ricalcolaFee = (data) => ({
+    feeSalesCalc:  calcolaFeeAgente(data.feeManagement, agenti, data.sales,   'ricerca'),
+    feeAgenteCalc: calcolaFeeAgente(data.feeManagement, agenti, data.agente,  'contatto'),
+    feeSeniorCalc: calcolaFeeAgente(data.feeManagement, agenti, data.senior,  'chiusura'),
+  })
 
   return (
     <form onSubmit={handleSubmit}>
@@ -128,14 +140,10 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             className="input"
             value={formData.pagamento}
             onChange={(e) => {
-              const pagamento = parseFloat(e.target.value) || 0
+              const pag = e.target.value
               const creator = creators.find(c => c.id === formData.creatorId)
-              const prov = creator?.proviggioni ? parseFloat(creator.proviggioni) / 100 : 0.25
-              setFormData({
-                ...formData,
-                pagamento: e.target.value,
-                feeManagement: pagamento ? (pagamento * prov).toFixed(2) : formData.feeManagement
-              })
+              const fee = calcolaFeeAgente(pag, formData.stato, formData.agente, agenti, creator)
+              setFormData({ ...formData, pagamento: pag, feeManagement: fee || formData.feeManagement })
             }}
           />
         </div>
@@ -148,7 +156,10 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             step="0.01"
             className="input bg-gray-50"
             value={formData.feeManagement}
-            onChange={(e) => setFormData({...formData, feeManagement: e.target.value})}
+            onChange={(e) => {
+              const upd = {...formData, feeManagement: e.target.value}
+              setFormData({...upd, ...ricalcolaFee(upd)})
+            }}
             placeholder="Auto-calcolata da pagamento × proviggioni"
           />
           <p className="text-xs text-gray-500 mt-1">Modificabile manualmente se necessario</p>
@@ -204,35 +215,47 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           </select>
         </div>
 
-        {/* Agente */}
+        {/* Sales — Ricerca brand (5%) */}
         <div>
-          <label className="label">Agente</label>
-          <select
-            className="input bg-gray-50"
-            value={formData.agente}
-            onChange={(e) => setFormData({...formData, agente: e.target.value})}
-          >
+          <label className="label">Sales / Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
+          <select className="input" value={formData.sales}
+            onChange={(e) => {
+              const upd = {...formData, sales: e.target.value}
+              setFormData({...upd, ...ricalcolaFee(upd)})
+            }}>
             <option value="">Nessuno</option>
-            {agenti.map(a => (
-              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-            ))}
+            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
           </select>
-          <p className="text-xs text-gray-500 mt-1">Auto-compilato da brand, modificabile</p>
+          {formData.feeSalesCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSalesCalc}</p>}
         </div>
 
-        {/* Sales */}
+        {/* Agente IMA — Contatto brand (10%) */}
         <div>
-          <label className="label">Sales</label>
-          <select
-            className="input"
-            value={formData.sales}
-            onChange={(e) => setFormData({...formData, sales: e.target.value})}
-          >
+          <label className="label">Agente / Contatto <span className="text-xs text-gray-400 font-normal">(10% fee)</span></label>
+          <select className="input bg-gray-50" value={formData.agente}
+            onChange={(e) => {
+              const upd = {...formData, agente: e.target.value}
+              setFormData({...upd, ...ricalcolaFee(upd)})
+            }}>
             <option value="">Nessuno</option>
-            {agenti.map(a => (
-              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-            ))}
+            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
           </select>
+          <p className="text-xs text-gray-500 mt-1">Auto-compilato da brand</p>
+          {formData.feeAgenteCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeAgenteCalc}</p>}
+        </div>
+
+        {/* Senior — Chiusura trattativa (15%) */}
+        <div>
+          <label className="label">Senior / Chiusura <span className="text-xs text-gray-400 font-normal">(15% fee)</span></label>
+          <select className="input" value={formData.senior}
+            onChange={(e) => {
+              const upd = {...formData, senior: e.target.value}
+              setFormData({...upd, ...ricalcolaFee(upd)})
+            }}>
+            <option value="">Nessuno</option>
+            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
+          </select>
+          {formData.feeSeniorCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSeniorCalc}</p>}
         </div>
 
         {/* Stato */}
@@ -241,7 +264,12 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           <select
             className="input"
             value={formData.stato}
-            onChange={(e) => setFormData({...formData, stato: e.target.value})}
+            onChange={(e) => {
+              const nuovoStato = e.target.value
+              const creator = creators.find(c => c.id === formData.creatorId)
+              const fee = calcolaFeeAgente(formData.pagamento, nuovoStato, formData.agente, agenti, creator)
+              setFormData({ ...formData, stato: nuovoStato, feeManagement: fee || formData.feeManagement })
+            }}
             required
           >
               <option value="IN_TRATTATIVA">In Trattativa</option>

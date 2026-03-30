@@ -44,7 +44,10 @@ export default function AgentDashboardPage() {
               <th className="text-right py-3 px-4">Deal</th>
               <th className="text-right py-3 px-4">Completati</th>
               <th className="text-right py-3 px-4">Revenue</th>
-              <th className="text-right py-3 px-4">Commissioni</th>
+              <th className="text-right py-3 px-4">Comm. Totali</th>
+              <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Ricerca</th>
+              <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Contatto</th>
+              <th className="text-right py-3 px-4 text-gray-400 text-xs">di cui Chiusura</th>
               <th className="text-right py-3 px-4">Conversion %</th>
             </tr>
           </thead>
@@ -58,6 +61,15 @@ export default function AgentDashboardPage() {
                 <td className="py-3 px-4 text-right font-semibold">€{agent.totalRevenue.toLocaleString()}</td>
                 <td className="py-3 px-4 text-right font-semibold text-green-600">
                   €{agent.totalCommissioni.toLocaleString()}
+                </td>
+                <td className="py-3 px-4 text-right text-xs text-gray-500">
+                  €{(agent.commissioniRicerca || 0).toLocaleString()}
+                </td>
+                <td className="py-3 px-4 text-right text-xs text-gray-500">
+                  €{(agent.commissioniContatto || 0).toLocaleString()}
+                </td>
+                <td className="py-3 px-4 text-right text-xs text-gray-500">
+                  €{(agent.commissioniChiusura || 0).toLocaleString()}
                 </td>
                 <td className="py-3 px-4 text-right">
                   <span className={`px-2 py-1 rounded-full text-xs font-semibold ${

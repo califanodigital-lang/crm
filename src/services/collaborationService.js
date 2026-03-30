@@ -29,6 +29,10 @@ const toCamelCase = (collab) => {
     note: collab.note,
     createdAt: collab.created_at,
     updatedAt: collab.updated_at,
+    senior: collab.senior,
+    feeSalesCalc: collab.fee_sales_calc,
+    feeAgenteCalc: collab.fee_agente_calc,
+    feeSeniorCalc: collab.fee_senior_calc,
   }
 }
 
@@ -49,6 +53,10 @@ const toSnakeCase = (collab) => {
     pagato: collab.pagato || false,
     contatto: cleanValue(collab.contatto),
     note: cleanValue(collab.note),
+    senior: cleanValue(collab.senior),
+    fee_sales_calc: collab.feeSalesCalc || 0,
+    fee_agente_calc: collab.feeAgenteCalc || 0,
+    fee_senior_calc: collab.feeSeniorCalc || 0,
   }
 }
 
