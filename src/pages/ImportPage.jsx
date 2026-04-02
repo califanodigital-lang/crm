@@ -236,7 +236,6 @@ export default function ImportPage() {
           data_contatto: dataContattoParsed.value,
           categoria: cleanValue(row['Categoria']),
           risposta: cleanValue(row['RISPOSTA']),
-          contattato_per: cleanValue(row['CONTATTATO PER']),
           referenti: cleanValue(row['REFERENTI E RUOLO']),
           contatto: cleanValue(row['MAIL']),
           telefono: cleanValue(row['TELEFONO']),
@@ -245,8 +244,6 @@ export default function ImportPage() {
           note,
           categoria_adv: cleanValue(row['CATEGORIA ADV']),
           creator_suggeriti: [],
-          priorita: 'NORMALE',
-          stato: 'DA_CONTATTARE',
           data_followup_1: followup1Parsed.value,
           data_followup_2: followup2Parsed.value,
         }

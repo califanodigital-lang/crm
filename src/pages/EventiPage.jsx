@@ -18,9 +18,20 @@ export default function EventiPage() {
     nome: '', tipo: '', dataInizio: '', dataFine: '', location: '', citta: '', descrizione: '', link: ''
   })
   const [partForm, setPartForm] = useState({
-    creatorId: '', tipoContratto: '', panel: false, workshop: false, masterGdr: false,
-    giochiTavolo: false, giudiceCosplay: false, firmacopie: false, palco: false, 
-    moderazione: false, accredito: false, fee: ''
+    creatorId: '',
+    tipoContratto: '',
+    dataInizioPartecipazione: '',
+    dataFinePartecipazione: '',
+    panel: false,
+    workshop: false,
+    masterGdr: false,
+    giochiTavolo: false,
+    giudiceCosplay: false,
+    firmacopie: false,
+    palco: false,
+    moderazione: false,
+    accredito: false,
+    fee: ''
   })
 
   useEffect(() => {
@@ -80,9 +91,20 @@ export default function EventiPage() {
     if (!partForm.creatorId) return
     await addPartecipazione({ ...partForm, eventoId: selectedEvento.id })
     setPartForm({
-      creatorId: '', tipoContratto: '', panel: false, workshop: false, masterGdr: false,
-      giochiTavolo: false, giudiceCosplay: false, firmacopie: false, palco: false, 
-      moderazione: false, accredito: false, fee: ''
+      creatorId: '',
+      tipoContratto: '',
+      dataInizioPartecipazione: '',
+      dataFinePartecipazione: '',
+      panel: false,
+      workshop: false,
+      masterGdr: false,
+      giochiTavolo: false,
+      giudiceCosplay: false,
+      firmacopie: false,
+      palco: false,
+      moderazione: false,
+      accredito: false,
+      fee: ''
     })
     loadPartecipazioni(selectedEvento.id)
   }
@@ -99,12 +121,14 @@ export default function EventiPage() {
 
   const handleCreatorSelect = (creatorId) => {
     const selectedCreator = creators.find(c => c.id === creatorId)
-    
-    setPartForm({
-      ...partForm,
-      creatorId: creatorId,
-      fee: selectedCreator?.fiereEventi || partForm.fee  // <-- AUTO-COMPILA
-    })
+
+    setPartForm(prev => ({
+      ...prev,
+      creatorId,
+      fee: selectedCreator?.fiereEventi || prev.fee,
+      dataInizioPartecipazione: prev.dataInizioPartecipazione || selectedEvento?.dataInizio || '',
+      dataFinePartecipazione: prev.dataFinePartecipazione || selectedEvento?.dataFine || selectedEvento?.dataInizio || ''
+    }))
   }
 
   if (loading && view === 'list') {
@@ -186,6 +210,33 @@ export default function EventiPage() {
             {selectedEvento.dataInizio && <p><span className="font-semibold">Date:</span> {selectedEvento.dataInizio} - {selectedEvento.dataFine || '...'}</p>}
             {selectedEvento.location && <p><span className="font-semibold">Location:</span> {selectedEvento.location}</p>}
             {selectedEvento.citta && <p><span className="font-semibold">Città:</span> {selectedEvento.citta}</p>}
+            {selectedEvento.descrizione && (
+              <div className="mt-4">
+                <p className="font-semibold mb-1">Descrizione</p>
+                <p className="text-sm text-gray-700">{selectedEvento.descrizione}</p>
+              </div>
+            )}
+
+            {selectedEvento.link && (
+              <div className="mt-4">
+                <p className="font-semibold mb-1">Link</p>
+                <a
+                  href={selectedEvento.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-blue-600 hover:underline break-all"
+                >
+                  {selectedEvento.link}
+                </a>
+              </div>
+            )}
+
+            {selectedEvento.note && (
+              <div className="mt-4">
+                <p className="font-semibold mb-1">Note</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedEvento.note}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -193,7 +244,7 @@ export default function EventiPage() {
         {userProfile?.role === 'ADMIN' && (
           <div className="card mb-6">
             <h2 className="text-xl font-bold mb-4">Aggiungi Creator</h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
               <select
                 className="input"
                 value={partForm.creatorId}
@@ -201,11 +252,31 @@ export default function EventiPage() {
                 required
               >
                 <option value="">Seleziona creator...</option>
-                {creators.map(c => (
+                {creators.filter(c => c.stato == "1 Sotto contratto").map(c => (
                   <option key={c.id} value={c.id}>{c.nome}</option>
                 ))}
               </select>
               <input className="input" placeholder="Tipo Contratto" value={partForm.tipoContratto} onChange={(e) => setPartForm({...partForm, tipoContratto: e.target.value})} />
+             
+              <div>
+                <label className="label">Dal</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={partForm.dataInizioPartecipazione}
+                  onChange={(e) => setPartForm({ ...partForm, dataInizioPartecipazione: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label">Al</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={partForm.dataFinePartecipazione}
+                  onChange={(e) => setPartForm({ ...partForm, dataFinePartecipazione: e.target.value })}
+                />
+              </div>
               <div>
                 <label className="label">Fee €</label>
                 <input
@@ -241,6 +312,7 @@ export default function EventiPage() {
               <tr className="border-b">
                 <th className="text-left py-2">Creator</th>
                 <th className="text-left py-2">Attività</th>
+                <th className="text-left py-2">Presenza</th>
                 <th className="text-right py-2">Fee</th>
                 {userProfile?.role === 'ADMIN' && <th className="text-right py-2">Azioni</th>}
               </tr>
@@ -253,6 +325,11 @@ export default function EventiPage() {
                     {[p.panel && 'Panel', p.workshop && 'Workshop', p.masterGdr && 'Master GDR', p.giochiTavolo && 'Giochi', 
                       p.giudiceCosplay && 'Giudice', p.firmacopie && 'Firmacopie', p.palco && 'Palco', p.moderazione && 'Moderazione']
                       .filter(Boolean).join(', ') || '-'}
+                  </td>
+                  <td className="py-2 text-sm">
+                    {p.dataInizioPartecipazione || p.dataFinePartecipazione
+                      ? `${p.dataInizioPartecipazione || '—'} ${p.dataFinePartecipazione ? `→ ${p.dataFinePartecipazione}` : ''}`
+                      : 'Tutto evento'}
                   </td>
                   <td className="py-2 text-right">€{p.fee || 0}</td>
                   {userProfile?.role === 'ADMIN' && (

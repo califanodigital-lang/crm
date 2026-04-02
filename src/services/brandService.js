@@ -18,21 +18,19 @@ const toCamelCase = (brand) => {
     dataFollowup2: brand.data_followup_2,   // B.1
     categoria: brand.categoria,
     categorie: brand.categorie || [],
-    risposta: brand.risposta,
-    contattatoPer: brand.contattato_per,
     referente: brand.referenti,
     contatto: brand.contatto,
     telefono: brand.telefono,
-    agente: brand.agente,
     sitoWeb: brand.sito_web,
     note: brand.note,
     categoriaAdv: brand.categoria_adv,
     creatorSuggeriti: brand.creator_suggeriti || [],
     priorita: brand.priorita || 'NORMALE',
-    stato: brand.stato || 'DA_CONTATTARE',
     createdAt: brand.created_at,
     updatedAt: brand.updated_at,
     propostaId: brand.proposta_id,
+    ultimoEsito: brand.ultimo_esito,
+    dataUltimaCollaborazione: brand.data_ultima_collaborazione,
   }
 }
 
@@ -42,24 +40,19 @@ const toSnakeCase = (brand) => {
     settore: cleanValue(brand.settore),
     target_dem: cleanValue(brand.target),
     topic_target: cleanValue(brand.topicTarget),
-    data_contatto: cleanValue(brand.dataContatto),
-    data_followup_1: cleanValue(brand.dataFollowup1),   // B.1
-    data_followup_2: cleanValue(brand.dataFollowup2),   // B.1
     categoria: brand.categoria,
     categorie: brand.categorie || [],
-    risposta: cleanValue(brand.risposta),
-    contattato_per: cleanValue(brand.contattatoPer),
     referenti: cleanValue(brand.referente),
     contatto: cleanValue(brand.contatto),
     telefono: cleanValue(brand.telefono),
-    agente: cleanValue(brand.agente),
     sito_web: cleanValue(brand.sitoWeb),
     note: cleanValue(brand.note),
     categoria_adv: cleanValue(brand.categoriaAdv),
     creator_suggeriti: brand.creatorSuggeriti || [],
     priorita: brand.priorita || 'NORMALE',
-    stato: brand.stato || 'DA_CONTATTARE',
     proposta_id: cleanValue(brand.propostaId),
+    ultimo_esito: cleanValue(brand.ultimoEsito),
+    data_ultima_collaborazione: cleanValue(brand.dataUltimaCollaborazione)
   }
 }
 

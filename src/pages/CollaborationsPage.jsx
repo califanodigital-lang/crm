@@ -13,6 +13,7 @@ import { getAllCreators } from '../services/creatorService'
 import { getAllBrands } from '../services/brandService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
+import { getStatoCollaborazione } from '../constants/constants'
 
 export default function CollaborationsPage() {
   const location = useLocation()
@@ -142,21 +143,14 @@ export default function CollaborationsPage() {
     return matchesSearch && matchesStatus && matchesAgente
   })
 
-  const StatusBadge = ({ status }) => {
-    const config = {
-      IN_TRATTATIVA:   { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'In Trattativa' },
-      FIRMATO:         { bg: 'bg-blue-100',     text: 'text-blue-800',    label: 'Firmato' },
-      IN_CORSO:        { bg: 'bg-purple-100',   text: 'text-purple-800',  label: 'In Corso' },
-      REVISIONE_VIDEO: { bg: 'bg-orange-100',   text: 'text-orange-800',  label: 'Revisione Video' },
-      VIDEO_PUBBLICATO:{ bg: 'bg-indigo-100',   text: 'text-indigo-800',  label: 'Video Pubblicato' },
-      ATTESA_PAGAMENTO:{ bg: 'bg-pink-100',     text: 'text-pink-800',    label: 'Attesa Pagamento' },
-      COMPLETATO:      { bg: 'bg-green-100',    text: 'text-green-800',   label: 'Completato' },
-      ANNULLATO:       { bg: 'bg-red-100',      text: 'text-red-800',     label: 'Annullato' },
+    const StatusBadge = ({ status }) => {
+      const cfg = getStatoCollaborazione(status)
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+          {cfg.label}
+        </span>
+      )
     }
-    const { bg, text, label } = config[status] || config.IN_TRATTATIVA
-    return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>{label}</span>
-  }
-
   // Loading state
   if (loading && view === 'list') {
     return (
@@ -171,12 +165,15 @@ export default function CollaborationsPage() {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Collaborazioni</h1>
+            <p className="text-sm text-gray-500 mb-6">
+              Il flusso standard prevede la creazione delle collaborazioni dalla sezione Trattative dopo il contratto firmato.
+            </p>
           <button
             onClick={() => setView('add')}
             className="flex items-center gap-2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Nuova Collaborazione
+            Nuova Collaborazione (manuale)
           </button>
         </div>
 
@@ -234,14 +231,14 @@ export default function CollaborationsPage() {
         {/* Filters */}
         <div className="card mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-3 text-gray-400 w-4 h-4 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Cerca per creator o brand..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="w-full pl-11 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
             <select className="input sm:w-44" value={filterAgente}
@@ -254,14 +251,11 @@ export default function CollaborationsPage() {
             <select className="input sm:w-48" value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="ALL">Tutti gli stati</option>
-              <option value="IN_TRATTATIVA">In Trattativa</option>
-              <option value="FIRMATO">Firmato</option>
-              <option value="IN_CORSO">In Corso</option>
-              <option value="REVISIONE_VIDEO">Revisione Video</option>
-              <option value="VIDEO_PUBBLICATO">Video Pubblicato</option>
-              <option value="ATTESA_PAGAMENTO">Attesa Pagamento</option>
-              <option value="COMPLETATO">Completato</option>
-              <option value="ANNULLATO">Annullato</option>
+              <option value="IN_LAVORAZIONE">In Lavorazione</option>
+              <option value="ATTESA_PAGAMENTO_CREATOR">Attesa Pagamento Creator</option>
+              <option value="ATTESA_PAGAMENTO_AGENCY">Attesa Pagamento Agency</option>
+              <option value="COMPLETATA">Completata</option>
+              <option value="ANNULLATA">Annullata</option>
             </select>
           </div>
         </div>

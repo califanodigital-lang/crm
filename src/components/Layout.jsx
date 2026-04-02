@@ -15,10 +15,11 @@ const NAV_GROUPS = [
     label: 'Operativo',
     items: [
       { name: 'Dashboard',       href: '/dashboard',     icon: LayoutDashboard },
+      { name: 'Agenda', href: '/agenda', icon: Calendar },
       { name: 'Brand',           href: '/brands',        icon: Briefcase },
-      { name: 'Creator',         href: '/creators',      icon: Users },
+      { name: 'Creators',         href: '/creators',      icon: Users },
+      { name: 'Trattative',        href: '/trattativa',      icon: Target },
       { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
-      { name: 'Proposte',        href: '/proposte',      icon: Target },
       { name: 'Fiere & Eventi',  href: '/eventi',        icon: Calendar },
     ]
   },

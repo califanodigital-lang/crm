@@ -8,12 +8,13 @@ import Dashboard from './pages/Dashboard'
 import BrandsPage from './pages/BrandsPage'
 import CreatorsPage from './pages/CreatorsPage'
 import CollaborationsPage from './pages/CollaborationsPage'
-import PropostePage from './pages/PropostePage'
+import TrattativaPage from './pages/TrattativaPage'
 import UsersPage from './pages/UsersPage'
 import FinancePage from './pages/FinancePage'
 import AgentDashboardPage from './pages/AgentDashboardPage'
 import EventiPage from './pages/EventiPage'
 import ImportPage from './pages/ImportPage'
+import AgendaPage from './pages/AgendaPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -51,8 +52,9 @@ function App() {
                 <Route path="brands"         element={<BrandsPage />} />
                 <Route path="creators"       element={<CreatorsPage />} />
                 <Route path="collaborations" element={<CollaborationsPage />} />
-                <Route path="proposte"       element={<PropostePage />} />
+                <Route path="trattativa"       element={<TrattativaPage />} />
                 <Route path="eventi"         element={<EventiPage />} />
+                <Route path="agenda" element={<AgendaPage />} />
                 <Route path="finance"        element={<FinancePage />} />
                 <Route path="agenti"         element={<AgentDashboardPage />} />
                 <Route path="users"          element={<UsersPage />} />

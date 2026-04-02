@@ -154,7 +154,7 @@ export const getMonthlyTotals = async () => {
 
 /**
  * Crea o aggiorna la revenue auto legata a una collaborazione.
- * Regola attuale: COMPLETATO + pagato = true
+ * Regola attuale: COMPLETATA + pagato = true
  * Mese derivato da dataFirma finché non esiste data_pagamento
  */
 export const syncRevenueFromCollaboration = async (collaboration) => {
@@ -163,7 +163,7 @@ export const syncRevenueFromCollaboration = async (collaboration) => {
       return { data: null, error: new Error('Collaborazione senza id') }
     }
 
-    if (collaboration.stato !== 'COMPLETATO' || !collaboration.pagato) {
+    if (collaboration.stato !== 'COMPLETATA' || !collaboration.pagato) {
       return { data: null, error: null }
     }
 

@@ -14,7 +14,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     adv: '',
     agente: '',
     sales: '',
-    stato: 'IN_TRATTATIVA',
+    stato: 'IN_LAVORAZIONE',
     pagato: false,
     contatto: '',
     note: '',
@@ -50,7 +50,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         adv: collaboration.adv ?? '',
         agente: collaboration.agente ?? '',
         sales: collaboration.sales ?? '',
-        stato: collaboration.stato ?? 'IN_TRATTATIVA',
+        stato: collaboration.stato ?? 'IN_LAVORAZIONE',
         pagato: collaboration.pagato ?? false,
         contatto: collaboration.contatto ?? '',
         note: collaboration.note ?? '',
@@ -89,31 +89,29 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   }
   const toNumber = (value) => parseFloat(value || 0) || 0
 
-  const calcolaFeeAgente = (baseImporto, agentiList, nomeAgente, tipo) => {
-    const ag = Array.isArray(agentiList)
-      ? agentiList.find(a => a.agenteNome === nomeAgente)
-      : null
-
-    if (!ag || !baseImporto) return 0
-
-    const importo = parseFloat(baseImporto) || 0
-
-    if (tipo === 'ricerca')  return +(importo * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
-    if (tipo === 'contatto') return +(importo * (ag.feeContatto ?? 10) / 100).toFixed(2)
-    if (tipo === 'chiusura') return +(importo * (ag.feeChiusura ?? 15) / 100).toFixed(2)
-
-    return 0
-  }
-
-    const ricalcolaFee = (data) => {
-      const feeBase = toNumber(data.feeManagement)
-
-      return {
-        feeSalesCalc: data.sales ? calcolaFeeAgente(feeBase, agenti, data.sales, 'ricerca') : 0,
-        feeAgenteCalc: data.agente ? calcolaFeeAgente(feeBase, agenti, data.agente, 'contatto') : 0,
-        feeSeniorCalc: data.senior ? calcolaFeeAgente(feeBase, agenti, data.senior, 'chiusura') : 0,
-      }
+    const calcolaFeeAgente = (feeMan, nomeAgente, tipo) => {
+      const ag = agenti.find(a => a.agenteNome === nomeAgente)
+      if (!ag || !feeMan) return 0
+      // Se l'agente non riceve fee, ritorna 0
+      if (ag.riceveFee === false) return 0
+      const n = parseFloat(feeMan) || 0
+      if (tipo === 'ricerca')  return +(n * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
+      if (tipo === 'contatto') return +(n * (ag.feeContatto ?? 10) / 100).toFixed(2)
+      if (tipo === 'chiusura') return +(n * (ag.feeChiusura ?? 15) / 100).toFixed(2)
+      return 0
     }
+
+      const ricalcolaFee = (data) => {
+        const feeBase = toNumber(data.feeManagement)
+
+        return {
+          feeSalesCalc: data.sales ? calcolaFeeAgente(feeBase, agenti, data.sales, 'ricerca') : 0,
+          feeAgenteCalc: data.agente ? calcolaFeeAgente(feeBase, agenti, data.agente, 'contatto') : 0,
+          feeSeniorCalc: data.senior ? calcolaFeeAgente(feeBase, agenti, data.senior, 'chiusura') : 0,
+        }
+      }
+
+  const activeCreators = creators.filter(c => c.stato === '1 Sotto contratto')
 
   return (
   <form onSubmit={handleSubmit} className="space-y-0">
@@ -130,7 +128,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               required
             >
             <option value="">Seleziona creator...</option>
-            {creators.map(c => (
+            {activeCreators.map(c => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
           </select>
@@ -281,6 +279,11 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
+          {formData.trattativaId && (
+            <div className="p-3 mb-4 rounded-lg bg-blue-50 text-blue-700 text-sm">
+              Collaborazione generata da trattativa: ruoli e brand ereditati automaticamente.
+            </div>
+          )}
         <div className="md:col-span-3"><p className="form-section-title">Responsabili</p></div>
         {/* Sales — Ricerca brand (5%) */}
         <div>
@@ -334,14 +337,11 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             onChange={(e) => setFormData({ ...formData, stato: e.target.value })}
             required
           >
-              <option value="IN_TRATTATIVA">In Trattativa</option>
-              <option value="FIRMATO">Firmato</option>
-              <option value="IN_CORSO">In Corso</option>
-              <option value="REVISIONE_VIDEO">Revisione Video</option>
-              <option value="VIDEO_PUBBLICATO">Video Pubblicato</option>
-              <option value="ATTESA_PAGAMENTO">Attesa Pagamento</option>
-              <option value="COMPLETATO">Completato</option>
-              <option value="ANNULLATO">Annullato</option>
+              <option value="IN_LAVORAZIONE">In Lavorazione</option>
+              <option value="ATTESA_PAGAMENTO_CREATOR">Attesa Pagamento Creator</option>
+              <option value="ATTESA_PAGAMENTO_AGENCY">Attesa Pagamento Agency</option>
+              <option value="COMPLETATA">Completata</option>
+              <option value="ANNULLATA">Annullata</option>
           </select>
         </div>
 

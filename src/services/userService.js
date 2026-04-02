@@ -13,6 +13,7 @@ const toCamelCase = (profile) => {
     feeChiusura: profile.fee_chiusura ?? 15,
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
+    riceveFee: profile.riceve_fee ?? true,
   }
 }
 
@@ -25,6 +26,7 @@ const toSnakeCase = (profile) => {
     fee_ricerca: profile.feeRicerca ?? 5,
     fee_contatto: profile.feeContatto ?? 10,
     fee_chiusura: profile.feeChiusura ?? 15,
+    riceve_fee: profile.riceveFee ?? true,
   }
 }
 

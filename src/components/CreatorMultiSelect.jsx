@@ -33,11 +33,11 @@ export default function CreatorMultiSelect({ selectedIds = [], onChange }) {
   const availableCreators = creators.filter(c => 
     !selectedIds.includes(c.id) &&
     c.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    && c.stato == "1 Sotto contratto"
   )
 
   return (
     <div>
-      <label className="label">Creator Suggeriti</label>
       
       {/* Chips selezionati */}
       {selectedCreators.length > 0 && (

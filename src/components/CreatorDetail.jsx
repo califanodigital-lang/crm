@@ -1,65 +1,52 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2 } from 'lucide-react'
+import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2, CalendarDays } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByCreator, createCollaboration } from '../services/collaborationService'
-import { getAllBrands, updateBrand } from '../services/brandService'
-import { getBrandContattatiByCreator, addBrandContattato, deleteBrandContattato, updateBrandContattato } from '../services/brandContattatoService'
-import { getActiveAgents } from '../services/userService'
 import { getPartecipazioniByCreator } from '../services/eventoService'
 import { getPiattaformeByCreator } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
+import { getTrattativeByCreator } from '../services/trattativaService'
+import { getStatoTrattativa } from '../constants/constants'
+import { getImpegniByCreator, createImpegno, deleteImpegno } from '../services/creatorImpegniService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
   const [showCollabForm, setShowCollabForm] = useState(false)
   const [collaborations, setCollaborations] = useState([])
   const [loading, setLoading] = useState(false)
-  const [brands, setBrands] = useState([])
-  const [brandContattati, setBrandContattati] = useState([])
-  const [showBrandForm, setShowBrandForm] = useState(false)
-  const [agenti, setAgenti] = useState([])
-  const [brandForm, setBrandForm] = useState({
-    brandNome: '',
-    settore: '',
-    targetDem: '',
-    topicTarget: '',
-    dataContatto: '',
-    risposta: '',
-    contattatoPer: '',
-    referenti: '',
-    email: '',
-    telefono: '',
-    agente: '',
-    sitoWeb: '',
-    note: '',
-    contrattoChiuso: false
-  })
-  const [editingBrandContattato, setEditingBrandContattato] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
   const [creatorPiattaforme, setCreatorPiattaforme] = useState([])
+  const [impegni, setImpegni] = useState([])
+  const [loadingImpegni, setLoadingImpegni] = useState(false)
+  const [impegnoForm, setImpegnoForm] = useState({
+    titolo: '',
+    tipo: 'ALTRO',
+    dataInizio: '',
+    dataFine: '',
+    note: ''
+  })
+
+  const loadImpegni = async () => {
+    if (!creator?.id) return
+    setLoadingImpegni(true)
+    const { data } = await getImpegniByCreator(creator.id)
+    setImpegni(data || [])
+    setLoadingImpegni(false)
+  }
 
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
     loadPiattaformeCreator()
+    loadImpegni()
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
-      loadBrands()
-    }
-    if (activeTab === 'contattati') {
-        loadBrandContattati()
-        loadAgenti()
-        loadBrands()
     }
     if (activeTab === 'eventi') {
       loadPartecipazioni()
     }
   }, [activeTab, creator.id])
 
-  const loadBrands = async () => {
-    const { data } = await getAllBrands()
-    setBrands(data || [])
-  }
 
   const loadPiattaformeCreator = async () => {
     const { data } = await getPiattaformeByCreator(creator.id)
@@ -80,18 +67,6 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     setLoading(false)
   }
 
-  const loadBrandContattati = async () => {
-    setLoading(true)
-    const { data } = await getBrandContattatiByCreator(creator.id)
-    setBrandContattati(data || [])
-    setLoading(false)
-  }
-
-  const loadAgenti = async () => {
-    const { data } = await getActiveAgents()
-    setAgenti(data || [])
-  }
-
   const handleSaveCollaboration = async (collabData) => {
     setLoading(true)
     // Pre-compila creator_id
@@ -105,107 +80,6 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
       setShowCollabForm(false)
       await loadCollaborations()
     }
-    setLoading(false)
-  }
-
-  const handleBrandSelect = (brandNome) => {
-    const selectedBrand = brands.find(b => b.nome === brandNome)
-    
-    if (selectedBrand) {
-      setBrandForm({
-        ...brandForm,
-        brandNome: selectedBrand.nome,
-        settore: selectedBrand.settore || brandForm.settore,
-        targetDem: selectedBrand.target || brandForm.targetDem,
-        topicTarget: selectedBrand.topicTarget || brandForm.topicTarget,
-        email: selectedBrand.contatto || brandForm.email,
-        telefono: selectedBrand.telefono || brandForm.telefono,
-        sitoWeb: selectedBrand.sitoWeb || brandForm.sitoWeb,
-        agente: selectedBrand.agente || brandForm.agente,
-      })
-    } else {
-      setBrandForm({...brandForm, brandNome})
-    }
-  }
-
-  const handleEditBrandContattato = (bc) => {
-    setBrandForm({
-      brandNome: bc.brandNome,
-      settore: bc.settore,
-      dataContatto: bc.dataContatto,
-      risposta: bc.risposta,
-      contattatoPer: bc.contattatoPer,
-      referenti: bc.referenti,
-      email: bc.email,
-      telefono: bc.telefono,
-      agente: bc.agente,
-      sitoWeb: bc.sitoWeb,
-      note: bc.note,
-      contrattoChiuso: bc.contrattoChiuso
-    })
-    setEditingBrandContattato(bc)
-    setShowBrandForm(true)
-  }
-
-  const handleSaveBrandContattato = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    
-    let error
-    if (editingBrandContattato) {
-      // UPDATE
-      const result = await updateBrandContattato(editingBrandContattato.id, {
-        ...brandForm,
-        creatorId: creator.id
-      })
-      error = result.error
-    } else {
-      // CREATE
-      const result = await addBrandContattato({
-        ...brandForm,
-        creatorId: creator.id
-      })
-      error = result.error
-
-      // BIDIREZIONALITÀ: aggiungi creator a creator_suggeriti del brand
-      if (!error) {
-        const brandObj = brands.find(b => b.nome === brandForm.brandNome)
-        if (brandObj) {
-          const suggeriti = brandObj.creatorSuggeriti || []
-          if (!suggeriti.includes(creator.id)) {
-            await updateBrand(brandObj.id, {
-              ...brandObj,
-              creatorSuggeriti: [...suggeriti, creator.id]
-            })
-          }
-        }
-      }
-    }
-    
-    if (error) {
-      toast.error('Errore durante il salvataggio')
-      console.error(error)
-    } else {
-      setBrandForm({
-        brandNome: '', settore: '', dataContatto: '', risposta: '', contattatoPer: '',
-        referenti: '', email: '', telefono: '', agente: '', sitoWeb: '', note: '', contrattoChiuso: false
-      })
-      setShowBrandForm(false)
-      setEditingBrandContattato(null)
-      await loadBrandContattati()
-    }
-    setLoading(false)
-  }
-
-  const handleDeleteBrandContattato = async (id) => {
-    const ok = await confirm('Questa azione è irreversibile.', {
-      title: 'Eliminare questo contatto?',
-      confirmLabel: 'Elimina'
-    })
-    if (!ok) return
-    setLoading(true)
-    await deleteBrandContattato(id)
-    await loadBrandContattati()
     setLoading(false)
   }
 
@@ -233,17 +107,74 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
 
   const CollaborationStatusBadge = ({ status }) => {
     const config = {
-      IN_TRATTATIVA:    { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'In Trattativa' },
-      FIRMATO:          { bg: 'bg-blue-100',     text: 'text-blue-800',    label: 'Firmato' },
-      IN_CORSO:         { bg: 'bg-purple-100',   text: 'text-purple-800',  label: 'In Corso' },
-      REVISIONE_VIDEO:  { bg: 'bg-orange-100',   text: 'text-orange-800',  label: 'Revisione Video' },
-      VIDEO_PUBBLICATO: { bg: 'bg-indigo-100',   text: 'text-indigo-800',  label: 'Video Pubblicato' },
-      ATTESA_PAGAMENTO: { bg: 'bg-pink-100',     text: 'text-pink-800',    label: 'Attesa Pagamento' },
-      COMPLETATO:       { bg: 'bg-green-100',    text: 'text-green-800',   label: 'Completato' },
-      ANNULLATO:        { bg: 'bg-red-100',      text: 'text-red-800',     label: 'Annullato' },
+      IN_LAVORAZIONE:           { bg: 'bg-purple-100',  text: 'text-purple-800',  label: 'In Lavorazione' },
+      ATTESA_PAGAMENTO_CREATOR: { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'Attesa Pagamento Creator' },
+      ATTESA_PAGAMENTO_AGENCY:  { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Attesa Pagamento Agency' },
+      COMPLETATA:               { bg: 'bg-green-100',   text: 'text-green-800',   label: 'Completata' },
+      ANNULLATA:                { bg: 'bg-red-100',     text: 'text-red-800',     label: 'Annullata' },
     }
-    const { bg, text, label } = config[status] || config.IN_TRATTATIVA
+    const { bg, text, label } = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status }
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>{label}</span>
+  }
+
+  const handleCreateImpegno = async (e) => {
+    e.preventDefault()
+
+    if (!impegnoForm.titolo || !impegnoForm.dataInizio) return
+
+    const { error } = await createImpegno({
+      creatorId: creator.id,
+      ...impegnoForm
+    })
+
+    if (!error) {
+      setImpegnoForm({
+        titolo: '',
+        tipo: 'ALTRO',
+        dataInizio: '',
+        dataFine: '',
+        note: ''
+      })
+      loadImpegni()
+    }
+  }
+
+const handleDeleteImpegno = async (id) => {
+  const { error } = await deleteImpegno(id)
+  if (!error) loadImpegni()
+}
+
+  function TrattativePerCreator({ creatorId }) {
+    const [trattative, setTrattative] = useState([])
+    const [loading, setLoading] = useState(true)
+    useEffect(() => {
+      getTrattativeByCreator(creatorId).then(({ data }) => {
+        setTrattative(data || [])
+        setLoading(false)
+      })
+    }, [creatorId])
+    if (loading) return <div className="py-6 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400" /></div>
+    if (trattative.length === 0) return <p className="text-gray-400 text-sm py-4">Nessuna trattativa registrata per questo creator.</p>
+    return (
+      <div className="space-y-2">
+        {trattative.map(t => {
+          const cfg = getStatoTrattativa(t.stato)
+          return (
+            <div key={t.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+              <div className="flex items-center gap-3">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                  {cfg.label}
+                </span>
+                <span className="text-sm font-medium text-gray-700">{t.brandNome}</span>
+                {t.ima && <span className="text-xs text-gray-400">{t.ima}</span>}
+              </div>
+              <span className="text-xs text-gray-400">{t.dataContatto || '—'}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
@@ -332,14 +263,14 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
             Collaborazioni
           </button>
           <button
-            onClick={() => setActiveTab('contattati')}
+            onClick={() => setActiveTab('trattative')}
             className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
-              activeTab === 'contattati'
+              activeTab === 'trattative'
                 ? 'border-yellow-400 text-gray-900'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Brand Contattati
+            Trattative
           </button>
           <button
             onClick={() => setActiveTab('eventi')}
@@ -476,6 +407,113 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
               <p className="text-gray-700 whitespace-pre-wrap">{creator.note}</p>
             </div>
           )}
+
+          <div className="card mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CalendarDays className="w-5 h-5 text-yellow-500" />
+              <h3 className="text-lg font-bold">Impegni Creator</h3>
+            </div>
+
+            <form onSubmit={handleCreateImpegno} className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-5">
+              <div className="md:col-span-2">
+                <label className="label">Titolo</label>
+                <input
+                  className="input"
+                  value={impegnoForm.titolo}
+                  onChange={(e) => setImpegnoForm({ ...impegnoForm, titolo: e.target.value })}
+                  placeholder="Es. Shooting, trasferta, call..."
+                />
+              </div>
+
+              <div>
+                <label className="label">Tipo</label>
+                <select
+                  className="input"
+                  value={impegnoForm.tipo}
+                  onChange={(e) => setImpegnoForm({ ...impegnoForm, tipo: e.target.value })}
+                >
+                  <option value="ALTRO">Altro</option>
+                  <option value="EVENTO">Evento</option>
+                  <option value="TRASFERTA">Trasferta</option>
+                  <option value="CALL">Call</option>
+                  <option value="PRODUZIONE">Produzione</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Dal</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={impegnoForm.dataInizio}
+                  onChange={(e) => setImpegnoForm({ ...impegnoForm, dataInizio: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label">Al</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={impegnoForm.dataFine}
+                  onChange={(e) => setImpegnoForm({ ...impegnoForm, dataFine: e.target.value })}
+                />
+              </div>
+
+              <div className="md:col-span-4">
+                <label className="label">Note</label>
+                <input
+                  className="input"
+                  value={impegnoForm.note}
+                  onChange={(e) => setImpegnoForm({ ...impegnoForm, note: e.target.value })}
+                  placeholder="Note opzionali"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
+                >
+                  <Plus className="w-4 h-4" />
+                  Aggiungi
+                </button>
+              </div>
+            </form>
+
+            {loadingImpegni ? (
+              <p className="text-sm text-gray-400">Caricamento...</p>
+            ) : impegni.length === 0 ? (
+              <p className="text-sm text-gray-400">Nessun impegno registrato.</p>
+            ) : (
+              <div className="space-y-3">
+                {impegni.map((i) => (
+                  <div key={i.id} className="border border-gray-100 rounded-xl p-3 flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                          {i.tipo}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-gray-900">{i.titolo}</p>
+                      <p className="text-sm text-gray-500">
+                        {i.dataInizio} {i.dataFine ? `→ ${i.dataFine}` : ''}
+                      </p>
+                      {i.note && <p className="text-sm text-gray-500 mt-1 whitespace-pre-wrap">{i.note}</p>}
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteImpegno(i.id)}
+                      className="p-2 rounded-lg hover:bg-red-50 text-red-500"
+                      title="Elimina impegno"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -546,209 +584,15 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
         </div>
       )}
 
-      {activeTab === 'contattati' && (
+      {activeTab === 'trattative' && (
         <div className="card">
-          {showBrandForm ? (
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-6">
-                {editingBrandContattato ? 'Modifica' : 'Aggiungi'} Brand Contattato
-              </h2>
-              <form onSubmit={handleSaveBrandContattato}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                      <label className="label">Brand *</label>
-                      <select
-                        className="input"
-                        value={brandForm.brandNome}
-                        onChange={(e) => handleBrandSelect(e.target.value)}  // <-- MODIFICA
-                        required
-                      >
-                        <option value="">Seleziona brand...</option>
-                        {brands.map(b => (
-                          <option key={b.id} value={b.nome}>{b.nome}</option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        I dati del brand verranno compilati automaticamente
-                      </p>
-                    </div>
-                  <div>
-                      <label className="label">Settore</label>
-                      <input 
-                        className="input bg-gray-50" 
-                        value={brandForm.settore} 
-                        onChange={(e) => setBrandForm({...brandForm, settore: e.target.value})} 
-                        placeholder="Auto-compilato da brand"
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Target Demografico</label>
-                      <input className="input bg-gray-50" value={brandForm.targetDem}
-                        onChange={(e) => setBrandForm({...brandForm, targetDem: e.target.value})}
-                        placeholder="Auto-compilato da brand" />
-                    </div>
-                    <div>
-                      <label className="label">Topic del Target</label>
-                      <input className="input bg-gray-50" value={brandForm.topicTarget}
-                        onChange={(e) => setBrandForm({...brandForm, topicTarget: e.target.value})}
-                        placeholder="Auto-compilato da brand" />
-                    </div>
-                  <div>
-                    <label className="label">Data Contatto</label>
-                    <input type="date" className="input" value={brandForm.dataContatto} onChange={(e) => setBrandForm({...brandForm, dataContatto: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="label">Risposta</label>
-                    <select className="input" value={brandForm.risposta} onChange={(e) => setBrandForm({...brandForm, risposta: e.target.value})}>
-                      <option value="">Seleziona...</option>
-                      {['In Attesa','Positiva','Negativa','Nessuna Risposta','Follow-up 1 Inviato','Follow-up 2 Inviato','Appuntamento Fissato','Non Interessato'].map(o => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Contattato Per</label>
-                      <select className="input" value={brandForm.contattatoPer} onChange={(e) => setBrandForm({...brandForm, contattatoPer: e.target.value})}>
-                        <option value="">Seleziona...</option>
-                        {['Video YouTube','Stories Instagram','Story Set Instagram','Post Instagram','Reel Instagram','TikTok','Twitch','Partnership Lunga','Fiera / Evento','Pacchetto Multi-Piattaforma','Altro'].map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                  </div>
-                  <div>
-                    <label className="label">Referenti</label>
-                    <input className="input" value={brandForm.referenti} onChange={(e) => setBrandForm({...brandForm, referenti: e.target.value})} />
-                  </div>
-                  <div>
-                      <label className="label">Email</label>
-                      <input 
-                        type="email" 
-                        className="input bg-gray-50" 
-                        value={brandForm.email} 
-                        onChange={(e) => setBrandForm({...brandForm, email: e.target.value})} 
-                        placeholder="Auto-compilato da brand"
-                      />
-                    </div>
-                  <div>
-                      <label className="label">Telefono</label>
-                      <input 
-                        className="input bg-gray-50" 
-                        value={brandForm.telefono} 
-                        onChange={(e) => setBrandForm({...brandForm, telefono: e.target.value})} 
-                        placeholder="Auto-compilato da brand"
-                      />
-                    </div>
-                  <div>
-                    <label className="label">Agente</label>
-                    <select className="input" value={brandForm.agente} onChange={(e) => setBrandForm({...brandForm, agente: e.target.value})}>
-                      <option value="">Nessuno</option>
-                      {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                      <label className="label">Sito Web</label>
-                      <input 
-                        type="url" 
-                        className="input bg-gray-50" 
-                        value={brandForm.sitoWeb} 
-                        onChange={(e) => setBrandForm({...brandForm, sitoWeb: e.target.value})} 
-                        placeholder="Auto-compilato da brand"
-                      />
-                    </div>
-                  <div className="md:col-span-2">
-                    <label className="label">Note</label>
-                    <textarea className="input" value={brandForm.note} onChange={(e) => setBrandForm({...brandForm, note: e.target.value})} />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={brandForm.contrattoChiuso} onChange={(e) => setBrandForm({...brandForm, contrattoChiuso: e.target.checked})} />
-                      <span className="text-sm font-medium">Contratto Chiuso</span>
-                    </label>
-                  </div>
-                </div>
-                <div className="mt-6 flex gap-3 justify-end">
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      setShowBrandForm(false)
-                      setEditingBrandContattato(null)
-                    }} 
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-                  >
-                    Annulla
-                  </button>
-                  <button type="submit" className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">Salva</button>
-                </div>
-              </form>
-            </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Brand Contattati</h2>
-                <button onClick={() => setShowBrandForm(true)} className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">
-                  <Plus className="w-4 h-4" />
-                  Aggiungi Brand
-                </button>
-              </div>
-              
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
-                </div>
-              ) : brandContattati.length === 0 ? (
-                <div className="flex items-center gap-3 text-gray-500 py-8">
-                  <AlertCircle className="w-5 h-5" />
-                  <p>Nessun brand contattato</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4">Brand</th>
-                        <th className="text-left py-3 px-4">Data Contatto</th>
-                        <th className="text-left py-3 px-4">Risposta</th>
-                        <th className="text-left py-3 px-4">Contattato Per</th>
-                        <th className="text-center py-3 px-4">Contratto</th>
-                        <th className="text-right py-3 px-4">Azioni</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {brandContattati.map((bc) => (
-                        <tr key={bc.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-3 px-4 font-medium">{bc.brandNome}</td>
-                          <td className="py-3 px-4 text-gray-600">{bc.dataContatto || '-'}</td>
-                          <td className="py-3 px-4 text-gray-600">{bc.risposta || '-'}</td>
-                          <td className="py-3 px-4 text-gray-600">{bc.contattatoPer || '-'}</td>
-                          <td className="py-3 px-4 text-center">
-                            {bc.contrattoChiuso ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">✓ Chiuso</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <button 
-                                onClick={() => handleEditBrandContattato(bc)} 
-                                className="p-2 text-yellow-600 hover:bg-yellow-50 rounded"
-                                title="Modifica"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteBrandContattato(bc.id)} 
-                                className="p-2 text-red-600 hover:bg-red-50 rounded"
-                                title="Elimina"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Trattative</h2>
+            <a href="/trattative" className="text-sm text-yellow-600 hover:text-yellow-700 font-medium">
+              Vai a Trattative →
+            </a>
+          </div>
+          <TrattativePerCreator creatorId={creator.id} />
         </div>
       )}
       {activeTab === 'eventi' && (

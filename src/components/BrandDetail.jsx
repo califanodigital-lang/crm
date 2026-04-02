@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Edit, Mail, Phone, Globe, Calendar, AlertCircle, Plus, Check, UserCheck } from 'lucide-react'
+import { ArrowLeft, Edit, Mail, Phone, Globe, Calendar, AlertCircle, Plus } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByBrand, createCollaboration } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
-import { getBrandContattatiByBrandNome, addBrandContattato } from '../services/brandContattatoService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
+import { getTrattativeByBrand } from '../services/trattativaService'
+import { getStatoTrattativa } from '../constants/constants'
 
 export default function BrandDetail({ brand, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -13,52 +14,21 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
   const [collaborations, setCollaborations] = useState([])
   const [creators, setCreators] = useState([])
   const [loading, setLoading] = useState(false)
-  const [brandContattati, setBrandContattati] = useState([])
 
   // Carica creators sempre (serve per info tab — creatorSuggeriti — e per form collaborazione)
   useEffect(() => {
     loadCreators()
-    loadBrandContattati()
   }, [])
-
-  const loadBrandContattati = async () => {
-    const { data } = await getBrandContattatiByBrandNome(brand.nome)
-    setBrandContattati(data || [])
-  }
-
-  const handleToggleCreatorContattato = async (creatorId) => {
-    const creator = creators.find(c => c.id === creatorId)
-    if (!creator) return
-    const esistente = brandContattati.find(bc => bc.creatorId === creatorId)
-    if (esistente) return // già contattato, non rimuovere da qui (gestito dal Creator)
-
-    await addBrandContattato({
-      creatorId: creatorId,
-      brandNome: brand.nome,
-      settore: brand.settore || '',
-      email: brand.contatto || '',
-      telefono: brand.telefono || '',
-      sitoWeb: brand.sitoWeb || '',
-      agente: brand.agente || '',
-      dataContatto: new Date().toISOString().split('T')[0],
-      risposta: '',
-      contattatoPer: '',
-      referenti: brand.referente || '',
-      note: '',
-      contrattoChiuso: false
-    })
-    await loadBrandContattati()
-  }
 
   useEffect(() => {
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
     }
-  }, [activeTab, brand.nome])
+  }, [activeTab, brand.id])
 
   const loadCollaborations = async () => {
     setLoading(true)
-    const { data } = await getCollaborationsByBrand(brand.nome)
+    const { data } = await getCollaborationsByBrand(brand.id)
     setCollaborations(data || [])
     setLoading(false)
   }
@@ -117,19 +87,48 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
   }
 
   const CollaborationStatusBadge = ({ status }) => {
-      const config = {
-        IN_TRATTATIVA:    { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'In Trattativa' },
-        FIRMATO:          { bg: 'bg-blue-100',     text: 'text-blue-800',    label: 'Firmato' },
-        IN_CORSO:         { bg: 'bg-purple-100',   text: 'text-purple-800',  label: 'In Corso' },
-        REVISIONE_VIDEO:  { bg: 'bg-orange-100',   text: 'text-orange-800',  label: 'Revisione Video' },
-        VIDEO_PUBBLICATO: { bg: 'bg-indigo-100',   text: 'text-indigo-800',  label: 'Video Pubblicato' },
-        ATTESA_PAGAMENTO: { bg: 'bg-pink-100',     text: 'text-pink-800',    label: 'Attesa Pagamento' },
-        COMPLETATO:       { bg: 'bg-green-100',    text: 'text-green-800',   label: 'Completato' },
-        ANNULLATO:        { bg: 'bg-red-100',      text: 'text-red-800',     label: 'Annullato' },
-      }
-    const { bg, text, label } = config[status] || config.IN_TRATTATIVA
+    const config = {
+      IN_LAVORAZIONE:           { bg: 'bg-purple-100',  text: 'text-purple-800',  label: 'In Lavorazione' },
+      ATTESA_PAGAMENTO_CREATOR: { bg: 'bg-yellow-100',  text: 'text-yellow-800',  label: 'Attesa Pagamento Creator' },
+      ATTESA_PAGAMENTO_AGENCY:  { bg: 'bg-amber-100',   text: 'text-amber-800',   label: 'Attesa Pagamento Agency' },
+      COMPLETATA:               { bg: 'bg-green-100',   text: 'text-green-800',   label: 'Completata' },
+      ANNULLATA:                { bg: 'bg-red-100',     text: 'text-red-800',     label: 'Annullata' },
+    }
+    const { bg, text, label } = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status }
     return <span className={`px-2 py-1 rounded-full text-xs font-semibold ${bg} ${text}`}>{label}</span>
   }
+
+function TrattativePerBrand({ brandId  }) {
+  const [trattative, setTrattative] = useState([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    getTrattativeByBrand(brandId ).then(({ data }) => {
+      setTrattative(data || [])
+      setLoading(false)
+    })
+  }, [brandId ])
+  if (loading) return <div className="py-6 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-400" /></div>
+  if (trattative.length === 0) return <p className="text-gray-400 text-sm py-4">Nessuna trattativa registrata per questo brand.</p>
+  return (
+    <div className="space-y-2">
+      {trattative.map(t => {
+        const cfg = getStatoTrattativa(t.stato)
+        return (
+          <div key={t.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+            <div>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                {cfg.label}
+              </span>
+              {t.ima && <span className="ml-2 text-xs text-gray-400">{t.ima}</span>}
+            </div>
+            <span className="text-xs text-gray-400">{t.dataContatto || '—'}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -159,8 +158,6 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">{brand.nome}</h1>
             {brand.settore && <p className="text-lg text-gray-600 mb-3">{brand.settore}</p>}
             <div className="flex flex-wrap gap-2 mb-4">
-              <StatusBadge status={brand.stato} />
-              <PriorityBadge priority={brand.priorita} />
               {brand.categorie && brand.categorie.map((cat, i) => (
                 <span key={i} className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium">{cat}</span>
               ))}
@@ -212,6 +209,16 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               {tab === 'info' ? 'Informazioni' : 'Collaborazioni'}
             </button>
           ))}
+          <button
+            onClick={() => setActiveTab('trattative')}
+            className={`pb-3 px-2 font-semibold transition-colors border-b-2 ${
+              activeTab === 'trattative'
+                ? 'border-yellow-400 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Trattative
+          </button>
         </div>
       </div>
 
@@ -228,66 +235,30 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               <InfoRow label="Target Demografico" value={brand.target} />
               <InfoRow label="Categoria ADV" value={brand.categoriaAdv} />
               <InfoRow label="Referente" value={brand.referente} />
-              <InfoRow label="Agente Assegnato" value={brand.agente} />
             </div>
           </div>
 
-          {/* Pipeline contatti */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Pipeline Contatti
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoRow label="Contattato Per" value={brand.contattatoPer} />
-              <InfoRow label="Risposta" value={brand.risposta} />
-
-              {/* Timeline follow-up visuale */}
-              <div className="md:col-span-2">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className={`p-3 rounded-lg border-2 ${brand.dataContatto ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">📧 Primo Contatto</p>
-                    <p className="text-sm font-medium text-gray-900">{brand.dataContatto || 'Non impostato'}</p>
-                  </div>
-                  <div className={`p-3 rounded-lg border-2 ${brand.dataFollowup1 ? 'border-yellow-400 bg-yellow-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">📩 1° Follow-up</p>
-                    <p className="text-sm font-medium text-gray-900">{brand.dataFollowup1 || 'Non impostato'}</p>
-                  </div>
-                  <div className={`p-3 rounded-lg border-2 ${brand.dataFollowup2 ? 'border-orange-400 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <p className="text-xs font-semibold text-gray-500 mb-1">📨 2° Follow-up</p>
-                    <p className="text-sm font-medium text-gray-900">{brand.dataFollowup2 || 'Non impostato'}</p>
-                  </div>
-                </div>
-              </div>
+            <h3 className="text-lg font-bold mb-3">Storico commerciale</h3>
+            <div className="space-y-2 text-sm">
+              <p><strong>Ultimo esito:</strong> {brand.ultimoEsito || '—'}</p>
+              <p><strong>Ultima collaborazione:</strong> {brand.dataUltimaCollaborazione || '—'}</p>
+              <p><strong>Collaborazioni passate:</strong> {brand.haCollaborazioniPassate ? 'Sì' : 'No'}</p>
             </div>
           </div>
 
           {/* Creator suggeriti — caricati da DB */}
           {brand.creatorSuggeriti && brand.creatorSuggeriti.length > 0 && (
             <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Creator Suggeriti</h2>
-              <p className="text-sm text-gray-500 mb-4">Clicca <strong>Segna Contattato</strong> per registrare il contatto attivo su questo brand per quel creator.</p>
-              <div className="space-y-2">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">Creator Suggeriti</h2>
+              <div className="flex flex-wrap gap-2">
                 {brand.creatorSuggeriti.map(creatorId => {
                   const creator = creators.find(c => c.id === creatorId)
                   if (!creator) return null
-                  const contattato = brandContattati.find(bc => bc.creatorId === creatorId)
                   return (
-                    <div key={creatorId} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50">
-                      <span className="font-medium text-gray-900">{creator.nome}</span>
-                      {contattato ? (
-                        <span className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                          <Check className="w-3 h-3" /> Contattato · {contattato.dataContatto || ''}
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleToggleCreatorContattato(creatorId)}
-                          className="flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold hover:bg-yellow-200 transition-colors"
-                        >
-                          <UserCheck className="w-3 h-3" /> Segna Contattato
-                        </button>
-                      )}
-                    </div>
+                    <span key={creatorId} className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                      {creator.nome}
+                    </span>
                   )
                 })}
               </div>
@@ -370,6 +341,21 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {activeTab === 'trattative' && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Trattative</h2>
+            
+              <a href="/trattative"
+              className="text-sm text-yellow-600 hover:text-yellow-700 font-medium"
+            >
+              Vai a Trattative →
+            </a>
+          </div>
+          <TrattativePerBrand brandId={brand.id} />
         </div>
       )}
 

@@ -1,6 +1,26 @@
 import { supabase } from '../lib/supabase'
 import { syncRevenueFromCollaboration, unsyncRevenueFromCollaboration } from './revenueService'
 
+
+const syncTrattativaFromCollaboration = async (collab) => {
+  if (!collab?.trattativaId) return
+
+  const payload = {
+    sales: cleanValue(collab.sales),
+    ima: cleanValue(collab.agente),
+    agente: cleanValue(collab.senior),
+    brand_nome: cleanValue(collab.brandNome),
+    contatto: cleanValue(collab.contatto),
+    note_trattativa: cleanValue(collab.note),
+    updated_at: new Date().toISOString()
+  }
+
+  await supabase
+    .from('proposte_brand')
+    .update(payload)
+    .eq('id', collab.trattativaId)
+}
+
 // Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
   if (value === '' || value === undefined) return null
@@ -21,6 +41,8 @@ const deriveFeeManagement = (collab) => {
 const toCamelCase = (collab) => {
   if (!collab) return null
   return {
+    brandId: collab.brand_id,
+    trattativaId: collab.trattativa_id,
     id: collab.id,
     creatorId: collab.creator_id,
     creatorNome: collab.creator_nome,
@@ -50,6 +72,8 @@ const toCamelCase = (collab) => {
 // Utility per convertire da camelCase (Frontend) a snake_case (DB)
 const toSnakeCase = (collab) => {
   return {
+    brand_id: cleanValue(collab.brandId),
+    trattativa_id: cleanValue(collab.trattativaId),
     creator_id: collab.creatorId,
     brand_nome: collab.brandNome,
     pagamento: cleanValue(collab.pagamento),
@@ -61,7 +85,7 @@ const toSnakeCase = (collab) => {
     adv: cleanValue(collab.adv),
     agente: cleanValue(collab.agente),
     sales: cleanValue(collab.sales),
-    stato: collab.stato || 'IN_TRATTATIVA',
+    stato: collab.stato || 'IN_LAVORAZIONE',
     pagato: collab.pagato || false,
     contatto: cleanValue(collab.contatto),
     note: cleanValue(collab.note),
@@ -115,7 +139,7 @@ export const getCollaborationsByCreator = async (creatorId) => {
 }
 
 // GET: Collaborazioni per un brand specifico
-export const getCollaborationsByBrand = async (brandNome) => {
+export const getCollaborationsByBrand = async (brandId) => {
   try {
     const { data, error } = await supabase
       .from('collaborations')
@@ -123,23 +147,22 @@ export const getCollaborationsByBrand = async (brandNome) => {
         *,
         creators (nome, nome_completo)
       `)
-      .eq('brand_nome', brandNome)
+      .eq('brand_id', brandId)
       .order('data_firma', { ascending: false })
 
     if (error) throw error
-    
+
     const enrichedData = data.map(collab => ({
       ...toCamelCase(collab),
       creatorNome: collab.creators?.nome || 'N/A'
     }))
-    
+
     return { data: enrichedData, error: null }
   } catch (error) {
     console.error('Error fetching brand collaborations:', error)
     return { data: null, error }
   }
 }
-
 // GET: Collaborazione singola per ID
 export const getCollaborationById = async (id) => {
   try {
@@ -179,7 +202,9 @@ export const createCollaboration = async (collabData) => {
 
     const collaboration = toCamelCase(data)
 
-    if (collaboration.stato === 'COMPLETATO' && collaboration.pagato) {
+    await syncTrattativaFromCollaboration(collaboration)
+
+    if (collaboration.stato === 'COMPLETATA' && collaboration.pagato) {
       await syncRevenueFromCollaboration(collaboration)
     }
 
@@ -204,11 +229,25 @@ export const updateCollaboration = async (id, collaborationData) => {
 
     const collaboration = toCamelCase(data)
 
-    if (collaboration.stato === 'COMPLETATO' && collaboration.pagato) {
+    await syncTrattativaFromCollaboration(collaboration)
+
+    if (collaboration.stato === 'COMPLETATA' && collaboration.pagato) {
       await syncRevenueFromCollaboration(collaboration)
     } else {
       await unsyncRevenueFromCollaboration(id)
     }
+
+    if (['COMPLETATA', 'ANNULLATA'].includes(collaboration.stato)) {
+        const esito = collaboration.stato === 'COMPLETATA' ? 'POSITIVO' : 'NEGATIVO'
+        await supabase
+          .from('brands')
+          .update({
+            ultimo_esito: esito,
+            data_ultima_collaborazione: new Date().toISOString().split('T')[0],
+            ha_collaborazioni_passate: true
+          })
+          .eq('nome', collaboration.brandNome)
+      }
 
     return { data: collaboration, error: null }
   } catch (error) {
@@ -220,6 +259,14 @@ export const updateCollaboration = async (id, collaborationData) => {
 // DELETE: Elimina collaborazione
 export const deleteCollaboration = async (id) => {
   try {
+    const { data: existing, error: readError } = await supabase
+      .from('collaborations')
+      .select('id, trattativa_id')
+      .eq('id', id)
+      .single()
+
+    if (readError) throw readError
+
     await unsyncRevenueFromCollaboration(id)
 
     const { error } = await supabase
@@ -228,6 +275,21 @@ export const deleteCollaboration = async (id) => {
       .eq('id', id)
 
     if (error) throw error
+
+    if (existing?.trattativa_id) {
+      const { count } = await supabase
+        .from('collaborations')
+        .select('*', { count: 'exact', head: true })
+        .eq('trattativa_id', existing.trattativa_id)
+
+      if ((count || 0) === 0) {
+        await supabase
+          .from('proposte_brand')
+          .update({ stato: 'CONTRATTO_FIRMATO' })
+          .eq('id', existing.trattativa_id)
+      }
+    }
+
     return { error: null }
   } catch (error) {
     console.error('Error deleting collaboration:', error)
@@ -246,10 +308,10 @@ export const getCollaborationStats = async () => {
 
     const stats = {
       total: data.length,
-      inCorso: data.filter(c => ['IN_CORSO','REVISIONE_VIDEO','VIDEO_PUBBLICATO','ATTESA_PAGAMENTO'].includes(c.stato)).length,
-      completate: data.filter(c => c.stato === 'COMPLETATO').length,
+      inCorso: data.filter(c => ['IN_LAVORAZIONE','ATTESA_PAGAMENTO_CREATOR','ATTESA_PAGAMENTO_AGENCY'].includes(c.stato)).length,
+      completate: data.filter(c => c.stato === 'COMPLETATA').length,
       totalRevenue: data
-        .filter(c => c.stato === 'COMPLETATO' && c.pagato)
+        .filter(c => c.stato === 'COMPLETATA' && c.pagato)
         .reduce((sum, c) => sum + (parseFloat(c.pagamento) || 0), 0)
     }
 

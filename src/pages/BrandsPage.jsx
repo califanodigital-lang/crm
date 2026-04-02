@@ -3,7 +3,6 @@ import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import BrandForm from '../components/BrandForm'
 import BrandDetail from '../components/BrandDetail'
 import { getAllBrands, createBrand, updateBrand, deleteBrand } from '../services/brandService'
-import { getActiveAgents } from '../services/userService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 
@@ -14,9 +13,7 @@ export default function BrandsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [agenti, setAgenti] = useState([])
-  const [filterAgente, setFilterAgente] = useState('ALL')
-  const [filterContattato, setFilterContattato] = useState('ALL')
+  const [filterEsito, setFilterEsito] = useState('ALL')
 
   // Carica brand da Supabase
   useEffect(() => {
@@ -25,9 +22,8 @@ export default function BrandsPage() {
 
   const loadBrands = async () => {
     setLoading(true)
-    const [brandsRes, agentiRes] = await Promise.all([
+    const [brandsRes] = await Promise.all([
       getAllBrands(),
-      getActiveAgents()
     ])
     
     if (brandsRes.error) {
@@ -37,7 +33,6 @@ export default function BrandsPage() {
       setBrands(brandsRes.data || [])
     }
     
-    setAgenti(agentiRes.data || [])
     setLoading(false)
   }
 
@@ -108,20 +103,17 @@ export default function BrandsPage() {
   const filteredBrands = brands.filter(b => {
     const matchesSearch = b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (b.settore && b.settore.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesAgente = filterAgente === 'ALL' || b.agente === filterAgente
-    const matchesContattato =
-      filterContattato === 'ALL' ||
-      (filterContattato === 'SI' && b.dataContatto) ||
-      (filterContattato === 'NO' && !b.dataContatto)
-    return matchesSearch && matchesAgente && matchesContattato
+    const matchesEsito =
+      filterEsito === 'ALL' ||
+      (filterEsito === 'POSITIVO' && b.ultimoEsito === 'POSITIVO') ||
+      (filterEsito === 'NEGATIVO' && b.ultimoEsito === 'NEGATIVO') ||
+      (filterEsito === 'MAI' && !b.ultimoEsito)
+    return matchesSearch && matchesEsito
   })
 
   const getStatoBrand = (brand) => {
     if (!brand) return { label: 'N/D', style: 'bg-gray-100 text-gray-800' }
     if (brand.propostaId) return { label: 'Chiuso', style: 'bg-green-100 text-green-800' }
-    if (brand.dataFollowup2) return { label: '2° Follow-up', style: 'bg-orange-100 text-orange-800' }
-    if (brand.dataFollowup1) return { label: '1° Follow-up', style: 'bg-yellow-100 text-yellow-800' }
-    if (brand.dataContatto) return { label: 'Contattato', style: 'bg-blue-100 text-blue-800' }
     // Fallback: brand censiti prima del nuovo sistema o senza date
     return { label: 'Contattato', style: 'bg-blue-100 text-blue-800' }
   }
@@ -163,28 +155,22 @@ export default function BrandsPage() {
 
         <div className="card mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="relative flex-1 min-w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-3 text-gray-400 w-4 h-4 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Cerca brand per nome o settore..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
-            <select className="input sm:w-44" value={filterContattato}
-              onChange={(e) => setFilterContattato(e.target.value)}>
-              <option value="ALL">Tutti</option>
-              <option value="SI">Già Contattati</option>
-              <option value="NO">Da Contattare</option>
-            </select>
-            <select className="input sm:w-44" value={filterAgente}
-              onChange={(e) => setFilterAgente(e.target.value)}>
-              <option value="ALL">Tutti gli agenti</option>
-              {agenti.map(a => (
-                <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-              ))}
+            <select className="input sm:w-44" value={filterEsito}
+              onChange={(e) => setFilterEsito(e.target.value)}>
+              <option value="ALL">Tutti i brand</option>
+              <option value="POSITIVO">✓ Collaborazione chiusa</option>
+              <option value="NEGATIVO">✗ Collaborazione persa</option>
+              <option value="MAI">Nessuna collaborazione</option>
             </select>
           </div>
         </div>
@@ -210,7 +196,6 @@ export default function BrandsPage() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Settore</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Stato</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Agente</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
                   </tr>
                 </thead>
@@ -220,9 +205,21 @@ export default function BrandsPage() {
                       <td className="py-3 px-4 font-medium">{brand.nome}</td>
                       <td className="py-3 px-4 text-gray-600">{brand.settore || '-'}</td>
                       <td className="py-3 px-4">
-                        <StatusBadge brand={brand} />
+                        {brand.ultimoEsito === 'POSITIVO' && (
+                          <div>
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">✓ Collab. chiusa</span>
+                            {brand.dataUltimaCollaborazione && (
+                              <p className="text-xs text-gray-400 mt-0.5">{brand.dataUltimaCollaborazione}</p>
+                            )}
+                          </div>
+                        )}
+                        {brand.ultimoEsito === 'NEGATIVO' && (
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-semibold">✗ Rifiutata</span>
+                        )}
+                        {!brand.ultimoEsito && (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{brand.agente || '-'}</td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
                           <button

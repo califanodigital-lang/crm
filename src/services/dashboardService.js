@@ -12,21 +12,21 @@ export const getGlobalStats = async () => {
       supabase.from('creators').select('id', { count: 'exact' }),
       supabase.from('collaborations').select('id, stato, pagamento, pagato'),
       supabase.from('revenue_mensile').select('importo, mese'),
-      supabase.from('brand_contattati').select('id', { count: 'exact' })
+      supabase.from('proposte_brand').select('id', { count: 'exact' }).not('stato', 'in', '("NESSUNA_RISPOSTA","CHIUSO_PERSO")')
     ])
 
-    const STATI_ATTIVI = ['FIRMATO','IN_CORSO','REVISIONE_VIDEO','VIDEO_PUBBLICATO','ATTESA_PAGAMENTO']
+    const STATI_ATTIVI = ['IN_LAVORAZIONE','ATTESA_PAGAMENTO_CREATOR','ATTESA_PAGAMENTO_AGENCY']
 
     const totalBrands    = brandsRes.count || 0
     const totalCreators  = creatorsRes.count || 0
     const totalCollabs   = collabsRes.data?.length || 0
     const activeCollabs  = collabsRes.data?.filter(c => STATI_ATTIVI.includes(c.stato)).length || 0
-    const completate     = collabsRes.data?.filter(c => c.stato === 'COMPLETATO' && c.pagato).length || 0
+    const completate     = collabsRes.data?.filter(c => c.stato === 'COMPLETATA' && c.pagato).length || 0
     const totalBrandContattati = brandContattatoRes.count || 0
 
     // Revenue da collaborazioni completate (fonte primaria)
     const revenueCollabs = collabsRes.data
-      ?.filter(c => c.stato === 'COMPLETATO' && c.pagato)
+      ?.filter(c => c.stato === 'COMPLETATA' && c.pagato)
       .reduce((sum, c) => sum + (parseFloat(c.pagamento) || 0), 0) || 0
 
     // Revenue mese corrente da revenue_mensile
@@ -53,7 +53,7 @@ export const getTopCreators = async () => {
     const { data, error } = await supabase
       .from('collaborations')
       .select('creator_id, pagamento, stato, pagato, creators(nome)')
-      .eq('stato', 'COMPLETATO')
+      .eq('stato', 'COMPLETATA')
       .eq('pagato', true)
 
     if (error) throw error
@@ -115,9 +115,9 @@ export const getProposteStats = async () => {
 
     const stats = {
       totale: data.length,
-      daContattare: data.filter(p => p.stato === 'DA_CONTATTARE').length,
+      daContattare: data.filter(p => ['RICERCA_COMPLETATA','ONBOARDING','PRIMO_CONTATTO'].includes(p.stato)).length,
       inTrattativa: data.filter(p => p.stato === 'IN_TRATTATIVA').length,
-      chiusoVinto: data.filter(p => p.stato === 'CHIUSO_VINTO').length,
+      chiusoVinto: data.filter(p => p.stato === 'CONTRATTO_FIRMATO').length,
       chiusoPerso: data.filter(p => p.stato === 'CHIUSO_PERSO').length,
     }
 

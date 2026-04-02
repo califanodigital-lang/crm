@@ -12,14 +12,13 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
     topic: '',
     categoriaAdv: '',
     stato: '',
-    ricontattare: false,
+    ricontattare: '',
     insight: '',
     fiereEventi: '',
     dataContratto: '',
     scadenzaContratto: '',
     tipoContratto: '',
     proviggioni: '',
-    sales: '',
     mediakit: '',
     ultimoAggiornamentoMediakit: '',
     strategia: '',
@@ -183,12 +182,14 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           </select>
         </div>
 
-        <div className="flex items-center gap-3 pt-6">
-          <input type="checkbox" id="ricontattare"
-            checked={formData.ricontattare}
-            onChange={(e) => setFormData({...formData, ricontattare: e.target.checked})}
-            className="w-4 h-4 text-yellow-400 border-gray-300 rounded" />
-          <label htmlFor="ricontattare" className="label mb-0">Da Ricontattare</label>
+        <div>
+          <label className="label">Ricontattare il</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.ricontattare || ''}
+            onChange={(e) => setFormData({ ...formData, ricontattare: e.target.value })}
+          />
         </div>
       </div>
 
@@ -221,14 +222,6 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           <label className="label">Scadenza Contratto</label>
           <input type="date" className="input" value={formData.scadenzaContratto}
             onChange={(e) => setFormData({...formData, scadenzaContratto: e.target.value})} />
-        </div>
-        <div>
-          <label className="label">Sales</label>
-          <select className="input" value={formData.sales}
-            onChange={(e) => setFormData({...formData, sales: e.target.value})}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-          </select>
         </div>
         <div>
           <label className="label">Fee Fiere & Eventi (€)</label>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
 import CreatorMultiSelect from './CreatorMultiSelect'
-import { RISPOSTE_OPTIONS, CONTATTATO_PER_OPTIONS } from '../constants/constants'
 
 export default function BrandForm({ brand = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -14,15 +13,8 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     contatto: '',
     telefono: '',
     sitoWeb: '',
-    agente: '',
-    priorita: 'NORMALE',
     note: '',
-    creatorSuggeriti: [],
-    dataContatto: new Date().toISOString().split('T')[0],
-    dataFollowup1: '',
-    dataFollowup2: '',
-    risposta: '',
-    contattatoPer: ''
+    creatorSuggeriti: []
   })
   const [agenti, setAgenti] = useState([])
   const [categoriaInput, setCategoriaInput] = useState('')
@@ -87,14 +79,6 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
           placeholder="es. Gaming, Cosplay, Food..." />
       </div>
       <div>
-        <label className="label">Agente Assegnato</label>
-        <select className="input" value={formData.agente}
-          onChange={(e) => setFormData({...formData, agente: e.target.value})}>
-          <option value="">Nessuno</option>
-          {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-        </select>
-      </div>
-      <div>
         <label className="label">Categorie</label>
         <div className="flex gap-2 mb-2">
           <input className="input flex-1" value={categoriaInput}
@@ -114,7 +98,7 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         </div>
       </div>
       <div className="md:col-span-2">
-        <label className="label"></label>
+        <label className="label">Creator Suggeriti</label>
         <CreatorMultiSelect
           selectedIds={formData.creatorSuggeriti || []}
           onChange={(ids) => setFormData({...formData, creatorSuggeriti: ids})}
@@ -149,56 +133,6 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         <input type="url" className="input" value={formData.sitoWeb}
           onChange={(e) => setFormData({...formData, sitoWeb: e.target.value})}
           placeholder="https://..." />
-      </div>
-    </div>
-
-    {/* ── PIPELINE ── */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
-      <div className="md:col-span-2">
-        <p className="form-section-title">Pipeline Contatti</p>
-      </div>
-      <div>
-        <label className="label">Contattato Per</label>
-        <select className="input" value={formData.contattatoPer}
-          onChange={(e) => setFormData({...formData, contattatoPer: e.target.value})}>
-          <option value="">Seleziona...</option>
-          {CONTATTATO_PER_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="label">Risposta</label>
-        <select className="input" value={formData.risposta}
-          onChange={(e) => setFormData({...formData, risposta: e.target.value})}>
-          <option value="">Seleziona...</option>
-          {RISPOSTE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="label">Data Contatto</label>
-        <input type="date" className="input" value={formData.dataContatto}
-          onChange={(e) => setFormData({...formData, dataContatto: e.target.value})} />
-      </div>
-      <div>
-        <label className="label">Priorità</label>
-        <select className="input" value={formData.priorita}
-          onChange={(e) => setFormData({...formData, priorita: e.target.value})}>
-          <option value="BASSA">Bassa</option>
-          <option value="NORMALE">Normale</option>
-          <option value="ALTA">Alta</option>
-          <option value="URGENTE">Urgente</option>
-        </select>
-      </div>
-      <div>
-        <label className="label">Data 1° Follow-up</label>
-        <input type="date" className="input" value={formData.dataFollowup1}
-          onChange={(e) => setFormData({...formData, dataFollowup1: e.target.value})} />
-        <p className="text-xs text-gray-400 mt-1">~7 giorni dal primo contatto</p>
-      </div>
-      <div>
-        <label className="label">Data 2° Follow-up</label>
-        <input type="date" className="input" value={formData.dataFollowup2}
-          onChange={(e) => setFormData({...formData, dataFollowup2: e.target.value})} />
-        <p className="text-xs text-gray-400 mt-1">~7-10 giorni dal primo follow-up</p>
       </div>
     </div>
 

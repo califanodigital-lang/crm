@@ -21,6 +21,8 @@ const toCamelCase = (p) => {
     accredito: p.accredito,
     fee: p.fee,
     note: p.note,
+    dataInizioPartecipazione: p.data_inizio_partecipazione,
+    dataFinePartecipazione: p.data_fine_partecipazione,
   }
 }
 
@@ -39,6 +41,8 @@ const toSnakeCase = (p) => ({
   accredito: p.accredito || false,
   fee: cleanValue(p.fee),
   note: cleanValue(p.note),
+  data_inizio_partecipazione: cleanValue(p.dataInizioPartecipazione),
+  data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),
 })
 
 // GET: Partecipazioni per evento
@@ -50,9 +54,12 @@ export const getPartecipazioniByEvento = async (eventoId) => {
       .eq('evento_id', eventoId)
 
     if (error) throw error
-    return { 
-      data: data.map(p => ({...toCamelCase(p), creatorNome: p.creators?.nome})), 
-      error: null 
+    return {
+      data: data.map(p => ({
+        ...toCamelCase(p),
+        creatorNome: p.creators?.nome
+      })),
+      error: null
     }
   } catch (error) {
     console.error('Error:', error)

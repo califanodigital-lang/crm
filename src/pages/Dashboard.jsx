@@ -102,8 +102,10 @@ export default function Dashboard() {
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Valore Deal Pagati del Mese</p>
-                <p className="text-2xl font-bold text-gray-900">€{(agentStats.totalDealValue || 0).toLocaleString()}</p>
+                  <p className="text-sm text-gray-600">Valore Deal Pagati</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    €{(agentStats.totalDealValue || 0).toLocaleString()}
+                  </p>
               </div>
               <div className="bg-purple-100 p-3 rounded-lg">
                 <DollarSign className="w-6 h-6 text-purple-600" />
@@ -133,27 +135,19 @@ export default function Dashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4">Creator</th>
-                  <th className="text-left py-3 px-4">Brand</th>
-                  <th className="text-left py-3 px-4">Ruoli</th>
-                  <th className="text-left py-3 px-4">Stato</th>
-                  <th className="text-right py-3 px-4">Pagamento</th>
-                  <th className="text-right py-3 px-4">Tua Commissione</th>
+                    <th className="text-left py-3 px-4">Brand</th>
+                    <th className="text-left py-3 px-4">Ruoli</th>
+                    <th className="text-left py-3 px-4">Stato</th>
+                    <th className="text-right py-3 px-4">Pagamento</th>
+                    <th className="text-right py-3 px-4">Tua Commissione</th>
                 </tr>
               </thead>
               <tbody>
                 {agentCollabs.slice(0, 10).map((c) => (
                   <tr key={c.id} className="border-b border-gray-100">
-                    <td className="py-3 px-4 font-medium">{c.creatorNome}</td>
                     <td className="py-3 px-4">{c.brandNome}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{c.rolesLabel || '-'}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        c.stato === 'COMPLETATO' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {c.stato}
-                      </span>
-                    </td>
+                    <td className="py-3 px-4">{c.stato}</td>
                     <td className="py-3 px-4 text-right">€{parseFloat(c.pagamento || 0).toLocaleString()}</td>
                     <td className="py-3 px-4 text-right font-semibold text-green-600">
                       €{parseFloat(c.personalCommission || 0).toLocaleString()}

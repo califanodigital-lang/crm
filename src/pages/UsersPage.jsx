@@ -13,7 +13,8 @@ const DEFAULT_FORM = {
   role: 'AGENT',
   feeRicerca: 5,
   feeContatto: 10,
-  feeChiusura: 15
+  feeChiusura: 15,
+  riceveFee: true,
 }
 
 export default function UsersPage() {
@@ -66,7 +67,8 @@ export default function UsersPage() {
       role: user.role || 'AGENT',
       feeRicerca: user.feeRicerca ?? 5,
       feeContatto: user.feeContatto ?? 10,
-      feeChiusura: user.feeChiusura ?? 15
+      feeChiusura: user.feeChiusura ?? 15,
+      riceveFee: user.riceveFee !== false,
     })
     setEditingUser(user)
     setShowForm(true)
@@ -82,7 +84,8 @@ export default function UsersPage() {
         role: formData.role,
         feeRicerca: formData.feeRicerca,
         feeContatto: formData.feeContatto,
-        feeChiusura: formData.feeChiusura
+        feeChiusura: formData.feeChiusura,
+        riceveFee: formData.riceveFee
       }
     })
 
@@ -113,6 +116,7 @@ export default function UsersPage() {
             fee_ricerca: formData.feeRicerca,
             fee_contatto: formData.feeContatto,
             fee_chiusura: formData.feeChiusura,
+            riceve_fee: formData.riceveFee,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingUser.id)
@@ -268,8 +272,26 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <p className="text-sm font-semibold text-gray-700 mb-3">Percentuali Commissioni</p>
+        <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-gray-700">Commissioni</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-sm text-gray-600">Riceve fee</span>
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={formData.riceveFee}
+                  onChange={(e) => setFormData({ ...formData, riceveFee: e.target.checked })}
+                />
+                <div className={`w-10 h-5 rounded-full transition-colors ${formData.riceveFee ? 'bg-yellow-400' : 'bg-gray-300'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${formData.riceveFee ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </div>
+            </label>
+          </div>
+          {formData.riceveFee && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="label">% Ricerca Brand</label>
@@ -319,6 +341,8 @@ export default function UsersPage() {
                   </div>
                 </div>
               </div>
+              </div>
+             )}
             </div>
 
             {editingUser && (
@@ -356,6 +380,7 @@ export default function UsersPage() {
               <th className="text-left py-3 px-4">Nome Agente</th>
               <th className="text-left py-3 px-4">Ruolo</th>
               <th className="text-left py-3 px-4">Stato</th>
+              <th className="text-left py-3 px-4">Fee</th>
               <th className="text-right py-3 px-4">Azioni</th>
             </tr>
           </thead>
@@ -384,6 +409,15 @@ export default function UsersPage() {
                   >
                     {u.attivo ? 'Attivo' : 'Disattivo'}
                   </span>
+                </td>
+                <td className="py-3 px-4">
+                  {u.riceveFee !== false ? (
+                    <span className="text-xs text-gray-600">
+                      {u.feeRicerca ?? 5}% / {u.feeContatto ?? 10}% / {u.feeChiusura ?? 15}%
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">Nessuna fee</span>
+                  )}
                 </td>
                 <td className="py-3 px-4 text-right">
                   <button
