@@ -3,6 +3,47 @@ import { useAuth } from '../contexts/AuthContext'
 import { getAgentStats, getAgentCollaborations } from '../services/agentService'
 import { TrendingUp, Award, Target, DollarSign, Briefcase, Users, Handshake } from 'lucide-react'
 import { getGlobalStats, getTopCreators, getRevenueChart, getProposteStats } from '../services/dashboardService'
+import { APP_VERSION, CHANGELOG } from '../constants/changelog'
+
+function ChangelogCard() {
+  const latest = CHANGELOG[0]
+
+  return (
+    <div className="card mt-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Changelog</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Versione attuale: <span className="font-semibold text-gray-700">{APP_VERSION}</span>
+          </p>
+        </div>
+        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold">
+          {latest.date}
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        {CHANGELOG.map((entry) => (
+          <div key={entry.version} className="border border-gray-100 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-bold text-gray-900">{entry.version}</p>
+              <p className="text-xs text-gray-400">{entry.date}</p>
+            </div>
+
+            <ul className="space-y-1">
+              {entry.items.map((item, idx) => (
+                <li key={idx} className="text-sm text-gray-600 flex gap-2">
+                  <span className="text-yellow-500 font-bold">•</span>
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function Dashboard() {
   const { userProfile } = useAuth()
@@ -158,6 +199,8 @@ export default function Dashboard() {
             </table>
           </div>
         </div>
+
+        <ChangelogCard />
       </div>
     )
   }
@@ -310,6 +353,9 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+
+            <ChangelogCard />
+
         </div>
       </div>
     )

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ToastContainer } from './Toast'
 import { ConfirmContainer } from './ConfirmModal'
+import { APP_VERSION } from '../constants/changelog'
 
 const NAV_GROUPS = [
   {
@@ -72,7 +73,7 @@ function SidebarContent({ onClose }) {
   return (
     <div className="flex flex-col h-full bg-gray-950 border-r border-white/5">
       {/* Logo */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between h-20 px-4 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/20">
             <span className="text-sm font-black text-gray-900">C3</span>
@@ -80,6 +81,9 @@ function SidebarContent({ onClose }) {
           <div>
             <p className="text-sm font-bold text-white leading-none">C3 Agency</p>
             <p className="text-xs text-gray-500 mt-0.5">CRM</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-semibold">
+              {APP_VERSION}
+            </span>
           </div>
         </div>
         {onClose && (
