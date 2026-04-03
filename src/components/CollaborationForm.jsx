@@ -5,17 +5,20 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const [formData, setFormData] = useState({
     creatorId: prefilledCreatorId || '',
     brandNome: prefilledBrand || '',
+    brandId: '',
     pagamento: '',
     feeManagement: '',
     dataFirma: '',
     dataPubblicazione: '',
-    dataPagamento: '',
+    dataPagamentoCreator: '',
+    dataPagamentoAgency: '',
     durataContratto: '',
     adv: '',
     agente: '',
     sales: '',
     stato: 'IN_LAVORAZIONE',
     pagato: false,
+    pagato_agency: false,
     contatto: '',
     note: '',
     senior: '',
@@ -42,22 +45,25 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         ...prev,
         ...collaboration,
         pagamento: collaboration.pagamento ?? '',
+        brandId: collaboration.brandId ?? '',
         feeManagement: collaboration.feeManagement ?? '',
         dataFirma: collaboration.dataFirma ?? '',
         dataPubblicazione: collaboration.dataPubblicazione ?? '',
-        dataPagamento: collaboration.dataPagamento ?? '',
         durataContratto: collaboration.durataContratto ?? '',
         adv: collaboration.adv ?? '',
         agente: collaboration.agente ?? '',
         sales: collaboration.sales ?? '',
         stato: collaboration.stato ?? 'IN_LAVORAZIONE',
         pagato: collaboration.pagato ?? false,
+        pagato_agency: collaboration.pagato_agency ?? false,
         contatto: collaboration.contatto ?? '',
         note: collaboration.note ?? '',
         senior: collaboration.senior ?? '',
         feeSalesCalc: collaboration.feeSalesCalc ?? 0,
         feeAgenteCalc: collaboration.feeAgenteCalc ?? 0,
         feeSeniorCalc: collaboration.feeSeniorCalc ?? 0,
+        dataPagamentoCreator: collaboration.dataPagamentoCreator ?? '',
+        dataPagamentoAgency: collaboration.dataPagamentoAgency ?? '',
       }))
     }, [collaboration])
 
@@ -66,20 +72,28 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     onSave(formData)
   }
 
-    const handleBrandSelect = (brandNome) => {
-      const selectedBrand = brands.find(b => b.nome === brandNome)
+  const todayLocal = () => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
 
-      const upd = {
-        ...formData,
-        brandNome,
-        agente: selectedBrand?.agente || formData.agente,
-      }
+  const handleBrandSelect = (brandNome) => {
+    const selectedBrand = brands.find(b => b.nome === brandNome)
 
-      setFormData({
-        ...upd,
-        ...ricalcolaFee(upd)
-      })
+    const upd = {
+      ...formData,
+      brandId: selectedBrand?.id || '',
+      brandNome,
     }
+
+    setFormData({
+      ...upd,
+      ...ricalcolaFee(upd)
+    })
+  }
 
   const handleCreatorSelect = (creatorId) => {
     setFormData(prev => ({
@@ -89,15 +103,20 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   }
   const toNumber = (value) => parseFloat(value || 0) || 0
 
-    const calcolaFeeAgente = (feeMan, nomeAgente, tipo) => {
-      const ag = agenti.find(a => a.agenteNome === nomeAgente)
+    const calcolaFeeAgente = (feeMan, agentiList, nomeAgente, tipo) => {
+      const ag = Array.isArray(agentiList)
+        ? agentiList.find(a => a.agenteNome === nomeAgente)
+        : null
+
       if (!ag || !feeMan) return 0
-      // Se l'agente non riceve fee, ritorna 0
       if (ag.riceveFee === false) return 0
+
       const n = parseFloat(feeMan) || 0
+
       if (tipo === 'ricerca')  return +(n * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
       if (tipo === 'contatto') return +(n * (ag.feeContatto ?? 10) / 100).toFixed(2)
       if (tipo === 'chiusura') return +(n * (ag.feeChiusura ?? 15) / 100).toFixed(2)
+
       return 0
     }
 
@@ -234,19 +253,23 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         </div>
 
         <div>
-          <label className="label">Data Pagamento</label>
+          <label className="label">Data Pagamento Creator</label>
           <input
             type="date"
             className="input"
-            value={formData.dataPagamento || ''}
-            onChange={(e) => setFormData({ ...formData, dataPagamento: e.target.value })}
-            disabled={!formData.pagato}
+            value={formData.dataPagamentoCreator || ''}
+            onChange={(e) => setFormData({ ...formData, dataPagamentoCreator: e.target.value })}
           />
-          {!formData.pagato && (
-            <p className="text-xs text-gray-500 mt-1">
-              Si compila quando la collaborazione viene segnata come pagata
-            </p>
-          )}
+        </div>
+
+        <div>
+          <label className="label">Data Pagamento Agency</label>
+          <input
+            type="date"
+            className="input"
+            value={formData.dataPagamentoAgency || ''}
+            onChange={(e) => setFormData({ ...formData, dataPagamentoAgency: e.target.value })}
+          />
         </div>
 
         <div>
@@ -356,12 +379,31 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             setFormData({
               ...formData,
               pagato: checked,
-              dataPagamento: checked ? (formData.dataPagamento || new Date().toISOString().split('T')[0]) : ''
+              dataPagamentoCreator: checked ? (formData.dataPagamentoCreator || todayLocal()) : ''
             })
           }}
           className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
         />
-          <label htmlFor="pagato" className="label mb-0">Pagato</label>
+          <label htmlFor="pagato" className="label mb-0">Pagamento Creator</label>
+        </div>
+
+        {/* Pagamento Agency */}
+        <div className="flex items-center gap-3 pt-6">
+        <input
+          type="checkbox"
+          id="pagato_agency"
+          checked={formData.pagato_agency}
+          onChange={(e) => {
+            const checked = e.target.checked
+            setFormData({
+              ...formData,
+              pagato_agency: checked,
+              dataPagamentoAgency: checked ? (formData.dataPagamentoAgency || todayLocal()) : ''
+            })
+          }}
+          className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
+        />
+          <label htmlFor="pagato" className="label mb-0">Pagamento Agency</label>
         </div>
 
       </div>

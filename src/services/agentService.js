@@ -8,8 +8,16 @@ const ACTIVE_STATES = [
   'ATTESA_PAGAMENTO_AGENCY'
 ]
 
-const isCompleted = (c) => c.stato === 'COMPLETATO'
-const isPaidCompleted = (c) => c.stato === 'COMPLETATO' && c.pagato
+const isCompleted = (c) => c.stato === 'COMPLETATA'
+const isPaidCompleted = (c) => c.stato === 'COMPLETATA' && c.pagato
+
+const getMaturityDate = (c) => c.dataPagamentoAgency || null
+
+const isInSelectedMonth = (dateValue, selectedMonth) => {
+  if (!selectedMonth) return true
+  if (!dateValue) return false
+  return String(dateValue).slice(0, 7) === selectedMonth
+}
 
 const normalizeCollab = (c) => ({
   id: c.id,
@@ -20,12 +28,15 @@ const normalizeCollab = (c) => ({
   feeManagement: toNumber(c.fee_management),
   stato: c.stato,
   pagato: !!c.pagato,
+  pagato_agency: !!c.pagato_agency,
   sales: c.sales || '',
   agente: c.agente || '',
   senior: c.senior || '',
   feeSalesCalc: toNumber(c.fee_sales_calc),
   feeAgenteCalc: toNumber(c.fee_agente_calc),
   feeSeniorCalc: toNumber(c.fee_senior_calc),
+  dataPagamentoAgency: c.data_pagamento_agency || null,
+  createdAt: c.created_at || null,
 })
 
 const getAgentContribution = (collab, agenteNome) => {
@@ -71,12 +82,15 @@ const fetchAllCollaborations = async () => {
       fee_management,
       stato,
       pagato,
+      pagato_agency,
       sales,
       agente,
       senior,
       fee_sales_calc,
       fee_agente_calc,
       fee_senior_calc,
+      data_pagamento_agency,
+      created_at,
       creators (nome)
     `)
     .order('created_at', { ascending: false })
@@ -85,7 +99,7 @@ const fetchAllCollaborations = async () => {
   return data.map(normalizeCollab)
 }
 
-export const getAgentStats = async (agenteNome) => {
+export const getAgentStats = async (agenteNome, selectedMonth = null) => {
   try {
     const allCollabs = await fetchAllCollaborations()
     const collabs = allCollabs.filter(c => getAgentContribution(c, agenteNome).involved)
@@ -108,7 +122,7 @@ export const getAgentStats = async (agenteNome) => {
       if (isCompleted(c)) stats.completati++
       if (ACTIVE_STATES.includes(c.stato)) stats.inCorso++
 
-      if (isPaidCompleted(c)) {
+      if (isPaidCompleted(c) && isInSelectedMonth(getMaturityDate(c), selectedMonth)) {
         stats.totalDealValue += c.pagamento
         stats.totalCommissioni += contribution.totalCommissioni
         stats.commissioniRicerca += contribution.commissioniRicerca
@@ -129,7 +143,7 @@ export const getAgentStats = async (agenteNome) => {
   }
 }
 
-export const getAllAgentsStats = async () => {
+export const getAllAgentsStats = async (selectedMonth = null) => {
   try {
     const collabs = await fetchAllCollaborations()
     const agentsMap = {}
@@ -158,10 +172,13 @@ export const getAllAgentsStats = async () => {
         ensureAgent(nome)
         agentsMap[nome].totaleDeal += 1
         if (isCompleted(c)) agentsMap[nome].completati += 1
-        if (isPaidCompleted(c)) agentsMap[nome].totalDealValue += c.pagamento
+
+        if (isPaidCompleted(c) && isInSelectedMonth(getMaturityDate(c), selectedMonth)) {
+          agentsMap[nome].totalDealValue += c.pagamento
+        }
       })
 
-      if (isPaidCompleted(c)) {
+      if (isPaidCompleted(c) && isInSelectedMonth(getMaturityDate(c), selectedMonth)) {
         if (c.sales) {
           ensureAgent(c.sales)
           agentsMap[c.sales].commissioniRicerca += c.feeSalesCalc
@@ -207,12 +224,13 @@ export const getAllAgentsStats = async () => {
   }
 }
 
-export const getAgentCollaborations = async (agenteNome) => {
+export const getAgentCollaborations = async (agenteNome, selectedMonth = null) => {
   try {
     const allCollabs = await fetchAllCollaborations()
 
     const data = allCollabs
       .filter(c => getAgentContribution(c, agenteNome).involved)
+      .filter(c => !selectedMonth || isInSelectedMonth(getMaturityDate(c), selectedMonth) || !isPaidCompleted(c))
       .map(c => {
         const contribution = getAgentContribution(c, agenteNome)
 

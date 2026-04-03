@@ -30,7 +30,7 @@ const NAV_GROUPS = [
       { name: 'Finance',          href: '/finance',  icon: DollarSign },
       { name: 'Dashboard Agenti', href: '/agenti',   icon: BarChart3 },
       { name: 'Utenti',           href: '/users',    icon: Users },
-      { name: 'Import',           href: '/import',   icon: Import },
+      //{ name: 'Import',           href: '/import',   icon: Import },
     ]
   }
 ]

@@ -283,7 +283,8 @@ export default function CollaborationsPage() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo ADV</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Pagamento</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Stato</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato Creator</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagata Agency</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
                   </tr>
                 </thead>
@@ -301,6 +302,13 @@ export default function CollaborationsPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         {collab.pagato ? (
+                          <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {collab.pagato_agency ? (
                           <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
                         ) : (
                           <XCircle className="w-5 h-5 text-gray-300 mx-auto" />

@@ -87,7 +87,7 @@ function PrioritaBadge({ value }) {
 
 // ── Riga lista ────────────────────────────────────────────────
 function TrattativaRow({ trattativa, creators, onEdit, onDelete, onStatoChange, onCreaCollab }) {
-  const creatorNomi = (trattativa.creatorSuggeriti || [])
+  const creatorNomi = ['RICERCA_COMPLETATA', 'ONBOARDING', 'PRIMO_CONTATTO', 'FOLLOW_UP_1', 'FOLLOW_UP_2', 'RICONTATTO_FUTURO', 'IN_TRATTATIVA'].includes(trattativa.stato) ? (trattativa.creatorSuggeriti || []) : (trattativa.creatorConfermati || [])
     .map(id => creators.find(c => c.id === id)?.nome)
     .filter(Boolean)
 
@@ -185,7 +185,7 @@ function TrattativaRow({ trattativa, creators, onEdit, onDelete, onStatoChange, 
 
 // ── Kanban card ───────────────────────────────────────────────
 function KanbanCard({ trattativa, creators, onEdit, onDelete, onStatoChange, onCreaCollab, isDragging }) {
-  const creatorNomi = (trattativa.creatorSuggeriti || [])
+  const creatorNomi = ['RICERCA_COMPLETATA', 'ONBOARDING', 'PRIMO_CONTATTO', 'FOLLOW_UP_1', 'FOLLOW_UP_2', 'RICONTATTO_FUTURO', 'IN_TRATTATIVA'].includes(trattativa.stato) ? (trattativa.creatorSuggeriti || []) : (trattativa.creatorConfermati || [])
     .map(id => creators.find(c => c.id === id)?.nome)
     .filter(Boolean)
 

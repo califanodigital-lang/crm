@@ -37,6 +37,74 @@ const deriveFeeManagement = (collab) => {
   return pagamento > 0 ? +(pagamento * 0.25).toFixed(2) : null
 }
 
+const recalculateBrandSummary = async (brandId, fallbackBrandNome = null) => {
+  if (!brandId && !fallbackBrandNome) return
+
+  let brandQuery = supabase.from('brands').select('id, nome')
+  brandQuery = brandId ? brandQuery.eq('id', brandId) : brandQuery.eq('nome', fallbackBrandNome)
+
+  const { data: brand, error: brandError } = await brandQuery.maybeSingle()
+  if (brandError || !brand) return
+
+  const { data: collabs, error: collabsError } = await supabase
+    .from('collaborations')
+    .select('id, stato, data_firma, data_pagamento_agency, created_at')
+    .eq('brand_id', brand.id)
+    .order('created_at', { ascending: false })
+
+  if (collabsError) return
+
+  const completed = (collabs || []).filter(c => c.stato === 'COMPLETATA')
+  const cancelled = (collabs || []).filter(c => c.stato === 'ANNULLATA')
+
+  if (completed.length > 0) {
+    const latest = [...completed].sort((a, b) => {
+      const da = a.data_pagamento_agency || a.data_firma || a.created_at || ''
+      const db = b.data_pagamento_agency || b.data_firma || b.created_at || ''
+      return String(db).localeCompare(String(da))
+    })[0]
+
+    const lastDate =
+      latest.data_pagamento_agency ||
+      lastest.data_pagamento_creator
+      latest.data_firma ||
+      (latest.created_at ? String(latest.created_at).slice(0, 10) : null)
+
+    await supabase
+      .from('brands')
+      .update({
+        ultimo_esito: 'POSITIVO',
+        data_ultima_collaborazione: lastDate,
+        ha_collaborazioni_passate: true
+      })
+      .eq('id', brand.id)
+
+    return
+  }
+
+  if (cancelled.length > 0) {
+    await supabase
+      .from('brands')
+      .update({
+        ultimo_esito: 'NEGATIVO',
+        data_ultima_collaborazione: null,
+        ha_collaborazioni_passate: false
+      })
+      .eq('id', brand.id)
+
+    return
+  }
+
+  await supabase
+    .from('brands')
+    .update({
+      ultimo_esito: null,
+      data_ultima_collaborazione: null,
+      ha_collaborazioni_passate: false
+    })
+    .eq('id', brand.id)
+}
+
 // Utility per convertire da snake_case (DB) a camelCase (Frontend)
 const toCamelCase = (collab) => {
   if (!collab) return null
@@ -52,12 +120,12 @@ const toCamelCase = (collab) => {
     dataFirma: collab.data_firma,
     dataPubblicazione: collab.data_pubblicazione,
     durataContratto: collab.durata_contratto,
-    dataPagamento: collab.data_pagamento,
     adv: collab.adv,
     agente: collab.agente,
     sales: collab.sales,
     stato: collab.stato,
     pagato: collab.pagato,
+    pagato_agency: collab.pagato_agency,
     contatto: collab.contatto,
     note: collab.note,
     createdAt: collab.created_at,
@@ -66,6 +134,8 @@ const toCamelCase = (collab) => {
     feeSalesCalc: collab.fee_sales_calc,
     feeAgenteCalc: collab.fee_agente_calc,
     feeSeniorCalc: collab.fee_senior_calc,
+    dataPagamentoCreator: collab.data_pagamento_creator,
+    dataPagamentoAgency: collab.data_pagamento_agency,
   }
 }
 
@@ -81,18 +151,20 @@ const toSnakeCase = (collab) => {
     data_firma: cleanValue(collab.dataFirma),
     data_pubblicazione: cleanValue(collab.dataPubblicazione),
     durata_contratto: cleanValue(collab.durataContratto),
-    data_pagamento: collab.pagato ? cleanValue(collab.dataPagamento) : null,
     adv: cleanValue(collab.adv),
     agente: cleanValue(collab.agente),
     sales: cleanValue(collab.sales),
     stato: collab.stato || 'IN_LAVORAZIONE',
     pagato: collab.pagato || false,
+    pagato_agency: collab.pagato_agency || false,
     contatto: cleanValue(collab.contatto),
     note: cleanValue(collab.note),
     senior: cleanValue(collab.senior),
     fee_sales_calc: collab.feeSalesCalc || 0,
     fee_agente_calc: collab.feeAgenteCalc || 0,
     fee_senior_calc: collab.feeSeniorCalc || 0,
+    data_pagamento_creator: cleanValue(collab.dataPagamentoCreator),
+    data_pagamento_agency: collab.pagato_agency ? cleanValue(collab.dataPagamentoAgency) : null,
   }
 }
 
@@ -208,6 +280,7 @@ export const createCollaboration = async (collabData) => {
       await syncRevenueFromCollaboration(collaboration)
     }
 
+    await recalculateBrandSummary(collaboration.brandId, collaboration.brandNome)
     return { data: collaboration, error: null }
   } catch (error) {
     console.error('Error creating collaboration:', error)
@@ -237,17 +310,7 @@ export const updateCollaboration = async (id, collaborationData) => {
       await unsyncRevenueFromCollaboration(id)
     }
 
-    if (['COMPLETATA', 'ANNULLATA'].includes(collaboration.stato)) {
-        const esito = collaboration.stato === 'COMPLETATA' ? 'POSITIVO' : 'NEGATIVO'
-        await supabase
-          .from('brands')
-          .update({
-            ultimo_esito: esito,
-            data_ultima_collaborazione: new Date().toISOString().split('T')[0],
-            ha_collaborazioni_passate: true
-          })
-          .eq('nome', collaboration.brandNome)
-      }
+    await recalculateBrandSummary(collaboration.brandId, collaboration.brandNome)
 
     return { data: collaboration, error: null }
   } catch (error) {
@@ -261,7 +324,7 @@ export const deleteCollaboration = async (id) => {
   try {
     const { data: existing, error: readError } = await supabase
       .from('collaborations')
-      .select('id, trattativa_id')
+      .select('id, trattativa_id, brand_id, brand_nome')
       .eq('id', id)
       .single()
 
@@ -289,6 +352,8 @@ export const deleteCollaboration = async (id) => {
           .eq('id', existing.trattativa_id)
       }
     }
+
+    await recalculateBrandSummary(existing?.brand_id, existing?.brand_nome)
 
     return { error: null }
   } catch (error) {

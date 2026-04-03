@@ -171,11 +171,11 @@ export const syncRevenueFromCollaboration = async (collaboration) => {
       return { data: null, error: new Error('Collaborazione senza creatorId') }
     }
 
-    if (!collaboration.dataPagamento) {
+    if (!collaboration.dataPagamentoAgency) {
       return { data: null, error: new Error('Data pagamento mancante') }
     }
 
-    const mese = getMonthStartFromDate(collaboration.dataPagamento)
+    const mese = getMonthStartFromDate(collaboration.dataPagamentoAgency)
     if (!mese) {
       return { data: null, error: new Error('Data pagamento non valida') }
     }
