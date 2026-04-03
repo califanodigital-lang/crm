@@ -443,7 +443,7 @@ export default function TrattativaPage() {
           </p>
         </div>
       ) : (
-        <div ref={ref} className="relative inline-block z-20">
+       <div className="card overflow-visible p-0">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/50">

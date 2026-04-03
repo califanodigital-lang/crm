@@ -49,55 +49,64 @@ const cleanValue = (v) => (v === '' || v === undefined) ? null : v
 
 const toCamelCase = (t) => {
   if (!t) return null
+
   return {
     id: t.id,
-    brand_nome: normalizeBrandName(t.brandNome),
+    brandNome: normalizeBrandName(t.brand_nome),
     brandId: t.brand_id,
     settore: t.settore,
     priorita: t.priorita,
     stato: t.stato || 'RICERCA_COMPLETATA',
+
     // Responsabili
-    sales: t.sales,           // ricerca brand (5%)
-    ima: t.ima,               // primo contatto (10%)
-    senior: t.agente,         // chiusura (15%) — campo agente riusato
+    sales: t.sales,
+    ima: t.ima,
+    senior: t.agente,
+
     // Creator
     creatorSuggeriti: t.creator_suggeriti || [],
     creatorConfermati: t.creator_confermati || [],
+
     // Contatti brand
     riferimento: t.riferimento,
     contatto: t.contatto,
     telefono: t.telefono,
     sitoWeb: t.sito_web,
+
     // Onboarding / contatto
     canaleContatto: t.canale_contatto,
     dataContatto: t.data_contatto,
     dataFollowup1: t.data_followup_1,
     dataFollowup2: t.data_followup_2,
+
     // Ricontatto futuro
     dataRicontatto: t.data_ricontatto,
     motivoRicontatto: t.motivo_ricontatto,
+    reminderRicontatto: t.reminder_ricontatto,
+
     // Trattativa
     canaleTrattativa: t.canale_trattativa,
     noteTrattativa: t.note_trattativa,
+    callFissata: t.call_fissata,
+    dataCall: t.data_call,
+
     // Preventivo / contratto
     dataPreventivo: t.data_preventivo,
     importoPreventivo: t.importo_preventivo,
     linkPreventivo: t.link_preventivo,
+
     // Note generali
     noteStrategiche: t.note_strategiche,
+
     // Meta
-    brandId: t.brand_id,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
-    reminderRicontatto: t.reminder_ricontatto,
-    callFissata: t.call_fissata,
-    dataCall: t.data_call,
     creaBrandAutomaticamente: t.crea_brand_automaticamente ?? true,
   }
 }
 
 const toSnakeCase = (t) => ({
-  brand_nome: t.brandNome,
+  brand_nome: normalizeBrandName(t.brandNome),
   brand_id: cleanValue(t.brandId),
   settore: cleanValue(t.settore),
   priorita: t.priorita || 'NORMALE',
