@@ -295,7 +295,7 @@ useEffect(() => {
         </div>
 
         <div className="md:col-span-2">
-          <label className="label">Creator Suggeriti</label>
+          <label className="label">Creator Suggeriti per la ricerca</label>
           <CreatorMultiSelect
             selectedIds={formData.creatorSuggeriti || []}
             onChange={(ids) => S('creatorSuggeriti', ids)}

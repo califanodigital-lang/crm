@@ -86,3 +86,16 @@ export const PRIORITA_OPTIONS = [
   { value: 'ALTA',     label: 'Alta',     color: 'bg-orange-100 text-orange-600' },
   { value: 'URGENTE',  label: 'Urgente',  color: 'bg-red-100 text-red-700'    },
 ]
+
+export const TIPO_CONTRATTO = [
+  { value: 'CONSULENZA',      label: 'Consulenza' },
+  { value: 'MANAGEMENT',      label: 'Management' },
+  { value: 'CONSULENZA_MANAGEMENT',      label: 'Consulenza + Management' },
+]
+
+export const CLUSTER = [
+  "Divulgazione", "Cultura pop", "Cultura nerd", "Cosplay", "Comedy", "GDR", "Giochi da tavolo", 
+  "Tech", "Gaming", "Intrattenimento", "Spettacolo", "Musica", "Generico"
+]
+
+export const REGIONI = ['Nazionale','Abruzzo','Basilicata','Calabria','Campania','Emilia-Romagna','Friuli-Venezia Giulia','Lazio','Liguria','Lombardia','Marche','Molise','Piemonte','Puglia','Sardegna','Sicilia','Toscana','Trentino-Alto Adige','Umbria','Valle d\'Aosta','Veneto','Estero']

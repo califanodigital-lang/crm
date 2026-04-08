@@ -21,13 +21,13 @@ const NAV_GROUPS = [
       { name: 'Creators',         href: '/creators',      icon: Users },
       { name: 'Trattative',        href: '/trattativa',      icon: Target },
       { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
-      { name: 'Fiere & Eventi',  href: '/eventi',        icon: Calendar },
     ]
   },
   {
     label: 'Amministrazione',
     adminOnly: true,
     items: [
+      { name: 'Fiere & Eventi',  href: '/eventi',    icon: Calendar },
       { name: 'Finance',          href: '/finance',  icon: DollarSign },
       { name: 'Dashboard Agenti', href: '/agenti',   icon: BarChart3 },
       { name: 'Utenti',           href: '/users',    icon: Users },

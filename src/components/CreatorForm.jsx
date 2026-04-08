@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
 import CreatorPiattaforme from './CreatorPiattaforme'
 import { getAllPiattaforme } from '../services/piattaformeService'
+import { TIPO_CONTRATTO, CLUSTER, REGIONI } from '../constants/constants'
+import {MultiSelectChips} from './MultiSelectChips'
 
 export default function CreatorForm({ creator = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -9,16 +11,16 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
     nomeCompleto: '',
     email: '',
     cellulare: '',
-    topic: '',
+    cluster: [],
+    regioni: [],
     categoriaAdv: '',
     stato: '',
     ricontattare: '',
     insight: '',
-    fiereEventi: '',
     dataContratto: '',
     scadenzaContratto: '',
     tipoContratto: '',
-    proviggioni: '',
+    fee: '',
     mediakit: '',
     ultimoAggiornamentoMediakit: '',
     strategia: '',
@@ -127,13 +129,21 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           </select>
         </div>
 
-        <div>
-          <label className="label">Topic</label>
-          <input
-            className="input"
-            placeholder="Gaming, Tech, Food..."
-            value={formData.topic}
-            onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+        <div className="md:col-span-2">
+          <MultiSelectChips
+            label="Cluster"
+            value={formData.cluster}
+            onChange={(v) => setFormData({...formData, cluster: v})}
+            options={CLUSTER}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <MultiSelectChips
+            label="Regioni di Operatività"
+            value={formData.regioni}
+            onChange={(v) => setFormData({...formData, regioni: v})}
+            options={REGIONI}
           />
         </div>
 
@@ -201,16 +211,20 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           <select className="input" value={formData.tipoContratto}
             onChange={(e) => setFormData({...formData, tipoContratto: e.target.value})}>
             <option value="">Seleziona...</option>
-            <option value="MENSILE">Mensile</option>
-            <option value="ANNUALE">Annuale</option>
-            <option value="PROGETTO">A Progetto</option>
+            {TIPO_CONTRATTO.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
           </select>
         </div>
         <div>
-          <label className="label">Proviggioni (%)</label>
-          <input type="number" step="0.1" className="input"
-            value={formData.proviggioni}
-            onChange={(e) => setFormData({...formData, proviggioni: e.target.value})}
+          <label className="label">Fee Management (%)</label>
+          <input
+            type="number"
+            step="1"
+            min="0"
+            max="100"
+            value={formData.fee}
+            onChange={(e) => setFormData({...formData, fee: e.target.value})}
             placeholder="es. 25" />
         </div>
         <div>
@@ -222,19 +236,6 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           <label className="label">Scadenza Contratto</label>
           <input type="date" className="input" value={formData.scadenzaContratto}
             onChange={(e) => setFormData({...formData, scadenzaContratto: e.target.value})} />
-        </div>
-        <div>
-          <label className="label">Fee Fiere & Eventi (€)</label>
-          <input type="number" step="0.01" className="input"
-            value={formData.fiereEventi}
-            onChange={(e) => setFormData({...formData, fiereEventi: e.target.value})} />
-          <p className="text-xs text-gray-500 mt-1">Fee standard per partecipazione a fiere/eventi</p>
-        </div>
-        <div>
-          <label className="label">Fee Collaborazioni Lunghe (€)</label>
-          <input type="number" step="0.01" className="input"
-            value={formData.collaborazioniLunghe}
-            onChange={(e) => setFormData({...formData, collaborazioniLunghe: e.target.value})} />
         </div>
       </div>
 

@@ -96,10 +96,12 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   }
 
   const handleCreatorSelect = (creatorId) => {
-    setFormData(prev => ({
-      ...prev,
-      creatorId
-    }))
+    const creator = creators.find(c => c.id === creatorId)
+    const pag = parseFloat(formData.pagamento) || 0
+    const percFee = parseFloat(creator?.fee || 25) / 100
+    const feeManagement = pag ? +(pag * percFee).toFixed(2) : formData.feeManagement
+    const upd = { ...formData, creatorId, feeManagement }
+    setFormData({ ...upd, ...ricalcolaFee(upd) })
   }
   const toNumber = (value) => parseFloat(value || 0) || 0
 
@@ -196,18 +198,11 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             value={formData.pagamento}
             onChange={(e) => {
               const pag = parseFloat(e.target.value) || 0
-              const feeManagement = +(pag * 0.25).toFixed(2)
-
-              const upd = {
-                ...formData,
-                pagamento: e.target.value,
-                feeManagement
-              }
-
-              setFormData({
-                ...upd,
-                ...ricalcolaFee(upd)
-              })
+              const creator = creators.find(c => c.id === formData.creatorId)
+              const percFee = parseFloat(creator?.fee || 25) / 100
+              const feeManagement = +(pag * percFee).toFixed(2)
+              const upd = { ...formData, pagamento: e.target.value, feeManagement }
+              setFormData({ ...upd, ...ricalcolaFee(upd) })
             }}
           />
         </div>
@@ -310,7 +305,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         <div className="md:col-span-3"><p className="form-section-title">Responsabili</p></div>
         {/* Sales — Ricerca brand (5%) */}
         <div>
-          <label className="label">Sales / Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
+          <label className="label">Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
           <select className="input" value={formData.sales}
             onChange={(e) => {
               const upd = {...formData, sales: e.target.value}

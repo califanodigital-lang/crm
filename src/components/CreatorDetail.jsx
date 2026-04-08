@@ -215,9 +215,9 @@ const handleDeleteImpegno = async (id) => {
                   ↩ Da Ricontattare
                 </span>
               )}
-              {creator.topic && (
+              {creator.cluster && (
                 <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                  {creator.topic}
+                  {creator.cluster}
                 </span>
               )}
             </div>
@@ -322,8 +322,7 @@ const handleDeleteImpegno = async (id) => {
           )}
           {/* Fee fisse non legate a piattaforma */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
-            <InfoRow label="Fiere & Eventi (fee standard)" value={creator.fiereEventi ? `€${creator.fiereEventi}` : '-'} />
-            <InfoRow label="Collaborazioni Lunghe" value={creator.collaborazioniLunghe ? `€${creator.collaborazioniLunghe}` : '-'} />
+            <InfoRow label="Fee Management %" value={creator.fee ? `%${creator.fee}` : '-'} />
           </div>
         </div>
 
@@ -337,7 +336,7 @@ const handleDeleteImpegno = async (id) => {
               <InfoRow label="Tipo Contratto" value={creator.tipoContratto} />
               <InfoRow label="Data Firma" value={creator.dataContratto} />
               <InfoRow label="Scadenza" value={creator.scadenzaContratto} />
-              <InfoRow label="Proviggioni" value={creator.proviggioni ? `${creator.proviggioni}%` : '-'} />
+              <InfoRow label="Fee" value={creator.fee ? `${creator.fee}%` : '-'} />
               <InfoRow label="Sales" value={creator.sales} />
             </div>
           </div>

@@ -6,14 +6,16 @@ import { getAllCreators, createCreator, updateCreator, deleteCreator } from '../
 import { saveCreatorPiattaforme } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
+import { TIPO_CONTRATTO, CLUSTER, REGIONI } from '../constants/constants'
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState([])
   const [view, setView] = useState('list')
   const [selectedCreator, setSelectedCreator] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStato, setFilterStato] = useState('ALL')
-  const [filterTier, setFilterTier] = useState('ALL')
+  const [filterRegione, setFilterRegione] = useState('ALL')
+  const [filterCluster, setFilterCluster] = useState('ALL')
+  const [filterTipoContratto, setFilterTipoContratto] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -103,9 +105,10 @@ export default function CreatorsPage() {
   const filteredCreators = creators.filter(c => {
     const matchesSearch = c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.nomeCompleto && c.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStato = filterStato === 'ALL' || c.stato === filterStato
-    const matchesTier  = filterTier === 'ALL' || c.tier === filterTier
-    return matchesSearch && matchesStato && matchesTier
+    const matchesRegione  = filterRegione === 'ALL' || c.tier === filterRegione
+    const matchesCluster  = filterCluster === 'ALL' || c.tier === filterCluster
+    const matchesTipoContratto  = filterTipoContratto === 'ALL' || c.tier === filterTipoContratto
+    return matchesSearch && matchesRegione && matchesCluster && matchesTipoContratto
   })
 
   const TierBadge = ({ tier }) => {
@@ -172,23 +175,26 @@ export default function CreatorsPage() {
                 className="w-full pl-11 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
-            <select className="input sm:w-44" value={filterStato}
-              onChange={(e) => setFilterStato(e.target.value)}>
-              <option value="ALL">Tutti gli stati</option>
-              <option value="1 Sotto contratto">Sotto Contratto</option>
-              <option value="2 Proposta in carico">Proposta in Carico</option>
-              <option value="3 Trattativa">Trattativa</option>
-              <option value="4 Possibilità future">Possibilità future</option>
-              <option value="5 Perso">Perso</option>
+            <select className="input sm:w-40" value={filterRegione}
+              onChange={(e) => setFilterRegione(e.target.value)}>
+              <option value="ALL">Tutte le Regioni</option>
+              {REGIONI.map(t => (
+                <option value={t}>{t}</option>
+              ))}
             </select>
-            <select className="input sm:w-40" value={filterTier}
-              onChange={(e) => setFilterTier(e.target.value)}>
-              <option value="ALL">Tutti i tier</option>
-              <option value="NANO">NANO</option>
-              <option value="MICRO">MICRO</option>
-              <option value="MACRO">MACRO</option>
-              <option value="MEGA">MEGA</option>
-              <option value="CELEBRITY">CELEBRITY</option>
+            <select className="input sm:w-40" value={filterCluster}
+              onChange={(e) => setFilterCluster(e.target.value)}>
+              <option value="ALL">Tutti i Cluster</option>
+              {CLUSTER.map(t => (
+                <option value={t}>{t}</option>
+              ))}
+            </select>
+            <select className="input sm:w-40" value={filterTipoContratto}
+              onChange={(e) => setFilterTipoContratto(e.target.value)}>
+              <option value="ALL">Tutti i tipi di contratto</option>
+              {TIPO_CONTRATTO.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -212,28 +218,43 @@ export default function CreatorsPage() {
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome Completo</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Tier</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Topic</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Stato</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo di Contratto</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Scadenza del contratto</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Regione</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-700">Cluster</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCreators.map((creator) => (
                     <tr key={creator.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{creator.nome}</td>
-                      <td className="py-3 px-4 text-gray-600">{creator.nomeCompleto || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{creator.tipoContratto || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{creator.fee || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{creator.scadenzaContratto || '-'}</td>
                       <td className="py-3 px-4">
-                        <TierBadge tier={creator.tier} />
+                        <div className="flex flex-wrap gap-1">
+                          {(creator.regioni || []).slice(0, 2).map(r => (
+                            <span key={r} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">{r}</span>
+                          ))}
+                          {(creator.regioni || []).length > 2 && (
+                            <span className="text-xs text-gray-400">+{creator.regioni.length - 2}</span>
+                          )}
+                          {(!creator.regioni || creator.regioni.length === 0) && <span className="text-gray-300">—</span>}
+                        </div>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{creator.topic || '-'}</td>
                       <td className="py-3 px-4">
-                        {creator.stato
-                          ? <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">{creator.stato}</span>
-                          : <span className="text-gray-400">-</span>
-                        }
+                        <div className="flex flex-wrap gap-1">
+                          {(creator.cluster || []).slice(0, 2).map(c => (
+                            <span key={c} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{c}</span>
+                          ))}
+                          {(creator.cluster || []).length > 2 && (
+                            <span className="text-xs text-gray-400">+{creator.cluster.length - 2}</span>
+                          )}
+                          {(!creator.cluster || creator.cluster.length === 0) && <span className="text-gray-300">—</span>}
+                        </div>
                       </td>
+
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
                           <button

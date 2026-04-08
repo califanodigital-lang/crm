@@ -125,7 +125,7 @@ export default function EventiPage() {
     setPartForm(prev => ({
       ...prev,
       creatorId,
-      fee: selectedCreator?.fiereEventi || prev.fee,
+      fee: prev.fee,
       dataInizioPartecipazione: prev.dataInizioPartecipazione || selectedEvento?.dataInizio || '',
       dataFinePartecipazione: prev.dataFinePartecipazione || selectedEvento?.dataFine || selectedEvento?.dataInizio || ''
     }))

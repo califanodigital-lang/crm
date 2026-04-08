@@ -133,7 +133,7 @@ export default function ImportPage() {
               const scadenzaParsed = parseSafeDateField(row['SCADENZA CONTRATTO'], 'SCADENZA CONTRATTO', note, results)
               note = scadenzaParsed.note
 
-              const provvigioniParsed = parseSafeNumericField(row['PROVIGGIONI'], 'PROVIGGIONI', note, results)
+              const provvigioniParsed = parseSafeNumericField(row['FEE'], 'FEE', note, results)
               note = provvigioniParsed.note
 
               const creator = {
