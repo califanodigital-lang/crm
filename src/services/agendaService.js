@@ -259,15 +259,6 @@ export const getAgendaItems = async () => {
       refId: `${c.id}-pubb`
     })
 
-    pushSingle(items, c.data_pagamento, {
-      tipo: 'PAGAMENTO',
-      titolo: `Pagamento ricevuto · ${c.brand_nome}`,
-      collaborationId: c.id,
-      brandNome: c.brand_nome,
-      creatorId: c.creator_id,
-      refId: `${c.id}-pag`
-    })
-
     pushSingle(items, c.data_prevista_pagamento_creator, {
       tipo: 'PAGAMENTO_CREATOR',
       titolo: `Pagamento creator · ${c.brand_nome}`,

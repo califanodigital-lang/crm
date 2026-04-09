@@ -322,7 +322,7 @@ const handleDeleteImpegno = async (id) => {
           )}
           {/* Fee fisse non legate a piattaforma */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
-            <InfoRow label="Fee Management %" value={creator.fee ? `%${creator.fee}` : '-'} />
+            <InfoRow label="Fee Management %" value={creator.fee ? `${creator.fee}%` : '-'} />
           </div>
         </div>
 

@@ -61,7 +61,7 @@ export const getAllBrands = async () => {
     const { data, error } = await supabase
       .from('brands')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('nome', { ascending: true })
 
     if (error) throw error
     return { data: data.map(toCamelCase), error: null }
@@ -141,7 +141,7 @@ export const searchBrands = async (searchTerm) => {
       .from('brands')
       .select('*')
       .or(`nome.ilike.%${searchTerm}%,settore.ilike.%${searchTerm}%`)
-      .order('created_at', { ascending: false })
+      .order('nome', { ascending: true })
 
     if (error) throw error
     return { data: data.map(toCamelCase), error: null }

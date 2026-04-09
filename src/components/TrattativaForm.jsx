@@ -11,6 +11,9 @@ import {
   PRIORITA_OPTIONS,
   getStatoTrattativa,
 } from '../constants/constants'
+import { useAuth } from '../contexts/AuthContext'
+import SearchableSelect from './SearchableSelect'
+
 
 // Ordine del flusso — usato per mostrare sezioni progressive
 const FLOW_ORDER = [
@@ -102,14 +105,28 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
     callFissata: false,
     dataCall: '',
     creaBrandAutomaticamente: true,
+    assegnatario: [],
+    creatoDa: '',
   })
 
   const [agenti, setAgenti] = useState([])
+  const { userProfile } = useAuth()
+  const isAdmin = userProfile?.role === 'ADMIN'
+  const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
 
   useEffect(() => { loadAgenti() }, [])
 
 useEffect(() => {
-  if (!trattativa) return
+  // Se è una nuova trattativa, pre-imposta creatoDa e assegnatario
+  if (!trattativa && userProfile?.agenteNome) {
+    setFormData(prev => ({
+      ...prev,
+      creatoDa: userProfile.agenteNome,
+      assegnatario: userProfile.agenteNome ? [userProfile.agenteNome] : [],
+    }))
+
+    return
+  }
 
   setFormData(prev => ({
     ...prev,
@@ -146,6 +163,8 @@ useEffect(() => {
     callFissata: trattativa.callFissata ?? false,
     dataCall: trattativa.dataCall ?? '',
     creaBrandAutomaticamente: trattativa.creaBrandAutomaticamente ?? true,
+    assegnatario: trattativa.assegnatario || [],
+    creatoDa: trattativa.creatoDa ?? '',
   }))
 }, [trattativa])
 
@@ -230,22 +249,56 @@ useEffect(() => {
         <div className="md:col-span-2">
           <p className="form-section-title">Trattativa</p>
         </div>
+        {/* ── ASSEGNATARIO ── */}
+        <div>
+          <label className="label">
+            Assegnatari
+            <span className="ml-1.5 text-xs font-normal text-gray-400 normal-case tracking-normal">chi gestisce questa trattativa</span>
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(formData.assegnatario || []).map(nome => (
+              <span key={nome} className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                {nome}
+                {puo_modificare_assegnatario && (
+                  <button type="button" onClick={() => S('assegnatario', formData.assegnatario.filter(a => a !== nome))}
+                    className="ml-0.5 text-yellow-600 hover:text-yellow-900">✕</button>
+                )}
+              </span>
+            ))}
+          </div>
+          {puo_modificare_assegnatario && (
+            <select className="input"
+              value=""
+              onChange={(e) => {
+                if (e.target.value && !formData.assegnatario.includes(e.target.value))
+                  S('assegnatario', [...formData.assegnatario, e.target.value])
+              }}
+              disabled={!puo_modificare_assegnatario}
+            >
+              <option value="">+ Aggiungi assegnatario...</option>
+              {agenti.filter(a => !formData.assegnatario.includes(a.agenteNome)).map(a => (
+                <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+              ))}
+            </select>
+          )}
+          {!puo_modificare_assegnatario && (
+            <p className="text-xs text-gray-400 mt-1">Solo il creatore o un admin può modificarlo</p>
+          )}
+          {formData.creatoDa && (
+            <p className="text-xs text-gray-400 mt-1">Creata da: <strong>{formData.creatoDa}</strong></p>
+          )}
+        </div>
 
       <div>
-        <label className="label">Brand già censito</label>
-        <select
-          className="input"
+        <label className="label py-4">Brand già censito</label>
+        <SearchableSelect
+          options={brands.map(b => ({ value: b.id, label: b.nome }))}
           value={formData.brandId}
-          onChange={(e) => handleBrandSelect(e.target.value)}
-        >
-          <option value="">Nessuno / nuovo brand</option>
-          {brands.map((brand) => (
-            <option key={brand.id} value={brand.id}>
-              {brand.nome}
-            </option>
-          ))}
-        </select>
-        <label className="label flex items-center gap-2">
+          onChange={handleBrandSelect}
+          placeholder="Cerca brand..."
+          required
+        />
+        <label className="label flex items-center gap-2 px-1.5 py-2.5">
           <input
             type="checkbox"
             checked={!!formData.creaBrandAutomaticamente}

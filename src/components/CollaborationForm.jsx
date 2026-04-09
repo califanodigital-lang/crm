@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
+import { useAuth } from '../contexts/AuthContext'
+import SearchableSelect from './SearchableSelect'
 
 export default function CollaborationForm({ collaboration = null, creators = [], brands = [],  prefilledBrand = null, prefilledCreatorId = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -25,9 +27,14 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     feeSalesCalc: 0,
     feeAgenteCalc: 0,
     feeSeniorCalc: 0,
+    assegnatario: [],
+    creatoDa: ''
   })
 
   const [agenti, setAgenti] = useState([])
+  const { userProfile } = useAuth()
+  const isAdmin = userProfile?.role === 'ADMIN'
+  const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
       loadAgenti()
@@ -39,7 +46,15 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     }
 
     useEffect(() => {
-      if (!collaboration) return
+     if (!collaboration && userProfile?.agenteNome) {
+          setFormData(prev => ({
+            ...prev,
+            creatoDa: userProfile.agenteNome,
+            assegnatario: userProfile.agenteNome ? [userProfile.agenteNome] : [],
+          }))
+
+          return
+        }
 
       setFormData(prev => ({
         ...prev,
@@ -64,6 +79,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         feeSeniorCalc: collaboration.feeSeniorCalc ?? 0,
         dataPagamentoCreator: collaboration.dataPagamentoCreator ?? '',
         dataPagamentoAgency: collaboration.dataPagamentoAgency ?? '',
+        assegnatario: collaboration.assegnatario || [],
+        creatoDa: collaboration.creatoDa ?? '',
       }))
     }, [collaboration])
 
@@ -136,23 +153,60 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
   return (
   <form onSubmit={handleSubmit} className="space-y-0">
+      {/* ── ASSEGNATARIO ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 mb-8 pt-0">
+          <div>
+            <label className="label">
+              Assegnatari
+              <span className="ml-1.5 text-xs font-normal text-gray-400 normal-case tracking-normal">chi gestisce questa trattativa</span>
+            </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(formData.assegnatario || []).map(nome => (
+                <span key={nome} className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                  {nome}
+                  {puo_modificare_assegnatario && (
+                    <button type="button" onClick={() => S('assegnatario', formData.assegnatario.filter(a => a !== nome))}
+                      className="ml-0.5 text-yellow-600 hover:text-yellow-900">✕</button>
+                  )}
+                </span>
+              ))}
+            </div>
+            {puo_modificare_assegnatario && (
+              <select className="input"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value && !formData.assegnatario.includes(e.target.value))
+                    S('assegnatario', [...formData.assegnatario, e.target.value])
+                }}
+                disabled={!puo_modificare_assegnatario}
+              >
+                <option value="">+ Aggiungi assegnatario...</option>
+                {agenti.filter(a => !formData.assegnatario.includes(a.agenteNome)).map(a => (
+                  <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+                ))}
+              </select>
+            )}
+            {!puo_modificare_assegnatario && (
+              <p className="text-xs text-gray-400 mt-1">Solo il creatore o un admin può modificarlo</p>
+            )}
+            {formData.creatoDa && (
+              <p className="text-xs text-gray-400 mt-1">Creata da: <strong>{formData.creatoDa}</strong></p>
+            )}
+          </div>
+      </div>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
       <div className="md:col-span-2"><p className="form-section-title">Parti coinvolte</p></div>
         {/* Creator */}
         <div>
           <label className="label">Creator *</label>
-            <select
-              className="input"
-              value={formData.creatorId}
-              onChange={(e) => handleCreatorSelect(e.target.value)}
-              disabled={!!prefilledCreatorId}
-              required
-            >
-            <option value="">Seleziona creator...</option>
-            {activeCreators.map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={creators.map(c => ({ value: c.id, label: c.nome }))}
+            value={formData.creatorId}
+            onChange={handleCreatorSelect}
+            placeholder="Cerca creator..."
+            disabled={!!prefilledCreatorId}
+            required
+          />
           {prefilledCreatorId && (
             <p className="text-xs text-gray-500 mt-1">Creator preselezionato</p>
           )}
@@ -168,20 +222,13 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             </>
           ) : (
             <>
-              <select
-                className="input"
+              <SearchableSelect
+                options={brands.map(b => ({ value: b.nome, label: b.nome }))}
                 value={formData.brandNome}
-                onChange={(e) => handleBrandSelect(e.target.value)}  // <-- MODIFICA
+                onChange={handleBrandSelect}
+                placeholder="Cerca brand..."
                 required
-              >
-                <option value="">Seleziona brand...</option>
-                {brands.map(b => (
-                  <option key={b.id} value={b.nome}>{b.nome}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                L'agente verrà compilato automaticamente dal brand
-              </p>
+              />
             </>
           )}
         </div>
@@ -328,7 +375,6 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             <option value="">Nessuno</option>
             {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
           </select>
-          <p className="text-xs text-gray-500 mt-1">Auto-compilato da brand</p>
           {formData.feeAgenteCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeAgenteCalc}</p>}
         </div>
 

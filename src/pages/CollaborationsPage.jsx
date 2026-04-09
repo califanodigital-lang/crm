@@ -25,7 +25,7 @@ export default function CollaborationsPage() {
   const [selectedCollaboration, setSelectedCollaboration] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
-  const [filterAgente, setFilterAgente] = useState('ALL')
+  const [filterAssegnatario, setFilterAssegnatario] = useState('ALL')
   const [agenti, setAgenti] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, inCorso: 0, completate: 0, totalRevenue: 0 })
@@ -38,7 +38,7 @@ export default function CollaborationsPage() {
 
   useEffect(() => {
     if (isAgent && userProfile?.agenteNome) {
-      setFilterAgente(userProfile.agenteNome)
+      setFilterAssegnatario(userProfile.agenteNome)
     }
   }, [isAgent, userProfile])
 
@@ -147,10 +147,7 @@ export default function CollaborationsPage() {
     const matchesSearch = c.creatorNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.brandNome?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'ALL' || c.stato === filterStatus
-    const matchesAgente = filterAgente === 'ALL' ||
-      c.agente === filterAgente ||
-      c.sales === filterAgente ||
-      c.senior === filterAgente
+    const matchesAgente = filterAssegnatario === 'ALL' || (c.assegnatario || []).includes(filterAssegnatario)
     return matchesSearch && matchesStatus && matchesAgente
   })
 
@@ -252,9 +249,9 @@ export default function CollaborationsPage() {
                 className="w-full pl-11 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
               />
             </div>
-            <select className="input sm:w-44" value={filterAgente}
-              onChange={(e) => setFilterAgente(e.target.value)}>
-              <option value="ALL">Tutti gli agenti</option>
+            <select className="input sm:w-44" value={filterAssegnatario}
+              onChange={(e) => setFilterAssegnatario(e.target.value)}>
+              <option value="ALL">Tutti gli assegnatari</option>
               {agenti.map(a => (
                 <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
               ))}

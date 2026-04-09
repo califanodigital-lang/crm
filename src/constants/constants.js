@@ -69,14 +69,23 @@ export const TIER_OPTIONS = [
 
 // ── PIATTAFORME FEE ──────────────────────────────────────────
 export const PIATTAFORME_FEE_CONFIG = {
-  'YouTube':   [{ key: 'integrazione', label: 'Integrazione Video (€)' }],
-  'Instagram': [
-    { key: 'stories',   label: 'Stories (€)' },
-    { key: 'story_set', label: 'Story Set (€)' },
-    { key: 'post_reel', label: 'Post / Reel (€)' },
+  'YouTube':   [
+    { key: 'short_form', label: 'Short Form (€)' },
+    { key: 'long_form', label: 'Long Form (€)' }
   ],
-  'TikTok':  [{ key: 'video',        label: 'Video TikTok (€)' }],
-  'Twitch':  [{ key: 'logo_schermo', label: 'Logo Schermo + CTA (€)' }],
+  'Instagram': [
+    { key: 'short_form',   label: 'Short Form (€)' },
+    { key: 'story_set', label: 'Story Set (€)' },
+    { key: 'post', label: 'Post (€)' },
+  ],
+  'TikTok':  [
+    { key: 'short_form',        label: 'Short Form (€)' },
+    { key: 'story_set', label: 'Story Set (€)' }
+  ],
+  'Twitch':  [{ key: 'logo_schermo', label: 'Logo a Schermo + CTA (€)' }],
+  'Multipiattaforma': [
+    {key:'short_form', label: "Short Form - YouTube, Instagram e TikTok (€)"}
+  ]
 }
 
 // ── PRIORITÀ ─────────────────────────────────────────────────

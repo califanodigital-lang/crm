@@ -15,6 +15,7 @@ const DEFAULT_FORM = {
   feeContatto: 10,
   feeChiusura: 15,
   riceveFee: true,
+  fissoMensile: 0,
 }
 
 export default function UsersPage() {
@@ -69,6 +70,7 @@ export default function UsersPage() {
       feeContatto: user.feeContatto ?? 10,
       feeChiusura: user.feeChiusura ?? 15,
       riceveFee: user.riceveFee !== false,
+      fissoMensile: user.fissoMensile || 0,
     })
     setEditingUser(user)
     setShowForm(true)
@@ -275,6 +277,19 @@ export default function UsersPage() {
         <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-gray-700">Commissioni</p>
+            <div className="mb-4 pb-4 border-b border-gray-200">
+              <label className="label">Fisso Mensile (€)</label>
+              <input
+                type="number"
+                step="50"
+                min="0"
+                className="input"
+                value={formData.fissoMensile}
+                onChange={(e) => setFormData({...formData, fissoMensile: parseFloat(e.target.value || 0)})}
+                placeholder="0 = nessun fisso"
+              />
+              <p className="text-xs text-gray-400 mt-1">Importo fisso mensile indipendente dalle fee</p>
+            </div>
             <label className="flex items-center gap-2 cursor-pointer">
               <span className="text-sm text-gray-600">Riceve fee</span>
               <div className="relative">
@@ -381,6 +396,7 @@ export default function UsersPage() {
               <th className="text-left py-3 px-4">Ruolo</th>
               <th className="text-left py-3 px-4">Stato</th>
               <th className="text-left py-3 px-4">Fee</th>
+              <th className="text-left py-3 px-4">Fisso</th>
               <th className="text-right py-3 px-4">Azioni</th>
             </tr>
           </thead>
@@ -409,6 +425,9 @@ export default function UsersPage() {
                   >
                     {u.attivo ? 'Attivo' : 'Disattivo'}
                   </span>
+                </td>
+                <td className="py-3 px-4 text-sm">
+                  {u.fissoMensile > 0 ? `€${u.fissoMensile.toLocaleString()}` : <span className="text-gray-300">—</span>}
                 </td>
                 <td className="py-3 px-4">
                   {u.riceveFee !== false ? (

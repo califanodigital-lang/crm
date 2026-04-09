@@ -2,10 +2,10 @@
 import { supabase } from '../lib/supabase'
 
 // KPI Globali
-export const getGlobalStats = async () => {
+export const getGlobalStats = async (mese) => {
   try {
     const now = new Date()
-    const meseCorrente = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const meseCorrente = mese || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
     const [brandsRes, creatorsRes, collabsRes, revenueRes, brandContattatoRes] = await Promise.all([
       supabase.from('brands').select('id', { count: 'exact' }),
@@ -73,7 +73,7 @@ export const getTopCreators = async () => {
 }
 
   // Revenue ultimi 6 mesi (per grafico)
-  export const getRevenueChart = async () => {
+  export const getRevenueChart = async (mese) => {
     try {
       const { data, error } = await supabase
         .from('revenue_mensile')

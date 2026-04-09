@@ -14,6 +14,7 @@ const toCamelCase = (profile) => {
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
     riceveFee: profile.riceve_fee ?? true,
+    fissoMensile: parseFloat(profile.fisso_mensile || 0),
   }
 }
 
@@ -27,6 +28,7 @@ const toSnakeCase = (profile) => {
     fee_contatto: profile.feeContatto ?? 10,
     fee_chiusura: profile.feeChiusura ?? 15,
     riceve_fee: profile.riceveFee ?? true,
+    fisso_mensile: profile.fissoMensile || 0,
   }
 }
 

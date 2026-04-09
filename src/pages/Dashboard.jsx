@@ -4,6 +4,7 @@ import { getAgentStats, getAgentCollaborations } from '../services/agentService'
 import { TrendingUp, Award, Target, DollarSign, Briefcase, Users, Handshake } from 'lucide-react'
 import { getGlobalStats, getTopCreators, getRevenueChart, getProposteStats } from '../services/dashboardService'
 import { APP_VERSION, CHANGELOG } from '../constants/changelog'
+import { getPagamentiByAgente } from '../services/pagamentiAgentiService'
 
 function ChangelogCard() {
   const latest = CHANGELOG[0]
@@ -55,6 +56,7 @@ export default function Dashboard() {
   const [revenueChart, setRevenueChart] = useState([])
   const [proposteStats, setProposteStats] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
+  const [pagamentoMese, setPagamentoMese] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -71,12 +73,15 @@ export default function Dashboard() {
       ])
       setAgentStats(statsRes.data)
       setAgentCollabs(collabsRes.data || [])
+      const { data: pags } = await getPagamentiByAgente(userProfile.agenteNome)
+      const meseCorrente = new Date().toISOString().slice(0, 7)
+      setPagamentoMese(pags?.find(p => p.mese === meseCorrente) || null)
     } else if (userProfile?.role === 'ADMIN') {
       // Admin: carica stats globali
       const [global, top, chart, proposte] = await Promise.all([
-        getGlobalStats(),
+        getGlobalStats(selectedMonth),
         getTopCreators(),
-        getRevenueChart(),
+        getRevenueChart(selectedMonth),
         getProposteStats()
       ])
       
@@ -155,6 +160,30 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {pagamentoMese && (
+          <div className="card bg-gradient-to-r from-gray-50 to-gray-100 mb-6">
+            <p className="text-sm font-bold text-gray-700 mb-3">Stipendio Fisso — {pagamentoMese.mese}</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <p className="text-lg font-bold text-gray-900">€{pagamentoMese.importoFisso.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">Fisso mese</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-green-600">€{pagamentoMese.importoPagato.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">Ricevuto</p>
+              </div>
+              <div className="text-center">
+                {pagamentoMese.differenza > 0
+                  ? <><p className="text-lg font-bold text-red-500">-€{pagamentoMese.differenza.toLocaleString()}</p>
+                      <p className="text-xs text-gray-400">Da ricevere</p></>
+                  : <><p className="text-lg font-bold text-green-600">✓ Saldato</p>
+                      <p className="text-xs text-gray-400">Mese completo</p></>
+                }
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Commissioni Card Grande */}
         <div className="card mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100">
           <div className="flex items-center justify-between">
@@ -213,6 +242,18 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
           <p className="text-gray-600 mt-1">Panoramica generale</p>
         </div>
+
+      <div className="flex justify-end mb-6">
+        <div>
+          <label className="label">Mese di riferimento</label>
+          <input
+            type="month"
+            className="input"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+          />
+        </div>
+      </div>
 
         {/* Stats Cards Admin */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -278,7 +319,7 @@ export default function Dashboard() {
               <p className="text-xs text-purple-500 mt-1">Firmato → Attesa Pagamento</p>
             </div>
             <div className="card bg-green-50 border-green-100">
-              <p className="text-sm font-medium text-green-700 mb-2">Revenue Mese Corrente</p>
+              <p className="text-sm font-medium text-green-700 mb-2">Revenue — {selectedMonth}</p>
               <p className="text-3xl font-bold text-green-900">€{(globalStats?.monthlyRevenue || 0).toLocaleString()}</p>
             </div>
           </div>

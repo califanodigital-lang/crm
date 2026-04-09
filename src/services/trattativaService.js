@@ -57,6 +57,8 @@ const toCamelCase = (t) => {
     settore: t.settore,
     priorita: t.priorita,
     stato: t.stato || 'RICERCA_COMPLETATA',
+    assegnatario: t.assegnatario || [],
+    creatoDa: t.creato_da,
 
     // Responsabili
     sales: t.sales,
@@ -136,6 +138,7 @@ const toSnakeCase = (t) => ({
   call_fissata: !!t.callFissata,
   data_call: cleanValue(t.dataCall),
   crea_brand_automaticamente: t.creaBrandAutomaticamente ?? true,
+  assegnatario: t.assegnatario || [],
 })
 
 // ── CRUD ─────────────────────────────────────────────────────

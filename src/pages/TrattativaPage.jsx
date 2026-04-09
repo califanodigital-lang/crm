@@ -107,8 +107,8 @@ const creatorNomi = (
 
       {/* Creator */}
       <td className="py-3 px-4">
-        <div className="flex flex-wrap gap-1">
-          <td className="py-3 px-4 text-xs text-gray-400">{isStatoSuggerito ? "Creator suggeriti:" : "Creator scelto dal brand:"}</td>
+        <div className="flex flex-wrap gap-1 items-center">
+          <span className="text-xs text-gray-400 mr-1">{isStatoSuggerito ? "Suggeriti:" : "Scelti:"}</span>
           {creatorNomi.slice(0, 2).map(n => (
             <span key={n} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{n}</span>
           ))}
@@ -119,9 +119,15 @@ const creatorNomi = (
         </div>
       </td>
 
-      {/* IMA */}
+      {/* ASSEGNATARIO */}
       <td className="py-3 px-4">
-        <span className="text-sm text-gray-600">{trattativa.ima || '—'}</span>
+        <div className="flex flex-wrap gap-1">
+          {(trattativa.assegnatario || []).length > 0
+            ? (trattativa.assegnatario || []).map(a => (
+                <span key={a} className="px-2 py-0.5 bg-yellow-50 text-yellow-800 rounded-full text-xs font-medium">{a}</span>
+              ))
+            : <span className="text-gray-300 text-sm">—</span>}
+        </div>
       </td>
 
       {/* Stato — inline dropdown */}
@@ -249,7 +255,7 @@ export default function TrattativaPage() {
   const [selected, setSelected] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStato, setFilterStato] = useState('ALL')
-  const [filterIma, setFilterIma] = useState('ALL')
+  const [filterAssegnatario, setFilterAssegnatario] = useState('ALL')
   const [mostraArchiviati, setMostraArchiviati] = useState(false)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({})
@@ -262,7 +268,7 @@ export default function TrattativaPage() {
 
   useEffect(() => {
     if (isAgent && userProfile?.agenteNome) {
-      setFilterIma(userProfile.agenteNome)
+      setFilterAssegnatario(userProfile.agenteNome)
     }
   }, [isAgent, userProfile])
 
@@ -357,11 +363,9 @@ export default function TrattativaPage() {
       t.settore?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.ima?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchStato = filterStato === 'ALL' || t.stato === filterStato
-    const matchIma = filterIma === 'ALL' ||
-      t.ima === filterIma ||
-      t.sales === filterIma ||
-      t.senior === filterIma
-    return matchSearch && matchStato && matchIma
+    const matchAssegnatario = filterAssegnatario === 'ALL' || (t.assegnatario || []).includes(filterAssegnatario)
+
+    return matchSearch && matchStato && matchAssegnatario
   })
 
   // ── FORM VIEW ──
@@ -432,8 +436,8 @@ export default function TrattativaPage() {
           <option value="ALL">Tutti gli stati</option>
           {STATI_TRATTATIVA.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
-        <select className="input sm:w-44" value={filterIma} onChange={(e) => setFilterIma(e.target.value)}>
-          <option value="ALL">Tutti gli IMA</option>
+        <select className="input sm:w-44" value={filterAssegnatario} onChange={(e) => setFilterAssegnatario(e.target.value)}>
+          <option value="ALL">Tutti gli assegnatari</option>
           {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
         </select>
         <button
@@ -470,7 +474,7 @@ export default function TrattativaPage() {
               <tr className="border-b border-gray-200 bg-gray-50/50">
                 <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Brand</th>
                 <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Creator</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">IMA</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Assegnatario</th>
                 <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stato</th>
                 <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Priorità</th>
                 <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>

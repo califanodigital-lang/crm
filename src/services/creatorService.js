@@ -74,7 +74,7 @@ export const getAllCreators = async () => {
     const { data, error } = await supabase
       .from('creators')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('nome', { ascending: true })
 
     if (error) throw error
     return { data: data.map(toCamelCase), error: null }
@@ -159,7 +159,7 @@ export const searchCreators = async (searchTerm) => {
       .from('creators')
       .select('*')
       .or(`nome.ilike.%${searchTerm}%,nome_completo.ilike.%${searchTerm}%`)
-      .order('created_at', { ascending: false })
+      .order('nome', { ascending: true })
 
     if (error) throw error
     return { data: data.map(toCamelCase), error: null }

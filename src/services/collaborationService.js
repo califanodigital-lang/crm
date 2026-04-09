@@ -136,6 +136,8 @@ const toCamelCase = (collab) => {
     feeSeniorCalc: collab.fee_senior_calc,
     dataPagamentoCreator: collab.data_pagamento_creator,
     dataPagamentoAgency: collab.data_pagamento_agency,
+    assegnatario: collab.assegnatario || [],
+    creatoDa: collab.creato_da,
   }
 }
 
@@ -165,6 +167,9 @@ const toSnakeCase = (collab) => {
     fee_senior_calc: collab.feeSeniorCalc || 0,
     data_pagamento_creator: cleanValue(collab.dataPagamentoCreator),
     data_pagamento_agency: collab.pagato_agency ? cleanValue(collab.dataPagamentoAgency) : null,
+    assegnatario: collab.assegnatario || [],
+    creato_da: cleanValue(collab.creatoDa),
+
   }
 }
 
