@@ -34,7 +34,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const [agenti, setAgenti] = useState([])
   const { userProfile } = useAuth()
   const isAdmin = userProfile?.role === 'ADMIN'
-  const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
+  const puo_modificare_assegnatario = isAdmin || !collaboration || collaboration.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
       loadAgenti()

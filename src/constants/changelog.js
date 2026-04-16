@@ -1,6 +1,13 @@
-export const APP_VERSION = 'v0.12.0-beta'
+export const APP_VERSION = 'v0.12.1-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.12.1-beta',
+    date: '2026-04-16',
+    items: [
+      'Patch breaking bug - Agenti che entravano in collab facevano crashare il CRM.'
+    ]
+  },
   {
     version: 'v0.12.0-beta',
     date: '2026-04-09',
