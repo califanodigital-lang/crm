@@ -20,7 +20,7 @@ function ChangelogCard() {
           </p>
         </div>
         <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold">
-          {latest.date}
+          {formatDate(latest.date)}
         </span>
       </div>
 
