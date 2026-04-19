@@ -23,6 +23,8 @@ const toCamelCase = (p) => {
     note: p.note,
     dataInizioPartecipazione: p.data_inizio_partecipazione,
     dataFinePartecipazione: p.data_fine_partecipazione,
+    pagato: p.pagato,
+    pagato_agency: p.pagato_agency,
   }
 }
 
@@ -43,6 +45,8 @@ const toSnakeCase = (p) => ({
   note: cleanValue(p.note),
   data_inizio_partecipazione: cleanValue(p.dataInizioPartecipazione),
   data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),
+  pagato: p.pagato || false,
+  pagato_agency: p.pagato_agency || false,
 })
 
 // GET: Partecipazioni per evento

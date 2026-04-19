@@ -111,6 +111,8 @@ export const saveCreatorPiattaforme = async (creatorId, piattaforme) => {
         tier: p.tier || null,
         fees: p.fees || {},
         note: p.note || null,
+        link_canale: p.link || null,
+        iscritti: p.iscritti ? parseInt(p.iscritti) : null,
       }))
       const { error: insertError } = await supabase
         .from('creator_piattaforme')

@@ -7,6 +7,7 @@ import { saveCreatorPiattaforme } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { TIPO_CONTRATTO, CLUSTER, REGIONI } from '../constants/constants'
+import {formatDate} from '../utils/date'
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState([])
@@ -102,12 +103,31 @@ export default function CreatorsPage() {
     setSelectedCreator(null)
   }
 
+  const getTipoContrattoName = (t) => {
+    let label = null
+    for(let v = 0; v < TIPO_CONTRATTO.length; v++) {
+      let ct = TIPO_CONTRATTO[v]
+      if(ct.value === t) {
+        label = ct.label
+        break
+      }
+    }
+    return label
+  }
+
+  const formatIscritti = (n) => {
+    if (!n) return '-'
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
+    if (n >= 1000) return `${(n / 1000).toFixed(0)}K`
+    return n.toString()
+  }
+
   const filteredCreators = creators.filter(c => {
     const matchesSearch = c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.nomeCompleto && c.nomeCompleto.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesRegione  = filterRegione === 'ALL' || c.tier === filterRegione
-    const matchesCluster  = filterCluster === 'ALL' || c.tier === filterCluster
-    const matchesTipoContratto  = filterTipoContratto === 'ALL' || c.tier === filterTipoContratto
+    const matchesRegione = filterRegione === 'ALL' || (c.regioni || []).includes(filterRegione)
+    const matchesCluster = filterCluster === 'ALL' || (c.cluster || []).includes(filterCluster)
+    const matchesTipoContratto = filterTipoContratto === 'ALL' || c.tipoContratto === filterTipoContratto
     return matchesSearch && matchesRegione && matchesCluster && matchesTipoContratto
   })
 
@@ -220,6 +240,7 @@ export default function CreatorsPage() {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo di Contratto</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Tier</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Scadenza del contratto</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Regione</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Cluster</th>
@@ -229,9 +250,21 @@ export default function CreatorsPage() {
                   {filteredCreators.map((creator) => (
                     <tr key={creator.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{creator.nome}</td>
-                      <td className="py-3 px-4 text-gray-600">{creator.tipoContratto || '-'}</td>
-                      <td className="py-3 px-4 text-gray-600">{creator.fee || '-'}</td>
-                      <td className="py-3 px-4 text-gray-600">{creator.scadenzaContratto || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{getTipoContrattoName(creator.tipoContratto) || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{creator.fee + "%" || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600 font-medium">
+                        {creator.iscrittiMax ? (
+                          <span className="flex items-center gap-1">
+                            {formatIscritti(creator.iscrittiMax)}
+                            {creator.tier && (
+                              <TierBadge tier={creator.tier} />
+                            )}
+                          </span>
+                        ) : (
+                          creator.tier ? <TierBadge tier={creator.tier} /> : <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">{formatDate(creator.scadenzaContratto) || '-'}</td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {(creator.regioni || []).slice(0, 2).map(r => (

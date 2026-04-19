@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Calendar, Plus } from 'lucide-react'
 import {
   getAgendaItems,
   getCreatorAvailabilityForEventDay,
@@ -9,6 +9,10 @@ import {
   itemTypeLabel,
   isToday
 } from '../services/agendaService'
+import { creaPromemoria } from '../services/agendaService'
+import { useAuth } from '../contexts/AuthContext'
+import {formatDate} from '../utils/date'
+
 
 const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1)
 const dateKey = (date) => {
@@ -25,6 +29,10 @@ export default function AgendaPage() {
   const [availability, setAvailability] = useState({})
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(dateKey(new Date()))
+  const [showPromemoriaForm, setShowPromemoriaForm] = useState(false)
+  const [promoForm, setPromoForm] = useState({ titolo: '', data: '' })
+    const { userProfile } = useAuth()
+
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +54,19 @@ export default function AgendaPage() {
     load()
   }, [])
 
+  const handleAddPromemoria = async () => {
+    if (!promoForm.titolo || !promoForm.data) return
+    await creaPromemoria({
+      titolo: promoForm.titolo,
+      data: promoForm.data,
+      creatoDa: userProfile?.nomeCompleto || userProfile?.agenteNome || 'Utente',
+    })
+    setPromoForm({ titolo: '', data: '' })
+    setShowPromemoriaForm(false)
+    loadData()
+  }
+
+
   const grouped = useMemo(() => groupAgendaItemsByDate(items), [items])
   const matrix = useMemo(() => buildMonthMatrix(currentMonth), [currentMonth])
 
@@ -66,10 +87,39 @@ export default function AgendaPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <CalendarDays className="w-7 h-7 text-yellow-500" />
-        <h1 className="text-3xl font-bold text-gray-900">Agenda Operativa</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <Calendar className="w-6 h-6 text-yellow-500" /> Agenda Operativa
+        </h1>
+        <button onClick={() => setShowPromemoriaForm(v => !v)}
+          className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm hover:bg-yellow-500">
+          <Plus className="w-4 h-4" /> Promemoria
+        </button>
       </div>
+
+      {showPromemoriaForm && (
+        <div className="card mb-4 flex items-end gap-3">
+          <div className="flex-1">
+            <label className="label">Titolo promemoria</label>
+            <input className="input" value={promoForm.titolo}
+              onChange={(e) => setPromoForm(p => ({...p, titolo: e.target.value}))}
+              placeholder="Es. Chiamata con cliente..." />
+          </div>
+          <div>
+            <label className="label">Data</label>
+            <input type="date" className="input" value={promoForm.data}
+              onChange={(e) => setPromoForm(p => ({...p, data: e.target.value}))} />
+          </div>
+          <button onClick={handleAddPromemoria}
+            className="px-4 py-2 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-700">
+            Aggiungi
+          </button>
+          <button onClick={() => setShowPromemoriaForm(false)}
+            className="px-3 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
         <div className="card">
@@ -154,7 +204,7 @@ export default function AgendaPage() {
 
         <div className="card">
           <h2 className="text-lg font-bold text-gray-900 mb-1">Dettaglio giorno</h2>
-          <p className="text-sm text-gray-500 mb-4">{selectedDate}</p>
+          <p className="text-sm text-gray-500 mb-4">{formatDate(selectedDate)}</p>
 
           {selectedItems.length === 0 ? (
             <p className="text-sm text-gray-400">Nessun impegno in questa data.</p>

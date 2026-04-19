@@ -43,13 +43,19 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     setFormData({ ...formData, categorie: formData.categorie.filter((_, i) => i !== index) })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    const ok = await confirm('Salvare le modifiche al brand?', {
+      title: 'Conferma salvataggio', confirmLabel: 'Salva'
+    })
+    if (!ok) return
     onSave(formData)
   }
 
   return (
-  <form onSubmit={handleSubmit} className="space-y-0">
+  <form onSubmit={handleSubmit} 
+  onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}
+  className="space-y-0">
     {/* ── ANAGRAFICA ── */}
     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
       <div className="md:col-span-2">

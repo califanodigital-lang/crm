@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
+import { getAllCreators } from '../services/creatorService'
 import CreatorMultiSelect from './CreatorMultiSelect'
 import {
   STATI_TRATTATIVA,
@@ -89,7 +90,8 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
     sitoWeb: '',
     canaleContatto: '',
     dataContatto: '',
-    contattatoPer: '',
+    contattatoPerCreator: '',
+    contattatoPerTipo: '',
     risposta: '',
     dataFollowup1: '',
     dataFollowup2: '',
@@ -107,14 +109,19 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
     creaBrandAutomaticamente: true,
     assegnatario: [],
     creatoDa: '',
+    feeCreatorMap: {},
+    linkVideoSorgente: '',
+    creatorSorgente: '',
   })
 
   const [agenti, setAgenti] = useState([])
+  const [creators, setCreators] = useState([])
   const { userProfile } = useAuth()
   const isAdmin = userProfile?.role === 'ADMIN'
   const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
 
   useEffect(() => { loadAgenti() }, [])
+  useEffect(() => { getAllCreators().then(({ data }) => setCreators(data || [])) }, [])
 
 useEffect(() => {
   // Se è una nuova trattativa, pre-imposta creatoDa e assegnatario
@@ -147,7 +154,8 @@ useEffect(() => {
     sitoWeb: trattativa.sitoWeb ?? '',
     canaleContatto: trattativa.canaleContatto ?? '',
     dataContatto: trattativa.dataContatto ?? '',
-    contattatoPer: trattativa.contattatoPer ?? '',
+    contattatoPerCreator: trattativa.contattatoPerCreator ?? '',
+    contattatoPerTipo: trattativa.contattatoPerTipo ?? '',
     risposta: trattativa.risposta ?? '',
     dataFollowup1: trattativa.dataFollowup1 ?? '',
     dataFollowup2: trattativa.dataFollowup2 ?? '',
@@ -165,6 +173,9 @@ useEffect(() => {
     creaBrandAutomaticamente: trattativa.creaBrandAutomaticamente ?? true,
     assegnatario: trattativa.assegnatario || [],
     creatoDa: trattativa.creatoDa ?? '',
+    feeCreatorMap: trattativa.feeCreatorMap ?? {},
+    linkVideoSorgente: trattativa.linkVideoSorgente ?? '',
+    creatorSorgente: trattativa.creatorSorgente ?? '',
   }))
 }, [trattativa])
 
@@ -175,8 +186,12 @@ useEffect(() => {
 
   const S = (field, val) => setFormData(prev => ({ ...prev, [field]: val }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    const ok = await confirm('Salvare le modifiche alla trattativa?', {
+      title: 'Conferma salvataggio', confirmLabel: 'Salva'
+    })
+    if (!ok) return
     onSave(formData)
   }
 
@@ -242,7 +257,9 @@ useEffect(() => {
   const statoConfig = getStatoTrattativa(formData.stato)
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-0">
+    <form onSubmit={handleSubmit} 
+    onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}
+    className="space-y-0">
 
       {/* ── BASE ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
@@ -330,10 +347,20 @@ useEffect(() => {
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-center gap-2 flex-wrap">
             <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statoConfig.color}`}>
               {statoConfig.label}
             </span>
+            {formData.stato === 'CONTRATTO_FIRMATO' && (formData.creatorConfermati || []).length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
+                ✓ Pronto per creare collaborazione
+              </span>
+            )}
+            {formData.stato !== 'CONTRATTO_FIRMATO' && (
+              <span className="text-xs text-gray-400">
+                → Contratto Firmato + creator confermati per creare la collab
+              </span>
+            )}
           </div>
         </div>
 
@@ -355,6 +382,18 @@ useEffect(() => {
           />
         </div>
 
+        <div>
+          <label className="label">Link video sorgente</label>
+          <input type="url" className="input" value={formData.linkVideoSorgente || ''}
+            onChange={(e) => S('linkVideoSorgente', e.target.value)}
+            placeholder="https://youtube.com/... (video da cui è stato trovato il brand)" />
+        </div>
+        <div>
+          <label className="label">Creator sorgente</label>
+          <input className="input" value={formData.creatorSorgente || ''}
+            onChange={(e) => S('creatorSorgente', e.target.value)}
+            placeholder="Nome del creator (non nostro) dal cui contenuto è stato trovato il brand" />
+        </div>
         <div className="md:col-span-2">
           <label className="label">Note strategiche</label>
           <input className="input" value={formData.noteStrategiche}
@@ -448,13 +487,28 @@ useEffect(() => {
             {CANALI_CONTATTO.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
-        <div>
-          <label className="label">Contattato per</label>
-          <select className="input" value={formData.contattatoPer}
-            onChange={(e) => S('contattatoPer', e.target.value)}>
-            <option value="">Tipo ADV...</option>
-            {CONTATTATO_PER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        <div className="md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Contattato per — Creator</label>
+              <select className="input" value={formData.contattatoPerCreator}
+                onChange={(e) => S('contattatoPerCreator', e.target.value)}>
+                <option value="">Seleziona creator...</option>
+                {(formData.creatorSuggeriti || []).map(id => {
+                  const c = creators.find(cr => cr.id === id)
+                  return c ? <option key={id} value={id}>{c.nome}</option> : null
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="label">Tipo attività</label>
+              <select className="input" value={formData.contattatoPerTipo}
+                onChange={(e) => S('contattatoPerTipo', e.target.value)}>
+                <option value="">Tipo ADV...</option>
+                {CONTATTATO_PER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         <div>
           <label className="label">Risposta ricevuta</label>
@@ -573,15 +627,48 @@ useEffect(() => {
           <p className="text-xs text-gray-400 mt-1">Link Drive, OneDrive o altro cloud</p>
         </div>
         <div className="md:col-span-2">
-          <label className="label">Creator confermati per questo preventivo</label>
+          <label className="label flex items-center gap-2">
+            Creator confermati per questo preventivo
+            {(formData.creatorConfermati || []).length === 0 && (
+              <span className="text-xs font-normal text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full border border-yellow-200">
+                richiesto per creare collab
+              </span>
+            )}
+            {(formData.creatorConfermati || []).length > 0 && (
+              <span className="text-xs font-normal text-green-600">✓ {(formData.creatorConfermati || []).length} confermato/i</span>
+            )}
+          </label>
           <CreatorMultiSelect
             selectedIds={formData.creatorConfermati || []}
             onChange={(ids) => S('creatorConfermati', ids)}
           />
-          <p className="text-xs text-gray-400 mt-1">
-            Diventeranno il team della collaborazione quando si firma il contratto
-          </p>
         </div>
+        {(formData.creatorConfermati || []).length > 0 && (
+          <div className="md:col-span-2">
+            <label className="label">Fee per creator (€)</label>
+            <div className="space-y-2 mt-1">
+              {(formData.creatorConfermati || []).map(id => {
+                const creator = creators.find(c => c.id === id)
+                return (
+                  <div key={id} className="flex items-center gap-3">
+                    <span className="text-sm text-gray-700 w-40 truncate">{creator?.nome || id}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="input w-36"
+                      value={formData.feeCreatorMap?.[id] ?? ''}
+                      onChange={(e) => S('feeCreatorMap', { ...(formData.feeCreatorMap || {}), [id]: e.target.value })}
+                      placeholder="€ fee"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Fee individuale per ogni creator — verrà usata come "Pagamento" nella collaborazione
+            </p>
+          </div>
+        )}
       </FormSection>
 
       {/* ── BOTTONI ── */}

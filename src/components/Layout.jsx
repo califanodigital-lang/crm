@@ -21,13 +21,13 @@ const NAV_GROUPS = [
       { name: 'Creators',         href: '/creators',      icon: Users },
       { name: 'Trattative',        href: '/trattativa',      icon: Target },
       { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
+      { name: 'Fiere & Eventi',  href: '/eventi',    icon: Calendar }
     ]
   },
   {
     label: 'Amministrazione',
     adminOnly: true,
     items: [
-      { name: 'Fiere & Eventi',  href: '/eventi',    icon: Calendar },
       { name: 'Finance',          href: '/finance',  icon: DollarSign },
       { name: 'Dashboard Agenti', href: '/agenti',   icon: BarChart3 },
       { name: 'Utenti',           href: '/users',    icon: Users },
@@ -76,7 +76,7 @@ function SidebarContent({ onClose }) {
       <div className="flex items-center justify-between h-20 px-4 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/20">
-            <span className="text-sm font-black text-gray-900">C3</span>
+            <img src="/icon.svg" alt="C3 logo" className="w-8 h-8" />
           </div>
           <div>
             <p className="text-sm font-bold text-white leading-none">C3 Agency</p>

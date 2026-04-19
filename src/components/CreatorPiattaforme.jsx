@@ -3,8 +3,18 @@ import { Plus, Trash2 } from 'lucide-react'
 import { PIATTAFORME_FEE_CONFIG, TIER_OPTIONS } from '../constants/constants'
 
 // piattaforme: array di { nome } dal DB
-// value: array di { nome, tier, fees: {}, note }
+// value: array di { nome, tier, fees: {}, note, link, iscritti }
 // onChange: callback con il nuovo array aggiornato
+
+const calcolaTierDaIscritti = (n) => {
+  if (!n || n <= 0) return ''
+  if (n >= 3000000) return 'CELEBRITY'
+  if (n >= 500000) return 'MEGA'
+  if (n >= 150000) return 'MACRO'
+  if (n >= 50000) return 'MID'
+  if (n >= 10000) return 'MICRO'
+  return 'NANO'
+}
 
 export default function CreatorPiattaforme({ piattaforme = [], value = [], onChange }) {
   const [nuovaNome, setNuovaNome] = useState('')
@@ -15,7 +25,7 @@ export default function CreatorPiattaforme({ piattaforme = [], value = [], onCha
 
   const handleAdd = () => {
     if (!nuovaNome) return
-    onChange([...value, { nome: nuovaNome, tier: '', fees: {}, note: '' }])
+    onChange([...value, { nome: nuovaNome, tier: '', fees: {}, note: '', link: '', iscritti: '' }])
     setNuovaNome('')
   }
 
@@ -26,6 +36,14 @@ export default function CreatorPiattaforme({ piattaforme = [], value = [], onCha
   const handleUpdate = (nome, field, val) => {
     onChange(value.map(v =>
       v.nome === nome ? { ...v, [field]: val } : v
+    ))
+  }
+
+  const handleIscrittiChange = (nome, val) => {
+    const n = parseInt(val) || 0
+    const tierCalcolato = calcolaTierDaIscritti(n)
+    onChange(value.map(v =>
+      v.nome === nome ? { ...v, iscritti: val, tier: tierCalcolato || v.tier } : v
     ))
   }
 
@@ -66,6 +84,35 @@ export default function CreatorPiattaforme({ piattaforme = [], value = [], onCha
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Link canale */}
+              <div>
+                <label className="label text-xs">Link canale</label>
+                <input
+                  type="url"
+                  className="input"
+                  value={p.link || ''}
+                  onChange={(e) => handleUpdate(p.nome, 'link', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+
+              {/* Iscritti/Follower */}
+              <div>
+                <label className="label text-xs">Iscritti / Follower</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={p.iscritti || ''}
+                  onChange={(e) => handleIscrittiChange(p.nome, e.target.value)}
+                  placeholder="es. 150000"
+                />
+                {p.iscritti > 0 && (
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    → Tier auto: {calcolaTierDaIscritti(parseInt(p.iscritti))}
+                  </p>
+                )}
+              </div>
+
               {/* Tier */}
               <div>
                 <label className="label text-xs">Tier</label>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Plus, Search, Edit, Trash2, List, LayoutGrid,
-  ChevronDown, Archive, ArrowRight, AlertCircle,
+  ChevronDown, ChevronUp, ChevronsUpDown, Archive, ArrowRight, AlertCircle,
   TrendingUp, Clock, CheckCircle2, Handshake
 } from 'lucide-react'
 import TrattativaForm from '../components/TrattativaForm'
@@ -21,7 +21,6 @@ import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import {
   STATI_TRATTATIVA,
-  STATI_TRATTATIVA_ATTIVI,
   getStatoTrattativa,
   PRIORITA_OPTIONS,
 } from '../constants/constants'
@@ -29,6 +28,11 @@ import { getAllBrands } from '../services/brandService'
 import { useAuth } from '../contexts/AuthContext'
 
 
+
+// Stati che spostano la trattativa in archivio (usato in più punti)
+const STATI_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO', 'COLLAB_GENERATA']
+
+const PRIORITA_ORDER = { URGENTE: 0, ALTA: 1, NORMALE: 2, BASSA: 3 }
 
 // ── Badge stato con dropdown inline ──────────────────────────
 function StatoBadgeInline({ trattativa, onUpdate }) {
@@ -58,20 +62,26 @@ function StatoBadgeInline({ trattativa, onUpdate }) {
         <ChevronDown className="w-3 h-3 opacity-60" />
       </button>
       {open && (
-        <div className="absolute left-0 top-8 z-50 w-52 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-          {STATI_TRATTATIVA.map(s => (
-            <button
-              key={s.value}
-              onClick={() => handleChange(s.value)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 transition-colors text-left ${
-                s.value === trattativa.stato ? 'bg-gray-50 font-bold' : ''
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`} />
-              {s.label}
-              {s.value === trattativa.stato && <CheckCircle2 className="w-3 h-3 ml-auto text-gray-400" />}
-            </button>
-          ))}
+        <div className="absolute left-0 top-8 z-50 w-60 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+          {STATI_TRATTATIVA.map(s => {
+            const vaInArchivio = STATI_CHIUSI.includes(s.value)
+            return (
+              <button
+                key={s.value}
+                onClick={() => handleChange(s.value)}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-gray-50 transition-colors text-left ${
+                  s.value === trattativa.stato ? 'bg-gray-50 font-bold' : ''
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`} />
+                <span className="flex-1">{s.label}</span>
+                {vaInArchivio && (
+                  <span className="text-gray-400 text-[10px] flex-shrink-0">→ Chiuse</span>
+                )}
+                {s.value === trattativa.stato && <CheckCircle2 className="w-3 h-3 text-gray-400 flex-shrink-0" />}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -263,6 +273,8 @@ export default function TrattativaPage() {
   const [creators, setCreators] = useState([])
   const [draggedId, setDraggedId] = useState(null)
   const [brands, setBrands] = useState([])
+  const [sortField, setSortField] = useState('priorita')
+  const [sortDir, setSortDir] = useState('asc')
   const { userProfile } = useAuth()
   const isAgent = userProfile?.role === 'AGENT'
 
@@ -342,6 +354,7 @@ export default function TrattativaPage() {
     else {
       const count = Array.isArray(data) ? data.length : 1
       toast.success(`${count} collaborazione/i create — vai su Collaborazioni per completarle`)
+      await handleStatoChange(trattativa.id, 'COLLAB_GENERATA')
     }
     setLoading(false)
   }
@@ -355,17 +368,42 @@ export default function TrattativaPage() {
     setDraggedId(null)
   }
 
-  // Filtro
-  const ARCHIVIATI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO']
+  // Filtro — esclusivo: attive OPPURE chiuse, mai entrambe insieme
   const filtered = trattative.filter(t => {
-    if (!mostraArchiviati && ARCHIVIATI.includes(t.stato)) return false
+    if (mostraArchiviati) {
+      if (!STATI_CHIUSI.includes(t.stato)) return false
+    } else {
+      if (STATI_CHIUSI.includes(t.stato)) return false
+    }
     const matchSearch = t.brandNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.settore?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.ima?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchStato = filterStato === 'ALL' || t.stato === filterStato
     const matchAssegnatario = filterAssegnatario === 'ALL' || (t.assegnatario || []).includes(filterAssegnatario)
-
     return matchSearch && matchStato && matchAssegnatario
+  })
+
+  const handleSort = (field) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
+  }
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    let cmp = 0
+    if (sortField === 'priorita') {
+      cmp = (PRIORITA_ORDER[a.priorita] ?? 2) - (PRIORITA_ORDER[b.priorita] ?? 2)
+    } else if (sortField === 'brand') {
+      cmp = (a.brandNome || '').localeCompare(b.brandNome || '')
+    } else if (sortField === 'stato') {
+      cmp = (a.stato || '').localeCompare(b.stato || '')
+    } else if (sortField === 'data') {
+      const da = a.dataContatto || a.createdAt || ''
+      const db = b.dataContatto || b.createdAt || ''
+      cmp = da.localeCompare(db)
+    } else if (sortField === 'assegnatario') {
+      cmp = ((a.assegnatario || [])[0] || '').localeCompare((b.assegnatario || [])[0] || '')
+    }
+    return sortDir === 'asc' ? cmp : -cmp
   })
 
   // ── FORM VIEW ──
@@ -441,7 +479,7 @@ export default function TrattativaPage() {
           {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
         </select>
         <button
-          onClick={() => setMostraArchiviati(v => !v)}
+          onClick={() => { setMostraArchiviati(v => !v); setFilterStato('ALL') }}
           className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${
             mostraArchiviati
               ? 'bg-gray-800 text-white border-gray-800'
@@ -449,17 +487,31 @@ export default function TrattativaPage() {
           }`}
         >
           <Archive className="w-4 h-4" />
-          {mostraArchiviati ? 'Nascondi archiviati' : 'Mostra archiviati'}
+          {mostraArchiviati ? 'Torna alle attive' : 'Trattative Chiuse'}
         </button>
       </div>
     </div>
   )
 
   // ── LISTA VIEW ──
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 opacity-40" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-yellow-500" />
+      : <ChevronDown className="w-3 h-3 text-yellow-500" />
+  }
+  const SortTh = ({ field, children }) => (
+    <th
+      className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800 transition-colors"
+      onClick={() => handleSort(field)}
+    >
+      <span className="flex items-center gap-1">{children}<SortIcon field={field} /></span>
+    </th>
+  )
+
   const ListView = () => (
-    
     <div className="card overflow-visible p-0">
-      {filtered.length === 0 ? (
+      {sortedFiltered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <AlertCircle className="w-10 h-10 text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium">Nessuna trattativa trovata</p>
@@ -468,85 +520,85 @@ export default function TrattativaPage() {
           </p>
         </div>
       ) : (
-       <div className="card overflow-visible p-0">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50/50">
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Brand</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Creator</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Assegnatario</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Stato</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Priorità</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Data</th>
-                <th className="py-3 px-4"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(t => (
-                <TrattativaRow
-                  key={t.id}
-                  trattativa={t}
-                  creators={creators}
-                  onEdit={(t) => { setSelected(t); setView('form') }}
-                  onDelete={handleDelete}
-                  onStatoChange={handleStatoChange}
-                  onCreaCollab={handleCreaCollab}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50/50">
+              <SortTh field="brand">Brand</SortTh>
+              <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Creator</th>
+              <SortTh field="assegnatario">Assegnatario</SortTh>
+              <SortTh field="stato">Stato</SortTh>
+              <SortTh field="priorita">Priorità</SortTh>
+              <SortTh field="data">Data</SortTh>
+              <th className="py-3 px-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedFiltered.map(t => (
+              <TrattativaRow
+                key={t.id}
+                trattativa={t}
+                creators={creators}
+                onEdit={(t) => { setSelected(t); setView('form') }}
+                onDelete={handleDelete}
+                onStatoChange={handleStatoChange}
+                onCreaCollab={handleCreaCollab}
+              />
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   )
 
   // ── KANBAN VIEW ──
   const KanbanView = () => {
-    const statiVisibili = mostraArchiviati ? STATI_TRATTATIVA : STATI_TRATTATIVA_ATTIVI
+    const statiVisibili = mostraArchiviati
+      ? STATI_TRATTATIVA.filter(s => STATI_CHIUSI.includes(s.value))
+      : STATI_TRATTATIVA.filter(s => !STATI_CHIUSI.includes(s.value))
     return (
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-3 min-w-max">
-          {statiVisibili.map(s => {
-            const cards = filtered.filter(t => t.stato === s.value)
-            const isOver = draggedId && trattative.find(t => t.id === draggedId)?.stato !== s.value
-            return (
-              <div key={s.value} className="w-64 flex-shrink-0"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => handleDrop(s.value)}>
-                <div className={`rounded-t-xl px-3 py-2.5 flex items-center justify-between ${s.color}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                    <span className="text-xs font-bold">{s.label}</span>
-                  </div>
-                  <span className="text-xs font-bold opacity-60">{cards.length}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {statiVisibili.map(s => {
+          const cards = filtered
+            .filter(t => t.stato === s.value)
+            .sort((a, b) => (PRIORITA_ORDER[a.priorita] ?? 2) - (PRIORITA_ORDER[b.priorita] ?? 2))
+          const isOver = draggedId && trattative.find(t => t.id === draggedId)?.stato !== s.value
+          return (
+            <div key={s.value}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => handleDrop(s.value)}>
+              <div className={`rounded-t-xl px-3 py-2.5 flex items-center justify-between ${s.color}`}>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`} />
+                  <span className="text-xs font-bold truncate">{s.label}</span>
                 </div>
-                <div className={`rounded-b-xl bg-gray-50 border border-t-0 border-gray-200 p-2 min-h-[400px] space-y-2 transition-colors ${
-                  isOver ? 'bg-yellow-50 border-yellow-300' : ''
-                }`}>
-                  {cards.map(t => (
-                    <div key={t.id} draggable
-                      onDragStart={() => handleDragStart(t.id)}>
-                      <KanbanCard
-                        trattativa={t}
-                        creators={creators}
-                        onEdit={(t) => { setSelected(t); setView('form') }}
-                        onDelete={handleDelete}
-                        onStatoChange={handleStatoChange}
-                        onCreaCollab={handleCreaCollab}
-                        isDragging={draggedId === t.id}
-                      />
-                    </div>
-                  ))}
-                  {cards.length === 0 && (
-                    <div className="flex items-center justify-center h-20 text-gray-300 text-xs">
-                      {isOver ? '↓ Rilascia qui' : 'Vuoto'}
-                    </div>
-                  )}
-                </div>
+                <span className="text-xs font-bold opacity-60 ml-1 flex-shrink-0">{cards.length}</span>
               </div>
-            )
-          })}
-        </div>
+              <div className={`rounded-b-xl bg-gray-50 border border-t-0 border-gray-200 p-2 space-y-2 overflow-y-auto max-h-[480px] min-h-[80px] transition-colors ${
+                isOver ? 'bg-yellow-50 border-yellow-300' : ''
+              }`}>
+                {cards.map(t => (
+                  <div key={t.id} draggable
+                    onDragStart={() => handleDragStart(t.id)}>
+                    <KanbanCard
+                      trattativa={t}
+                      creators={creators}
+                      onEdit={(t) => { setSelected(t); setView('form') }}
+                      onDelete={handleDelete}
+                      onStatoChange={handleStatoChange}
+                      onCreaCollab={handleCreaCollab}
+                      isDragging={draggedId === t.id}
+                    />
+                  </div>
+                ))}
+                {cards.length === 0 && (
+                  <div className="flex items-center justify-center h-16 text-gray-300 text-xs">
+                    {isOver ? '↓ Rilascia qui' : 'Vuoto'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -562,9 +614,13 @@ export default function TrattativaPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Trattative</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            {mostraArchiviati ? 'Trattative Chiuse' : 'Trattative'}
+          </h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            {stats.attive || 0} attive · {stats.totale || 0} totali
+            {mostraArchiviati
+              ? `${filtered.length} chiuse (contratto firmato, perse, senza risposta)`
+              : `${stats.attive || 0} attive · ${stats.totale || 0} totali`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -581,13 +637,15 @@ export default function TrattativaPage() {
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
-          <button
-            onClick={() => { setSelected(null); setView('form') }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm hover:bg-yellow-500 transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nuova Trattativa
-          </button>
+          {!mostraArchiviati && (
+            <button
+              onClick={() => { setSelected(null); setView('form') }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-yellow-400 text-gray-900 rounded-xl font-bold text-sm hover:bg-yellow-500 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Nuova Trattativa
+            </button>
+          )}
         </div>
       </div>
 

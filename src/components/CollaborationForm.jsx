@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getActiveAgents } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
+import {formatDate} from '../utils/date'
 
 export default function CollaborationForm({ collaboration = null, creators = [], brands = [],  prefilledBrand = null, prefilledCreatorId = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -84,8 +85,12 @@ export default function CollaborationForm({ collaboration = null, creators = [],
       }))
     }, [collaboration])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
+    const ok = await confirm('Salvare le modifiche alla collaborazione?', {
+      title: 'Conferma salvataggio', confirmLabel: 'Salva'
+    })
+    if (!ok) return
     onSave(formData)
   }
 
@@ -152,7 +157,9 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const activeCreators = creators.filter(c => c.stato === '1 Sotto contratto')
 
   return (
-  <form onSubmit={handleSubmit} className="space-y-0">
+  <form onSubmit={handleSubmit} 
+  onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}
+  className="space-y-0">
       {/* ── ASSEGNATARIO ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-0 mb-8 pt-0">
           <div>
@@ -165,7 +172,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
                 <span key={nome} className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                   {nome}
                   {puo_modificare_assegnatario && (
-                    <button type="button" onClick={() => S('assegnatario', formData.assegnatario.filter(a => a !== nome))}
+                    <button type="button" onClick={() => setFormData('assegnatario', formData.assegnatario.filter(a => a !== nome))}
                       className="ml-0.5 text-yellow-600 hover:text-yellow-900">✕</button>
                   )}
                 </span>
@@ -175,13 +182,14 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               <select className="input"
                 value=""
                 onChange={(e) => {
-                  if (e.target.value && !formData.assegnatario.includes(e.target.value))
-                    S('assegnatario', [...formData.assegnatario, e.target.value])
+                  const curr = formData.assegnatario || []
+                  if (e.target.value && !curr.includes(e.target.value))
+                    setFormData(prev => ({...prev, assegnatario: [...(prev.assegnatario || []), e.target.value]}))
                 }}
                 disabled={!puo_modificare_assegnatario}
               >
                 <option value="">+ Aggiungi assegnatario...</option>
-                {agenti.filter(a => !formData.assegnatario.includes(a.agenteNome)).map(a => (
+                {agenti.filter(a => !(formData.assegnatario || []).includes(a.agenteNome)).map(a => (
                   <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
                 ))}
               </select>
@@ -404,8 +412,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               <option value="IN_LAVORAZIONE">In Lavorazione</option>
               <option value="ATTESA_PAGAMENTO_CREATOR">Attesa Pagamento Creator</option>
               <option value="ATTESA_PAGAMENTO_AGENCY">Attesa Pagamento Agency</option>
-              <option value="COMPLETATA">Completata</option>
-              <option value="ANNULLATA">Annullata</option>
+              <option value="COMPLETATA">Completata → Archivio Collab</option>
+              <option value="ANNULLATA">Annullata → Archivio Collab</option>
           </select>
         </div>
 

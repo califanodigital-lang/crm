@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../services/eventoService'
-import { getPartecipazioniByEvento, addPartecipazione, deletePartecipazione } from '../services/partecipazioneService'
+import { getPartecipazioniByEvento, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
 import { Calendar, MapPin, Plus, Edit, Trash2, Users, X } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
+import {formatDate} from '../utils/date'
 
 export default function EventiPage() {
   const { userProfile } = useAuth()
@@ -31,7 +32,9 @@ export default function EventiPage() {
     palco: false,
     moderazione: false,
     accredito: false,
-    fee: ''
+    fee: '',
+    pagato: false,
+    pagato_agency: false,
   })
 
   useEffect(() => {
@@ -104,7 +107,9 @@ export default function EventiPage() {
       palco: false,
       moderazione: false,
       accredito: false,
-      fee: ''
+      fee: '',
+      pagato: false,
+      pagato_agency: false,
     })
     loadPartecipazioni(selectedEvento.id)
   }
@@ -116,6 +121,12 @@ export default function EventiPage() {
     })
     if (!ok) return
     await deletePartecipazione(id)
+    loadPartecipazioni(selectedEvento.id)
+  }
+
+  const handleTogglePagamento = async (partecipazione, campo) => {
+    const updated = { ...partecipazione, [campo]: !partecipazione[campo] }
+    await updatePartecipazione(partecipazione.id, updated)
     loadPartecipazioni(selectedEvento.id)
   }
 
@@ -207,7 +218,7 @@ export default function EventiPage() {
         <div className="card mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {selectedEvento.tipo && <p><span className="font-semibold">Tipo:</span> {selectedEvento.tipo}</p>}
-            {selectedEvento.dataInizio && <p><span className="font-semibold">Date:</span> {selectedEvento.dataInizio} - {selectedEvento.dataFine || '...'}</p>}
+            {selectedEvento.dataInizio && <p><span className="font-semibold">Date:</span> {formatDate(selectedEvento.dataInizio)} - {formatDate(selectedEvento.dataFine) || '...'}</p>}
             {selectedEvento.location && <p><span className="font-semibold">Location:</span> {selectedEvento.location}</p>}
             {selectedEvento.citta && <p><span className="font-semibold">Città:</span> {selectedEvento.citta}</p>}
             {selectedEvento.descrizione && (
@@ -314,7 +325,9 @@ export default function EventiPage() {
                 <th className="text-left py-2">Attività</th>
                 <th className="text-left py-2">Presenza</th>
                 <th className="text-right py-2">Fee</th>
-                {userProfile?.role === 'ADMIN' && <th className="text-right py-2">Azioni</th>}
+                <th className="text-center py-2 text-xs">Pag. Creator</th>
+                <th className="text-center py-2 text-xs">Pag. Agency</th>
+                <th className="text-right py-2">Azioni</th>
               </tr>
             </thead>
             <tbody>
@@ -322,23 +335,39 @@ export default function EventiPage() {
                 <tr key={p.id} className="border-b">
                   <td className="py-2 font-medium">{p.creatorNome}</td>
                   <td className="py-2 text-sm">
-                    {[p.panel && 'Panel', p.workshop && 'Workshop', p.masterGdr && 'Master GDR', p.giochiTavolo && 'Giochi', 
+                    {[p.panel && 'Panel', p.workshop && 'Workshop', p.masterGdr && 'Master GDR', p.giochiTavolo && 'Giochi',
                       p.giudiceCosplay && 'Giudice', p.firmacopie && 'Firmacopie', p.palco && 'Palco', p.moderazione && 'Moderazione']
                       .filter(Boolean).join(', ') || '-'}
                   </td>
                   <td className="py-2 text-sm">
-                    {p.dataInizioPartecipazione || p.dataFinePartecipazione
-                      ? `${p.dataInizioPartecipazione || '—'} ${p.dataFinePartecipazione ? `→ ${p.dataFinePartecipazione}` : ''}`
+                    {formatDate(p.dataInizioPartecipazione) || formatDate(p.dataFinePartecipazione)
+                      ? `${formatDate(p.dataInizioPartecipazione) || '—'} ${formatDate(p.dataFinePartecipazione) ? `→ ${formatDate(p.dataFinePartecipazione)}` : ''}`
                       : 'Tutto evento'}
                   </td>
                   <td className="py-2 text-right">€{p.fee || 0}</td>
-                  {userProfile?.role === 'ADMIN' && (
-                    <td className="py-2 text-right">
-                      <button onClick={() => handleDeletePartecipazione(p.id)} className="text-red-600 hover:text-red-800">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  )}
+                  <td className="py-2 text-center">
+                    <button
+                      onClick={() => handleTogglePagamento(p, 'pagato')}
+                      title={p.pagato ? 'Creator pagato' : 'Creator non pagato'}
+                      className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${p.pagato ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                    >
+                      {p.pagato ? '✓ Sì' : '✗ No'}
+                    </button>
+                  </td>
+                  <td className="py-2 text-center">
+                    <button
+                      onClick={() => handleTogglePagamento(p, 'pagato_agency')}
+                      title={p.pagato_agency ? 'Noi pagati' : 'Noi non pagati'}
+                      className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${p.pagato_agency ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                    >
+                      {p.pagato_agency ? '✓ Sì' : '✗ No'}
+                    </button>
+                  </td>
+                  <td className="py-2 text-right">
+                    <button onClick={() => handleDeletePartecipazione(p.id)} className="text-red-600 hover:text-red-800">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -353,7 +382,7 @@ export default function EventiPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Fiere & Eventi</h1>
-        {userProfile?.role === 'ADMIN' && (
+        {(
           <button onClick={() => { setView('add'); setEventoForm({ nome: '', tipo: '', dataInizio: '', dataFine: '', location: '', citta: '', descrizione: '', link: '' }); }} className="flex items-center gap-2 bg-yellow-400 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500">
             <Plus className="w-5 h-5" />
             Nuovo Evento
@@ -369,7 +398,7 @@ export default function EventiPage() {
             {evento.dataInizio && (
               <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                 <Calendar className="w-4 h-4" />
-                {evento.dataInizio} {evento.dataFine && `- ${evento.dataFine}`}
+                {formatDate(evento.dataInizio)} {formatDate(evento.dataFine) && `- ${formatDate(evento.dataFine)}`}
               </div>
             )}
             {evento.citta && (
@@ -378,7 +407,7 @@ export default function EventiPage() {
                 {evento.citta}
               </div>
             )}
-            {userProfile?.role === 'ADMIN' && (
+            {(
               <div className="flex gap-2 pt-3 border-t">
                 <button onClick={(e) => { e.stopPropagation(); setSelectedEvento(evento); setEventoForm(evento); setView('edit'); }} className="flex-1 text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">
                   <Edit className="w-3 h-3 inline mr-1" />

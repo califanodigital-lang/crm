@@ -1,6 +1,25 @@
-export const APP_VERSION = 'v0.12.1-beta'
+export const APP_VERSION = 'v0.13.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.13.0-beta',
+    date: '2026-04-19',
+    items: [
+      'Trattative Chiuse: le trattative passano in archivio solo dopo che la collaborazione è stata effettivamente creata (stato "Collab. Generata"), evitando che il team dimentichi di aprire la collaborazione dopo il contratto firmato.',
+      'Nuovo stato trattativa "Collab. Generata": assegnato automaticamente al momento della creazione della collaborazione dalla trattativa.',
+      'Colonne ordinabili nelle tabelle Trattative e Collaborazioni: clic sull\'intestazione per ordinare, clic doppio per invertire. Default trattative: priorità; default collaborazioni: stato.',
+      'Priorità nella vista Kanban: le card di ogni colonna sono ordinate automaticamente per priorità (Urgente → Alta → Normale → Bassa).',
+      'Archivio Trattative rinominato in "Trattative Chiuse" con logica esclusiva: si vedono o solo le attive o solo le chiuse, mai insieme.',
+      'Indicatori visivi nel dropdown stato: le voci che portano all\'archivio mostrano la dicitura "→ Chiuse" accanto al nome.',
+      'Kanban responsive a griglia: layout a 5 colonne con scroll verticale per ogni colonna, più leggibile su mobile.',
+      'Piattaforme creator: aggiunto campo link canale social e numero iscritti/follower per ogni piattaforma. Il tier globale del creator si aggiorna automaticamente in base alla piattaforma con più follower.',
+      'Fee per creator nelle trattative: sostituisce il budget totale con un importo specifico per ogni creator confermato, ereditato automaticamente alla creazione della collaborazione.',
+      'Nuovi campi trattativa: link video sorgente (da cui è arrivato il brand) e creator sorgente.',
+      'Pagamenti fiere: aggiunto stato di pagamento separato per creator e per agency nella sezione presenze eventi.',
+      'Selettore "Contattato per" diviso in due campi affiancati: creator di riferimento e tipo di attività.',
+      'Logo azienda nella sidebar sostituito con immagine SVG.',
+    ]
+  },
   {
     version: 'v0.12.1-beta',
     date: '2026-04-16',

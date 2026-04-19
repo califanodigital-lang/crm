@@ -78,6 +78,8 @@ const toCamelCase = (t) => {
     // Onboarding / contatto
     canaleContatto: t.canale_contatto,
     dataContatto: t.data_contatto,
+    contattatoPerCreator: t.contattato_per_creator,
+    contattatoPerTipo: t.contattato_per_tipo,
     dataFollowup1: t.data_followup_1,
     dataFollowup2: t.data_followup_2,
 
@@ -96,9 +98,12 @@ const toCamelCase = (t) => {
     dataPreventivo: t.data_preventivo,
     importoPreventivo: t.importo_preventivo,
     linkPreventivo: t.link_preventivo,
+    feeCreatorMap: t.fee_creator_map || {},
 
     // Note generali
     noteStrategiche: t.note_strategiche,
+    linkVideoSorgente: t.link_video_sorgente,
+    creatorSorgente: t.creator_sorgente,
 
     // Meta
     createdAt: t.created_at,
@@ -124,6 +129,8 @@ const toSnakeCase = (t) => ({
   sito_web: cleanValue(t.sitoWeb),
   canale_contatto: cleanValue(t.canaleContatto),
   data_contatto: cleanValue(t.dataContatto),
+  contattato_per_creator: cleanValue(t.contattatoPerCreator),
+  contattato_per_tipo: cleanValue(t.contattatoPerTipo),
   data_followup_1: cleanValue(t.dataFollowup1),
   data_followup_2: cleanValue(t.dataFollowup2),
   data_ricontatto: cleanValue(t.dataRicontatto),
@@ -133,7 +140,10 @@ const toSnakeCase = (t) => ({
   data_preventivo: cleanValue(t.dataPreventivo),
   importo_preventivo: cleanValue(t.importoPreventivo),
   link_preventivo: cleanValue(t.linkPreventivo),
+  fee_creator_map: t.feeCreatorMap || {},
   note_strategiche: cleanValue(t.noteStrategiche),
+  link_video_sorgente: cleanValue(t.linkVideoSorgente),
+  creator_sorgente: cleanValue(t.creatorSorgente),
   reminder_ricontatto: cleanValue(t.reminderRicontatto),
   call_fissata: !!t.callFissata,
   data_call: cleanValue(t.dataCall),
@@ -346,23 +356,29 @@ export const creaCollaborazioneDaTrattativa = async (trattativaId) => {
       throw new Error('Nessun creator confermato nella trattativa')
     }
 
-    const payload = creatorIds.map((creatorId) => ({
-      brand_id: t.brand_id || null,
-      trattativa_id: t.id,
-      brand_nome: t.brand_nome,
-      creator_id: creatorId,
-      sales: t.sales || null,
-      agente: t.ima || null,
-      senior: t.agente || null,
-      pagamento: t.importo_preventivo || null,
-      fee_management: t.importo_preventivo
-        ? +(parseFloat(t.importo_preventivo) * 0.25).toFixed(2)
-        : null,
-      stato: 'IN_LAVORAZIONE',
-      pagato: false,
-      contatto: t.contatto || null,
-      note: t.note_trattativa || t.note_strategiche || null,
-    }))
+    const feeCreatorMap = t.fee_creator_map || {}
+
+    const payload = creatorIds.map((creatorId) => {
+      const feeCreator = feeCreatorMap[creatorId] ? parseFloat(feeCreatorMap[creatorId]) : null
+      const pagamento = feeCreator ?? (t.importo_preventivo ? parseFloat(t.importo_preventivo) : null)
+      const fee_management = pagamento ? +(pagamento * 0.25).toFixed(2) : null
+
+      return {
+        brand_id: t.brand_id || null,
+        trattativa_id: t.id,
+        brand_nome: t.brand_nome,
+        creator_id: creatorId,
+        sales: t.sales || null,
+        agente: t.ima || null,
+        senior: t.agente || null,
+        pagamento: pagamento,
+        fee_management,
+        stato: 'IN_LAVORAZIONE',
+        pagato: false,
+        contatto: t.contatto || null,
+        note: t.note_trattativa || t.note_strategiche || null,
+      }
+    })
 
     const { data: created, error: collabError } = await supabase
       .from('collaborations')

@@ -48,7 +48,9 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           nome: p.piattaforma_nome,
           tier: p.tier || '',
           fees: p.fees || {},
-          note: p.note || ''
+          note: p.note || '',
+          link: p.link_canale || '',
+          iscritti: p.iscritti || '',
         })))
       })
     })
@@ -65,13 +67,42 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
     setPiattaforme(data || [])
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSave(formData, creatorPiattaforme)
+    const ok = await confirm('Salvare le modifiche al creator?', {
+      title: 'Conferma salvataggio', confirmLabel: 'Salva'
+    })
+    if (!ok) return
+
+    // Auto-calcola iscritti_max e tier globale dalle piattaforme
+    const maxIscritti = creatorPiattaforme.reduce((max, p) => {
+      const n = parseInt(p.iscritti) || 0
+      return n > max ? n : max
+    }, 0)
+
+    const calcolaTier = (n) => {
+      if (!n) return formData.tier || ''
+      if (n >= 3000000) return 'CELEBRITY'
+      if (n >= 500000) return 'MEGA'
+      if (n >= 150000) return 'MACRO'
+      if (n >= 50000) return 'MID'
+      if (n >= 10000) return 'MICRO'
+      return 'NANO'
+    }
+
+    const enrichedData = {
+      ...formData,
+      iscrittiMax: maxIscritti || null,
+      tier: maxIscritti > 0 ? calcolaTier(maxIscritti) : (formData.tier || ''),
+    }
+
+    onSave(enrichedData, creatorPiattaforme)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-0">
+    <form onSubmit={handleSubmit} 
+    onKeyDown={(e) => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') e.preventDefault() }}
+    className="space-y-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8">
         <div className="md:col-span-2"><p className="form-section-title">Anagrafica</p></div>
 

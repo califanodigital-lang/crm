@@ -250,6 +250,19 @@ export const getAgendaItems = async () => {
       refId: c.id
     })
 
+      // Promemoria generici
+    ;(impegniRes.data || [])
+      .filter(i => i.tipo === 'PROMEMORIA')
+      .forEach(i => {
+        pushItem({
+          tipo: 'PROMEMORIA',
+          label: `Promemoria · ${i.creato_da || 'Utente'}`,
+          descrizione: i.titolo,
+          refId: i.id,
+          color: 'bg-gray-100 text-gray-700',
+        }, { [i.data_inizio]: true })
+      })
+
     pushSingle(items, c.data_pubblicazione, {
       tipo: 'PUBBLICAZIONE',
       titolo: `Pubblicazione · ${c.brand_nome}`,
@@ -479,6 +492,24 @@ export const buildMonthMatrix = (currentMonthDate) => {
   }
 
   return matrix
+}
+
+export const creaPromemoria = async ({ titolo, data, creatoDa }) => {
+  try {
+    const { data: result, error } = await supabase
+      .from('creator_impegni')
+      .insert([{
+        titolo: titolo,
+        data_inizio: data,
+        data_fine: data,
+        tipo: 'PROMEMORIA',
+        creato_da: creatoDa,
+        creator_id: null,
+      }])
+      .select().single()
+    if (error) throw error
+    return { data: result, error: null }
+  } catch (e) { return { data: null, error: e } }
 }
 
 export const itemTypeLabel = (tipo) => {

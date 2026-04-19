@@ -5,6 +5,7 @@ import { TrendingUp, Award, Target, DollarSign, Briefcase, Users, Handshake } fr
 import { getGlobalStats, getTopCreators, getRevenueChart, getProposteStats } from '../services/dashboardService'
 import { APP_VERSION, CHANGELOG } from '../constants/changelog'
 import { getPagamentiByAgente } from '../services/pagamentiAgentiService'
+import {formatDate} from '../utils/date'
 
 function ChangelogCard() {
   const latest = CHANGELOG[0]
@@ -28,7 +29,7 @@ function ChangelogCard() {
           <div key={entry.version} className="border border-gray-100 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <p className="font-bold text-gray-900">{entry.version}</p>
-              <p className="text-xs text-gray-400">{entry.date}</p>
+              <p className="text-xs text-gray-400">{formatDate(entry.date)}</p>
             </div>
 
             <ul className="space-y-1">
@@ -385,7 +386,7 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {revenueChart.map((item) => (
                   <div key={item.mese} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-700">{item.mese}</span>
+                    <span className="font-medium text-gray-700">{formatDate(item.mese).replace("01/","")}</span>
                     <span className="text-lg font-bold text-blue-600">
                       €{item.revenue.toLocaleString()}
                     </span>

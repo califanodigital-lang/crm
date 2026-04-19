@@ -638,7 +638,7 @@ const handleDeleteImpegno = async (id) => {
                       <tr key={p.id} className="border-b border-gray-100">
                         <td className="py-3 px-4 font-medium">{p.eventoNome}</td>
                         <td className="py-3 px-4 text-sm">
-                          {p.eventoDataInizio ? new Date(p.eventoDataInizio).toLocaleDateString() : '-'}
+                          {p.eventoDataInizio ? new Date(p.eventoDataInizio).toLocaleDateString('it-IT') : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">{p.eventoLocation || '-'}</td>
                         <td className="py-3 px-4 text-sm">{p.tipoContratto || '-'}</td>

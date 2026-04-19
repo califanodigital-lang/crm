@@ -9,6 +9,7 @@ import { getAllUsers } from '../services/userService'
 import { toast } from '../components/Toast'
 import { PagamentoRow } from '../components/PagamentoRow'
 import { supabase } from '../lib/supabase'
+import {formatDate} from '../utils/date'
 
 // ── Badge stato ───────────────────────────────────────────────
 function StatoBadge({ stato }) {
@@ -319,7 +320,7 @@ export default function AgentDashboardPage() {
         {/* ── PAGAMENTI MENSILI ── */}
         <div className="card mt-6 overflow-hidden p-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900">Pagamenti Agenti — {selectedMonth}</h2>
+            <h2 className="text-base font-bold text-gray-900">Pagamenti Agenti — {formatDate(selectedMonth).replace("01/","")}</h2>
             {pagamenti.length > 0 && (
               <button onClick={handleResetMese}
                 className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200">

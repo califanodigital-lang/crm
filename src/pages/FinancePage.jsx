@@ -13,6 +13,7 @@ import { PagamentoRow } from '../components/PagamentoRow'
 import { getAllAgentsStats } from '../services/agentService'
 import { toast } from '../components/Toast'
 import { supabase } from '../lib/supabase'
+import {formatDate} from '../utils/date'
 
 export default function FinancePage() {
   const { userProfile } = useAuth()
@@ -73,12 +74,20 @@ export default function FinancePage() {
     setVersamentiStats(statsRes.data || {})
   }
   if (activeTab === 'uscite') {
-    const [pagRes, usersRes] = await Promise.all([
+    const [pagRes, usersRes, statsRes] = await Promise.all([
       getPagamentiByMese(selectedMonth),
-      getAllUsers()
+      getAllUsers(),
+      getAllAgentsStats(selectedMonth)
     ])
-    setPagamenti(pagRes.data || [])
     setAllUsers(usersRes.data || [])
+    const statsMap = {}
+    ;(statsRes.data || []).forEach(s => { statsMap[s.agente] = s.totalCommissioni || 0 })
+    setPagamenti((pagRes.data || []).map(p => ({
+      ...p,
+      importoFee: statsMap[p.agenteNome] || 0,
+      importoTotale: p.importoFisso + (statsMap[p.agenteNome] || 0),
+      differenza: (p.importoFisso + (statsMap[p.agenteNome] || 0)) - p.importoPagato,
+    })))
   }
     
   setLoading(false)
@@ -476,7 +485,7 @@ export default function FinancePage() {
                     <td className="py-3 px-4 text-sm">{v.tipoPagamento || '-'}</td>
                     <td className="py-3 px-4 text-right font-semibold">€{parseFloat(v.importoVersato).toLocaleString()}</td>
                     <td className="py-3 px-4 text-sm">{v.numeroFattura || '-'}</td>
-                    <td className="py-3 px-4 text-sm">{v.dataFattura || '-'}</td>
+                    <td className="py-3 px-4 text-sm">{formatDate(v.dataFattura) || '-'}</td>
                     <td className="py-3 px-4 text-center">
                       {v.linkFattura ? (
                         <a href={v.linkFattura} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
@@ -507,7 +516,7 @@ export default function FinancePage() {
       {activeTab === 'uscite' && (
         <div className="card mt-6 overflow-hidden p-0">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-            <h2 className="text-base font-bold text-gray-900">Pagamenti Agenti — {selectedMonth}</h2>
+            <h2 className="text-base font-bold text-gray-900">Pagamenti Agenti — {formatDate(selectedMonth).replace("01/","")}</h2>
             {pagamenti.length > 0 && (
               <button onClick={handleResetMese}
                 className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Search, Edit, Trash2, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, DollarSign, Calendar, CheckCircle, XCircle, Archive, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import CollaborationForm from '../components/CollaborationForm'
 import { 
   getAllCollaborations, 
@@ -15,6 +15,7 @@ import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { getStatoCollaborazione } from '../constants/constants'
 import { useAuth } from '../contexts/AuthContext'
+
 
 export default function CollaborationsPage() {
   const location = useLocation()
@@ -32,6 +33,10 @@ export default function CollaborationsPage() {
   const [prefilledData, setPrefilledData] = useState(null)
   const { userProfile } = useAuth()
   const isAgent = userProfile?.role === 'AGENT'
+  const [pagamentoModal, setPagamentoModal] = useState(null)
+  const [mostraArchivio, setMostraArchivio] = useState(false)
+  const [sortField, setSortField] = useState('stato')
+  const [sortDir, setSortDir] = useState('asc')
 
 
   // Gestisci pre-riempimento da altre pagine
@@ -79,6 +84,16 @@ export default function CollaborationsPage() {
     if (statsRes.data) setStats(statsRes.data)
     
     setLoading(false)
+  }
+
+  const handleTogglePagato = async (tipo, valore, data) => {
+    const { id } = pagamentoModal
+    const payload = tipo === 'creator'
+      ? { pagato: valore, dataPagamentoCreator: data || null }
+      : { pagato_agency: valore, dataPagamentoAgency: data || null }
+    await updateCollaboration(id, { ...collaborations.find(c => c.id === id), ...payload })
+    setPagamentoModal(null)
+    loadData()
   }
 
   const handleSave = async (collaborationData) => {
@@ -143,13 +158,57 @@ export default function CollaborationsPage() {
     setPrefilledData(null)
   }
 
+  const STATI_ARCHIVIO = ['COMPLETATA', 'ANNULLATA']
+  const STATO_ORDER = { IN_LAVORAZIONE: 0, ATTESA_PAGAMENTO_CREATOR: 1, ATTESA_PAGAMENTO_AGENCY: 2, COMPLETATA: 3, ANNULLATA: 4 }
+
   const filteredCollaborations = collaborations.filter(c => {
+    if (mostraArchivio) {
+      if (!STATI_ARCHIVIO.includes(c.stato)) return false
+    } else {
+      if (STATI_ARCHIVIO.includes(c.stato)) return false
+    }
     const matchesSearch = c.creatorNome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.brandNome?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'ALL' || c.stato === filterStatus
     const matchesAgente = filterAssegnatario === 'ALL' || (c.assegnatario || []).includes(filterAssegnatario)
     return matchesSearch && matchesStatus && matchesAgente
   })
+
+  const handleSort = (field) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('asc') }
+  }
+
+  const sortedCollaborations = [...filteredCollaborations].sort((a, b) => {
+    let cmp = 0
+    if (sortField === 'stato') {
+      cmp = (STATO_ORDER[a.stato] ?? 99) - (STATO_ORDER[b.stato] ?? 99)
+    } else if (sortField === 'creator') {
+      cmp = (a.creatorNome || '').localeCompare(b.creatorNome || '')
+    } else if (sortField === 'brand') {
+      cmp = (a.brandNome || '').localeCompare(b.brandNome || '')
+    } else if (sortField === 'pagamento') {
+      cmp = (parseFloat(a.pagamento) || 0) - (parseFloat(b.pagamento) || 0)
+    } else if (sortField === 'adv') {
+      cmp = (a.adv || '').localeCompare(b.adv || '')
+    }
+    return sortDir === 'asc' ? cmp : -cmp
+  })
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 opacity-40" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-yellow-500" />
+      : <ChevronDown className="w-3 h-3 text-yellow-500" />
+  }
+  const SortTh = ({ field, children, className = 'text-left' }) => (
+    <th
+      className={`py-3 px-4 font-semibold text-gray-700 cursor-pointer select-none hover:text-gray-900 transition-colors ${className}`}
+      onClick={() => handleSort(field)}
+    >
+      <span className="flex items-center gap-1">{children}<SortIcon field={field} /></span>
+    </th>
+  )
 
     const StatusBadge = ({ status }) => {
       const cfg = getStatoCollaborazione(status)
@@ -172,17 +231,34 @@ export default function CollaborationsPage() {
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Collaborazioni</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Il flusso standard prevede la creazione delle collaborazioni dalla sezione Trattative dopo il contratto firmato.
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {mostraArchivio ? 'Archivio Collaborazioni' : 'Collaborazioni'}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {mostraArchivio
+                ? 'Collaborazioni completate o annullate'
+                : 'Il flusso standard prevede la creazione dalla sezione Trattative dopo il contratto firmato.'}
             </p>
-          <button
-            onClick={() => setView('add')}
-            className="flex items-center gap-2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Nuova Collaborazione (manuale)
-          </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setMostraArchivio(v => !v); setFilterStatus('ALL') }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold border transition-colors ${mostraArchivio ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+            >
+              <Archive className="w-4 h-4" />
+              {mostraArchivio ? 'Torna alle attive' : 'Archivio Collab'}
+            </button>
+            {!mostraArchivio && (
+              <button
+                onClick={() => setView('add')}
+                className="flex items-center gap-2 bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Nuova Collaborazione (manuale)
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -285,19 +361,19 @@ export default function CollaborationsPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Creator</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Brand</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Tipo ADV</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Pagamento</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Stato</th>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <SortTh field="creator">Creator</SortTh>
+                    <SortTh field="brand">Brand</SortTh>
+                    <SortTh field="adv">Tipo ADV</SortTh>
+                    <SortTh field="pagamento">Pagamento</SortTh>
+                    <SortTh field="stato">Stato</SortTh>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato Creator</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagata Agency</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCollaborations.map((collab) => (
+                  {sortedCollaborations.map((collab) => (
                     <tr key={collab.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{collab.creatorNome}</td>
                       <td className="py-3 px-4 text-gray-600">{collab.brandNome}</td>
@@ -309,19 +385,19 @@ export default function CollaborationsPage() {
                         <StatusBadge status={collab.stato} />
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {collab.pagato ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
-                        )}
+                        <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'creator', currentValue: collab.pagato, dataAttuale: collab.dataPagamentoCreator })}>
+                          {collab.pagato
+                            ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                            : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />}
+                        </button>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        {collab.pagato_agency ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
-                        )}
-                      </td>
+                    <td className="py-3 px-4 text-center">
+                      <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'agency', currentValue: collab.pagato_agency, dataAttuale: collab.dataPagamentoAgency })}>
+                        {collab.pagato_agency
+                          ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                          : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />}
+                      </button>
+                    </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
                           <button
@@ -347,6 +423,11 @@ export default function CollaborationsPage() {
               </table>
             </div>
           )}
+        {pagamentoModal && <PagamentoDateModal
+          modal={pagamentoModal}
+          onConfirm={handleTogglePagato}
+          onClose={() => setPagamentoModal(null)}
+        />}
         </div>
       </div>
     )
@@ -366,6 +447,43 @@ export default function CollaborationsPage() {
           onSave={handleSave}
           onCancel={handleCancel}
         />
+      </div>
+    </div>
+
+  )
+}
+
+function PagamentoDateModal({ modal, onConfirm, onClose }) {
+  const [data, setData] = useState(modal.dataAttuale || new Date().toISOString().split('T')[0])
+  const nuovoValore = !modal.currentValue
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+        <h3 className="text-base font-bold text-gray-900 mb-1">
+          {nuovoValore ? '✓ Segna come pagato' : '✕ Rimuovi pagamento'}
+        </h3>
+        <p className="text-sm text-gray-400 mb-4">
+          {modal.tipo === 'creator' ? 'Pagamento Creator' : 'Pagamento Agency'}
+        </p>
+        {nuovoValore && (
+          <div className="mb-4">
+            <label className="label">Data pagamento</label>
+            <input type="date" className="input" value={data}
+              onChange={(e) => setData(e.target.value)} />
+          </div>
+        )}
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">
+            Annulla
+          </button>
+          <button
+            onClick={() => onConfirm(modal.tipo, nuovoValore, nuovoValore ? data : null)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold text-white ${nuovoValore ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}>
+            {nuovoValore ? 'Conferma pagamento' : 'Rimuovi'}
+          </button>
+        </div>
       </div>
     </div>
   )

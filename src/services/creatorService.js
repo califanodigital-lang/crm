@@ -34,6 +34,7 @@ const toCamelCase = (creator) => {
     dataContratto: creator.data_firma_contratto,
     sales: creator.sales,
     categoriaAdv: creator.categoria_adv,
+    iscrittiMax: creator.iscritti_max,
     createdAt: creator.created_at,
     updatedAt: creator.updated_at,
   }
@@ -64,7 +65,8 @@ const toSnakeCase = (creator) => {
     preferenza_collaborazioni: cleanValue(creator.preferenzaCollaborazioni),
     data_firma_contratto: cleanValue(creator.dataContratto),
     sales: cleanValue(creator.sales),
-    categoria_adv: cleanValue(creator.categoriaAdv)
+    categoria_adv: cleanValue(creator.categoriaAdv),
+    iscritti_max: creator.iscrittiMax ? parseInt(creator.iscrittiMax) : null,
   }
 }
 
