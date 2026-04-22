@@ -122,6 +122,11 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
 
   useEffect(() => { loadAgenti() }, [])
   useEffect(() => { getAllCreators().then(({ data }) => setCreators(data || [])) }, [])
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onCancel])
 
 useEffect(() => {
   // Se è una nuova trattativa, pre-imposta creatoDa e assegnatario
@@ -441,10 +446,10 @@ useEffect(() => {
         </div>
       </FormSection>
 
-      {/* ── CONTATTI BRAND — da ONBOARDING ── */}
+      {/* ── CONTATTI BRAND — da ONBOARDING, o subito se brand già censito ── */}
       <FormSection title="Contatti Brand"
         subtitle="Dati raccolti durante l'onboarding"
-        show={fase >= 1 || isArchiviato}>
+        show={fase >= 1 || isArchiviato || !!formData.brandId}>
         <div>
           <label className="label">Referente</label>
           <input className="input" value={formData.riferimento}

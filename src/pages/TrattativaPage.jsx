@@ -649,8 +649,8 @@ export default function TrattativaPage() {
         </div>
       </div>
 
-      <StatsBar />
-      <Filters />
+      {StatsBar()}
+      {Filters()}
 
       {view === 'list' && <ListView />}
       {view === 'kanban' && <KanbanView />}

@@ -24,6 +24,12 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
   }, [])
 
   useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onCancel])
+
+  useEffect(() => {
     if (brand) setFormData(brand)
   }, [brand])
 

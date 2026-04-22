@@ -41,6 +41,15 @@ export default function EventiPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (view !== 'add' && view !== 'edit') return
+    const handler = (e) => {
+      if (e.key === 'Escape') { setView('list'); setSelectedEvento(null) }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [view])
+
   const loadData = async () => {
     setLoading(true)
     const [eventiRes, creatorsRes] = await Promise.all([
@@ -209,7 +218,7 @@ export default function EventiPage() {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">{selectedEvento.nome}</h1>
-          <button onClick={() => setView('list')} className="px-4 py-2 border rounded-lg hover:bg-gray-50">
+          <button onClick={() => { setView('list'); setSelectedEvento(null) }} className="px-4 py-2 border rounded-lg hover:bg-gray-50">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -383,7 +392,7 @@ export default function EventiPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Fiere & Eventi</h1>
         {(
-          <button onClick={() => { setView('add'); setEventoForm({ nome: '', tipo: '', dataInizio: '', dataFine: '', location: '', citta: '', descrizione: '', link: '' }); }} className="flex items-center gap-2 bg-yellow-400 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500">
+          <button onClick={() => { setSelectedEvento(null); setEventoForm({ nome: '', tipo: '', dataInizio: '', dataFine: '', location: '', citta: '', descrizione: '', link: '' }); setView('add'); }} className="flex items-center gap-2 bg-yellow-400 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-500">
             <Plus className="w-5 h-5" />
             Nuovo Evento
           </button>
@@ -409,7 +418,7 @@ export default function EventiPage() {
             )}
             {(
               <div className="flex gap-2 pt-3 border-t">
-                <button onClick={(e) => { e.stopPropagation(); setSelectedEvento(evento); setEventoForm(evento); setView('edit'); }} className="flex-1 text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">
+                <button onClick={(e) => { e.stopPropagation(); setSelectedEvento(evento); setEventoForm({ nome: evento.nome || '', tipo: evento.tipo || '', dataInizio: evento.dataInizio || '', dataFine: evento.dataFine || '', location: evento.location || '', citta: evento.citta || '', descrizione: evento.descrizione || '', link: evento.link || '' }); setView('edit'); }} className="flex-1 text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">
                   <Edit className="w-3 h-3 inline mr-1" />
                   Modifica
                 </button>

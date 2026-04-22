@@ -1,6 +1,17 @@
-export const APP_VERSION = 'v0.13.0-beta'
+export const APP_VERSION = 'v0.13.1-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.13.1-beta',
+    date: '2026-04-22',
+    items: [
+      'Fix bug fiere: la creazione di un nuovo evento non sovrascrive più quello precedente né ne eredita i dati. La causa era selectedEvento non azzerato al ritorno dal dettaglio.',
+      'ESC per tornare indietro: in tutti i form (Brand, Creator, Collaborazione, Trattativa, Fiera) premere ESC chiude il form e torna alla lista.',
+      'Fix perdita focus sulla barra di ricerca delle trattative: il campo non perde più il cursore mentre si digita.',
+      'Sezione "Contatti Brand" visibile subito nella trattativa quando si seleziona un brand già censito, anche allo stato iniziale di Ricerca Completata.',
+      'Colonne ordinabili nella tabella Collaborazioni: clic sull\'intestazione per ordinare per Creator, Brand, Tipo ADV, Pagamento o Stato. Default: ordinamento per Stato.',
+    ]
+  },
   {
     version: 'v0.13.0-beta',
     date: '2026-04-19',

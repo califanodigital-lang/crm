@@ -38,8 +38,14 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const puo_modificare_assegnatario = isAdmin || !collaboration || collaboration.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
-      loadAgenti()
-    }, [])
+    loadAgenti()
+  }, [])
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onCancel])
 
     const loadAgenti = async () => {
       const { data } = await getActiveAgents()

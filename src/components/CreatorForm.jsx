@@ -39,6 +39,12 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
   }, [])
 
   useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [onCancel])
+
+  useEffect(() => {
     if (creator) setFormData(creator)
     if (creator?.id) {
     // Carica piattaforme esistenti del creator
