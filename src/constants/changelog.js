@@ -1,6 +1,17 @@
-export const APP_VERSION = 'v0.15.0-beta'
+export const APP_VERSION = 'v0.15.1-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.15.1-beta',
+    date: '2026-04-24',
+    items: [
+      'Nuovi filtri periodo su Trattative, Collaborazioni e Trattative Fiere: ogni lista parte di default dal primo giorno del mese fino al primo del mese successivo, ma il range è ora personalizzabile liberamente.',
+      'Aggiunta azione rapida "Vedi tutto" nei filtri periodo di Trattative, Collaborazioni e Trattative Fiere per ignorare completamente il vincolo temporale quando serve una vista completa.',
+      'Trattative: introdotta una data di riferimento smart in base alla fase corrente (contatto, follow-up, ricontatto, call, preventivo o firma) sia per il filtro periodo sia per la lettura in tabella.',
+      'Collaborazioni: aggiunto filtro da data a data basato sulla Data Firma, con fallback alla data di creazione quando la firma non è ancora presente.',
+      'Trattative Fiere: aggiunto filtro periodo coerente col flusso operativo, usando prima le date evento e, se mancanti, le date di contatto e follow-up.',
+    ]
+  },
   {
     version: 'v0.15.0-beta',
     date: '2026-04-24',

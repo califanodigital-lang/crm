@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, DollarSign, Calendar, CheckCircle, XCircle, Archive, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatDate } from '../utils/date'
+import { getDefaultMonthlyRange, isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 import CollaborationForm from '../components/CollaborationForm'
+import DateRangeFilter from '../components/DateRangeFilter'
 import { 
   getAllCollaborations, 
   createCollaboration, 
@@ -38,6 +40,7 @@ export default function CollaborationsPage() {
   const [mostraArchivio, setMostraArchivio] = useState(false)
   const [sortField, setSortField] = useState('stato')
   const [sortDir, setSortDir] = useState('asc')
+  const [dateRange, setDateRange] = useState(() => getDefaultMonthlyRange())
 
 
   // Gestisci pre-riempimento da altre pagine
@@ -196,7 +199,10 @@ export default function CollaborationsPage() {
                          c.brandNome?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'ALL' || c.stato === filterStatus
     const matchesAgente = filterAssegnatario === 'ALL' || (c.assegnatario || []).includes(filterAssegnatario)
-    return matchesSearch && matchesStatus && matchesAgente
+    const matchesDate = isDateRangeDisabled(dateRange)
+      ? true
+      : isDateInRange(c.dataFirma || c.createdAt, dateRange.start, dateRange.end)
+    return matchesSearch && matchesStatus && matchesAgente && matchesDate
   })
 
   const handleSort = (field) => {
@@ -339,33 +345,41 @@ export default function CollaborationsPage() {
 
         {/* Filters */}
         <div className="card mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-3 text-gray-400 w-4 h-4 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Cerca per creator o brand..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              />
+          <div className="flex flex-col gap-3">
+            <DateRangeFilter
+              value={dateRange}
+              onChange={setDateRange}
+              label="Periodo collaborazioni"
+              hint="Default: dal primo giorno del mese al primo del mese successivo. Il filtro usa la data firma, con fallback alla data di creazione se manca."
+            />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-3 text-gray-400 w-4 h-4 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Cerca per creator o brand..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                />
+              </div>
+              <select className="input sm:w-44" value={filterAssegnatario}
+                onChange={(e) => setFilterAssegnatario(e.target.value)}>
+                <option value="ALL">Tutti gli assegnatari</option>
+                {agenti.map(a => (
+                  <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+                ))}
+              </select>
+              <select className="input sm:w-48" value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="ALL">Tutti gli stati</option>
+                <option value="IN_LAVORAZIONE">In Lavorazione</option>
+                <option value="ATTESA_PAGAMENTO_CREATOR">Attesa Pagamento Creator</option>
+                <option value="ATTESA_PAGAMENTO_AGENCY">Attesa Pagamento Agency</option>
+                <option value="COMPLETATA">Completata</option>
+                <option value="ANNULLATA">Annullata</option>
+              </select>
             </div>
-            <select className="input sm:w-44" value={filterAssegnatario}
-              onChange={(e) => setFilterAssegnatario(e.target.value)}>
-              <option value="ALL">Tutti gli assegnatari</option>
-              {agenti.map(a => (
-                <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-              ))}
-            </select>
-            <select className="input sm:w-48" value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="ALL">Tutti gli stati</option>
-              <option value="IN_LAVORAZIONE">In Lavorazione</option>
-              <option value="ATTESA_PAGAMENTO_CREATOR">Attesa Pagamento Creator</option>
-              <option value="ATTESA_PAGAMENTO_AGENCY">Attesa Pagamento Agency</option>
-              <option value="COMPLETATA">Completata</option>
-              <option value="ANNULLATA">Annullata</option>
-            </select>
           </div>
         </div>
         {/* Table */}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, Edit, ExternalLink, Plus, Search, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import DateRangeFilter from '../components/DateRangeFilter'
 import { getAllCircuiti } from '../services/circuitiService'
 import { getAllFiereDb } from '../services/fieraDbService'
 import { getActiveAgents } from '../services/userService'
@@ -20,6 +21,7 @@ import {
 import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
 import { formatDate } from '../utils/date'
+import { doesRangeOverlap, getDefaultMonthlyRange, hasAnyDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 import { useNavigate } from 'react-router-dom'
 
 const EMPTY_FORM = {
@@ -82,6 +84,7 @@ export default function TrattativeFierePage() {
   const [showClosed, setShowClosed] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStato, setFilterStato] = useState('ALL')
+  const [dateRange, setDateRange] = useState(() => getDefaultMonthlyRange())
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
@@ -260,7 +263,20 @@ export default function TrattativeFierePage() {
 
     const matchesSearch = haystack.includes(searchTerm.toLowerCase())
     const matchesStatus = filterStato === 'ALL' || trattativa.stato === filterStato
-    return matchesSearch && matchesStatus
+    const matchesDate = isDateRangeDisabled(dateRange)
+      ? true
+      : (trattativa.dataInizio || trattativa.dataFine)
+          ? doesRangeOverlap(
+              { startValue: trattativa.dataInizio, endValue: trattativa.dataFine },
+              dateRange.start,
+              dateRange.end
+            )
+          : hasAnyDateInRange(
+              [trattativa.dataContatto, trattativa.dataFollowup1, trattativa.dataFollowup2],
+              dateRange.start,
+              dateRange.end
+            )
+    return matchesSearch && matchesStatus && matchesDate
   })
 
   const stats = {
@@ -309,32 +325,40 @@ export default function TrattativeFierePage() {
       </div>
 
       <div className="card mb-4">
-        <div className="flex flex-col lg:flex-row gap-3">
-          <div className="relative flex-1 min-w-[220px]">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-            <input
-              className="input pl-11"
-              placeholder="Cerca fiera, regione, circuito, agente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="flex flex-col gap-3">
+          <DateRangeFilter
+            value={dateRange}
+            onChange={setDateRange}
+            label="Periodo trattative fiere"
+            hint="Default: dal primo giorno del mese al primo del mese successivo. Se presenti, il filtro usa le date evento; altrimenti usa contatto e follow-up."
+          />
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <input
+                className="input pl-11"
+                placeholder="Cerca fiera, regione, circuito, agente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <select className="input lg:w-52" value={filterStato} onChange={(e) => setFilterStato(e.target.value)}>
+              <option value="ALL">Tutti gli stati</option>
+              {STATI_TRATTATIVA_FIERA.map(stato => (
+                <option key={stato.value} value={stato.value}>{stato.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => setShowClosed(value => !value)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${
+                showClosed
+                  ? 'bg-gray-800 text-white border-gray-800'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {showClosed ? 'Torna alle attive' : 'Mostra chiuse'}
+            </button>
           </div>
-          <select className="input lg:w-52" value={filterStato} onChange={(e) => setFilterStato(e.target.value)}>
-            <option value="ALL">Tutti gli stati</option>
-            {STATI_TRATTATIVA_FIERA.map(stato => (
-              <option key={stato.value} value={stato.value}>{stato.label}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => setShowClosed(value => !value)}
-            className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors whitespace-nowrap ${
-              showClosed
-                ? 'bg-gray-800 text-white border-gray-800'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-            }`}
-          >
-            {showClosed ? 'Torna alle attive' : 'Mostra chiuse'}
-          </button>
         </div>
       </div>
 
