@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Lock } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
@@ -29,7 +30,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     feeAgenteCalc: 0,
     feeSeniorCalc: 0,
     assegnatario: [],
-    creatoDa: ''
+    creatoDa: '',
+    tranche: [],
   })
 
   const [agenti, setAgenti] = useState([])
@@ -88,6 +90,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         dataPagamentoAgency: collaboration.dataPagamentoAgency ?? '',
         assegnatario: collaboration.assegnatario || [],
         creatoDa: collaboration.creatoDa ?? '',
+        tranche: collaboration.tranche || [],
       }))
     }, [collaboration])
 
@@ -284,6 +287,58 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           />
           <p className="text-xs text-gray-500 mt-1">Modificabile manualmente se necessario</p>
         </div>
+
+        {/* Tranches pagamento creator */}
+        <div className="md:col-span-2 pt-2">
+          <label className="label">
+            Struttura pagamento creator
+            <span className="ml-2 text-xs font-normal text-gray-400">quante rate per pagare il creator?</span>
+          </label>
+          <select
+            className="input w-52"
+            value={formData.tranche?.length > 1 ? formData.tranche.length : 1}
+            onChange={(e) => {
+              const n = parseInt(e.target.value)
+              if (n <= 1) {
+                setFormData(prev => ({ ...prev, tranche: [] }))
+              } else {
+                const curr = formData.tranche || []
+                const newTranche = Array.from({ length: n }, (_, i) =>
+                  curr[i] || { importo: '', pagato: false, data: null }
+                )
+                setFormData(prev => ({ ...prev, tranche: newTranche }))
+              }
+            }}
+          >
+            <option value={1}>Pagamento unico</option>
+            {[2, 3, 4, 5].map(n => <option key={n} value={n}>{n} tranches</option>)}
+          </select>
+          {(formData.tranche?.length > 1) && (
+            <div className="mt-3 space-y-2">
+              {formData.tranche.map((t, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500 w-24 shrink-0">Tranche {i + 1}</span>
+                  <input
+                    type="number" step="0.01" className="input w-36"
+                    value={t.importo}
+                    onChange={(e) => {
+                      const updated = [...formData.tranche]
+                      updated[i] = { ...updated[i], importo: e.target.value }
+                      setFormData(prev => ({ ...prev, tranche: updated }))
+                    }}
+                    placeholder="€ importo"
+                  />
+                  {t.pagato && (
+                    <span className="text-xs text-green-600 font-semibold">
+                      Pagata{t.data ? ` il ${t.data}` : ''}
+                    </span>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs text-gray-400 mt-1">Le spunte di pagamento si gestiscono dalla lista collaborazioni</p>
+            </div>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
         <div className="md:col-span-3"><p className="form-section-title">Date</p></div>
@@ -367,43 +422,79 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         {/* Sales — Ricerca brand (5%) */}
         <div>
           <label className="label">Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
-          <select className="input" value={formData.sales}
-            onChange={(e) => {
-              const upd = {...formData, sales: e.target.value}
-              setFormData({...upd, ...ricalcolaFee(upd)})
-            }}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-          </select>
-          {formData.feeSalesCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSalesCalc}</p>}
+          {!isAdmin && collaboration?.sales ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.sales)?.nomeCompleto || formData.sales || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeSalesCalc > 0 ? ` · Fee: €${formData.feeSalesCalc}` : ''}</p>
+            </>
+          ) : (
+            <>
+              <select className="input" value={formData.sales}
+                onChange={(e) => {
+                  const upd = {...formData, sales: e.target.value}
+                  setFormData({...upd, ...ricalcolaFee(upd)})
+                }}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
+              </select>
+              {formData.feeSalesCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSalesCalc}</p>}
+            </>
+          )}
         </div>
 
         {/* Agente IMA — Contatto brand (10%) */}
         <div>
           <label className="label">Agente / Contatto <span className="text-xs text-gray-400 font-normal">(10% fee)</span></label>
-          <select className="input bg-gray-50" value={formData.agente}
-            onChange={(e) => {
-              const upd = {...formData, agente: e.target.value}
-              setFormData({...upd, ...ricalcolaFee(upd)})
-            }}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-          </select>
-          {formData.feeAgenteCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeAgenteCalc}</p>}
+          {!isAdmin && collaboration?.agente ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.agente)?.nomeCompleto || formData.agente || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeAgenteCalc > 0 ? ` · Fee: €${formData.feeAgenteCalc}` : ''}</p>
+            </>
+          ) : (
+            <>
+              <select className="input bg-gray-50" value={formData.agente}
+                onChange={(e) => {
+                  const upd = {...formData, agente: e.target.value}
+                  setFormData({...upd, ...ricalcolaFee(upd)})
+                }}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
+              </select>
+              {formData.feeAgenteCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeAgenteCalc}</p>}
+            </>
+          )}
         </div>
 
         {/* Senior — Chiusura trattativa (15%) */}
         <div>
           <label className="label">Senior / Chiusura <span className="text-xs text-gray-400 font-normal">(15% fee)</span></label>
-          <select className="input" value={formData.senior}
-            onChange={(e) => {
-              const upd = {...formData, senior: e.target.value}
-              setFormData({...upd, ...ricalcolaFee(upd)})
-            }}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
-          </select>
-          {formData.feeSeniorCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSeniorCalc}</p>}
+          {!isAdmin && collaboration?.senior ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.senior)?.nomeCompleto || formData.senior || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeSeniorCalc > 0 ? ` · Fee: €${formData.feeSeniorCalc}` : ''}</p>
+            </>
+          ) : (
+            <>
+              <select className="input" value={formData.senior}
+                onChange={(e) => {
+                  const upd = {...formData, senior: e.target.value}
+                  setFormData({...upd, ...ricalcolaFee(upd)})
+                }}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
+              </select>
+              {formData.feeSeniorCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSeniorCalc}</p>}
+            </>
+          )}
         </div>
 
         {/* Stato */}
@@ -423,7 +514,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           </select>
         </div>
 
-        {/* Pagato */}
+        {/* Pagato creator - solo se pagamento unico */}
+        {!(formData.tranche?.length > 1) && (
         <div className="flex items-center gap-3 pt-6">
         <input
           type="checkbox"
@@ -441,6 +533,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         />
           <label htmlFor="pagato" className="label mb-0">Pagamento Creator</label>
         </div>
+        )}
 
         {/* Pagamento Agency */}
         <div className="flex items-center gap-3 pt-6">

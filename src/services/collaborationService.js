@@ -66,7 +66,7 @@ const recalculateBrandSummary = async (brandId, fallbackBrandNome = null) => {
 
     const lastDate =
       latest.data_pagamento_agency ||
-      lastest.data_pagamento_creator
+      latest.data_pagamento_creator ||
       latest.data_firma ||
       (latest.created_at ? String(latest.created_at).slice(0, 10) : null)
 
@@ -138,6 +138,7 @@ const toCamelCase = (collab) => {
     dataPagamentoAgency: collab.data_pagamento_agency,
     assegnatario: collab.assegnatario || [],
     creatoDa: collab.creato_da,
+    tranche: collab.tranche || [],
   }
 }
 
@@ -157,7 +158,6 @@ const toSnakeCase = (collab) => {
     agente: cleanValue(collab.agente),
     sales: cleanValue(collab.sales),
     stato: collab.stato || 'IN_LAVORAZIONE',
-    pagato: collab.pagato || false,
     pagato_agency: collab.pagato_agency || false,
     contatto: cleanValue(collab.contatto),
     note: cleanValue(collab.note),
@@ -169,7 +169,10 @@ const toSnakeCase = (collab) => {
     data_pagamento_agency: collab.pagato_agency ? cleanValue(collab.dataPagamentoAgency) : null,
     assegnatario: collab.assegnatario || [],
     creato_da: cleanValue(collab.creatoDa),
-
+    tranche: collab.tranche?.length > 0 ? collab.tranche : null,
+    pagato: collab.tranche?.length > 0
+      ? collab.tranche.every(t => t.pagato)
+      : (collab.pagato || false),
   }
 }
 

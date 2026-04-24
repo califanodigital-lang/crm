@@ -1,6 +1,6 @@
 // src/components/TrattativaForm.jsx
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, Lock } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
 import { getAllCreators } from '../services/creatorService'
 import CreatorMultiSelect from './CreatorMultiSelect'
@@ -14,6 +14,8 @@ import {
 } from '../constants/constants'
 import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
+import { toast } from '../components/Toast'
+import { formatDate } from '../utils/date'
 
 
 // Ordine del flusso — usato per mostrare sezioni progressive
@@ -191,8 +193,43 @@ useEffect(() => {
 
   const S = (field, val) => setFormData(prev => ({ ...prev, [field]: val }))
 
+  const handleStatoChange = (newStato) => {
+    const updates = { stato: newStato }
+    const today = todayLocal()
+    if (newStato === 'PRIMO_CONTATTO' && !formData.dataContatto) {
+      updates.dataContatto = today
+      if (!formData.dataFollowup1) {
+        const d1 = new Date(today); d1.setDate(d1.getDate() + 7)
+        updates.dataFollowup1 = d1.toISOString().split('T')[0]
+        const d2 = new Date(updates.dataFollowup1); d2.setDate(d2.getDate() + 5)
+        updates.dataFollowup2 = d2.toISOString().split('T')[0]
+      }
+    } else if (newStato === 'FOLLOW_UP_1' && !formData.dataFollowup1) {
+      updates.dataFollowup1 = today
+      if (!formData.dataFollowup2) {
+        const d2 = new Date(today); d2.setDate(d2.getDate() + 5)
+        updates.dataFollowup2 = d2.toISOString().split('T')[0]
+      }
+    } else if (newStato === 'PREVENTIVO_INVIATO' && !formData.dataPreventivo) {
+      updates.dataPreventivo = today
+    } else if (newStato === 'CONTRATTO_INVIATO' && !formData.dataPreventivo) {
+      updates.dataPreventivo = today
+    }
+    setFormData(prev => ({ ...prev, ...updates }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const missing = []
+    if (!(formData.assegnatario?.length)) missing.push('Assegnatario')
+    if (!formData.settore?.trim()) missing.push('Settore')
+    if (!formData.sales) missing.push('Sales (Ricerca)')
+    if (!formData.ima) missing.push('IMA (Contatto)')
+    if (!formData.senior) missing.push('Senior (Chiusura)')
+    if (missing.length) {
+      toast.error(`Campi obbligatori mancanti: ${missing.join(', ')}`)
+      return
+    }
     const ok = await confirm('Salvare le modifiche alla trattativa?', {
       title: 'Conferma salvataggio', confirmLabel: 'Salva'
     })
@@ -338,16 +375,17 @@ useEffect(() => {
         </div>
 
         <div>
-          <label className="label">Settore</label>
+          <label className="label">Settore *</label>
           <input className="input" value={formData.settore}
             onChange={(e) => S('settore', e.target.value)}
-            placeholder="es. Gaming, Food, Tech..." />
+            placeholder="es. Gaming, Food, Tech..."
+            required />
         </div>
 
         <div>
           <label className="label">Stato *</label>
           <select className="input" value={formData.stato}
-            onChange={(e) => S('stato', e.target.value)} required>
+            onChange={(e) => handleStatoChange(e.target.value)} required>
             {STATI_TRATTATIVA.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
@@ -368,6 +406,27 @@ useEffect(() => {
             )}
           </div>
         </div>
+
+        {/* Mini-timeline date chiave */}
+        {(formData.dataContatto || formData.dataFollowup1 || formData.dataPreventivo || formData.dataRicontatto) && (
+          <div className="md:col-span-2 bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 flex flex-wrap gap-x-5 gap-y-1">
+            {formData.dataContatto && (
+              <span className="text-xs text-gray-500">Contatto: <strong className="text-gray-700">{formatDate(formData.dataContatto)}</strong></span>
+            )}
+            {formData.dataFollowup1 && (
+              <span className="text-xs text-gray-500">Follow-up 1: <strong className="text-gray-700">{formatDate(formData.dataFollowup1)}</strong></span>
+            )}
+            {formData.dataFollowup2 && (
+              <span className="text-xs text-gray-500">Follow-up 2: <strong className="text-gray-700">{formatDate(formData.dataFollowup2)}</strong></span>
+            )}
+            {formData.dataPreventivo && (
+              <span className="text-xs text-gray-500">Preventivo: <strong className="text-gray-700">{formatDate(formData.dataPreventivo)}</strong></span>
+            )}
+            {formData.dataRicontatto && (
+              <span className="text-xs text-gray-500">Ricontatto: <strong className="text-gray-700">{formatDate(formData.dataRicontatto)}</strong></span>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="label">Priorità</label>
@@ -412,37 +471,73 @@ useEffect(() => {
         subtitle="Sales = ricerca (5%)  ·  IMA = contatto (10%)  ·  Senior = chiusura (15%)"
         show={true} defaultOpen={true}>
         <div>
-          <label className="label">Sales — Ricerca brand</label>
-          <select className="input" value={formData.sales}
-            onChange={(e) => S('sales', e.target.value)}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => (
-              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">5% fee se riceve_fee attivo</p>
+          <label className="label">Sales — Ricerca brand *</label>
+          {!isAdmin && trattativa?.sales ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.sales)?.nomeCompleto || formData.sales || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">5% fee · solo admin può modificare</p>
+            </>
+          ) : (
+            <>
+              <select className="input" value={formData.sales}
+                onChange={(e) => S('sales', e.target.value)}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => (
+                  <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">5% fee se riceve_fee attivo</p>
+            </>
+          )}
         </div>
         <div>
-          <label className="label">IMA — Primo contatto</label>
-          <select className="input" value={formData.ima}
-            onChange={(e) => S('ima', e.target.value)}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => (
-              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">10% fee</p>
+          <label className="label">IMA — Primo contatto *</label>
+          {!isAdmin && trattativa?.ima ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.ima)?.nomeCompleto || formData.ima || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">10% fee · solo admin può modificare</p>
+            </>
+          ) : (
+            <>
+              <select className="input" value={formData.ima}
+                onChange={(e) => S('ima', e.target.value)}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => (
+                  <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">10% fee</p>
+            </>
+          )}
         </div>
         <div>
-          <label className="label">Senior — Chiusura</label>
-          <select className="input" value={formData.senior}
-            onChange={(e) => S('senior', e.target.value)}>
-            <option value="">Nessuno</option>
-            {agenti.map(a => (
-              <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">15% fee</p>
+          <label className="label">Senior — Chiusura *</label>
+          {!isAdmin && trattativa?.senior ? (
+            <>
+              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
+                <span>{agenti.find(a => a.agenteNome === formData.senior)?.nomeCompleto || formData.senior || '—'}</span>
+                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">15% fee · solo admin può modificare</p>
+            </>
+          ) : (
+            <>
+              <select className="input" value={formData.senior}
+                onChange={(e) => S('senior', e.target.value)}>
+                <option value="">Nessuno</option>
+                {agenti.map(a => (
+                  <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">15% fee</p>
+            </>
+          )}
         </div>
       </FormSection>
 

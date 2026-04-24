@@ -8,6 +8,9 @@ const toCamelCase = (e) => {
     id: e.id,
     nome: e.nome,
     tipo: e.tipo,
+    fieraDbId: e.fiera_db_id,
+    trattativaFieraId: e.trattativa_fiera_id,
+    circuitoId: e.circuito_id,
     dataInizio: e.data_inizio,
     dataFine: e.data_fine,
     location: e.location,
@@ -15,6 +18,7 @@ const toCamelCase = (e) => {
     descrizione: e.descrizione,
     link: e.link,
     note: e.note,
+    stato: e.stato || 'APERTA',
     createdAt: e.created_at,
     updatedAt: e.updated_at,
   }
@@ -23,6 +27,9 @@ const toCamelCase = (e) => {
 const toSnakeCase = (e) => ({
   nome: e.nome,
   tipo: cleanValue(e.tipo),
+  fiera_db_id: cleanValue(e.fieraDbId),
+  trattativa_fiera_id: cleanValue(e.trattativaFieraId),
+  circuito_id: cleanValue(e.circuitoId),
   data_inizio: cleanValue(e.dataInizio),
   data_fine: cleanValue(e.dataFine),
   location: cleanValue(e.location),
@@ -30,6 +37,7 @@ const toSnakeCase = (e) => ({
   descrizione: cleanValue(e.descrizione),
   link: cleanValue(e.link),
   note: cleanValue(e.note),
+  stato: e.stato || 'APERTA',
 })
 
 // GET: Tutti gli eventi
@@ -151,7 +159,7 @@ export const getPartecipazioniByCreator = async (creatorId) => {
       eventoLocation: p.eventi?.location,
       eventoCitta: p.eventi?.citta,
       creatorId: p.creator_id,
-      tipoContratto: p.tipo_contratto,
+      rimborsoSpese: p.rimborso_spese,
       panel: p.panel,
       workshop: p.workshop,
       masterGdr: p.master_gdr,
@@ -161,8 +169,14 @@ export const getPartecipazioniByCreator = async (creatorId) => {
       palco: p.palco,
       moderazione: p.moderazione,
       accredito: p.accredito,
+      meetGreet: p.meet_greet,
+      hostPalco: p.host_palco,
+      hostGaraCosplay: p.host_gara_cosplay,
       fee: p.fee,
-      note: p.note
+      note: p.note,
+      pagato: p.pagato,
+      pagato_agency: p.pagato_agency,
+      tipo: p.tipo || 'partecipante',
     }))
 
     return { data: mapped, error: null }

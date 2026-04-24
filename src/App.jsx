@@ -9,12 +9,14 @@ import BrandsPage from './pages/BrandsPage'
 import CreatorsPage from './pages/CreatorsPage'
 import CollaborationsPage from './pages/CollaborationsPage'
 import TrattativaPage from './pages/TrattativaPage'
+import TrattativeFierePage from './pages/TrattativeFierePage'
 import UsersPage from './pages/UsersPage'
 import FinancePage from './pages/FinancePage'
 import AgentDashboardPage from './pages/AgentDashboardPage'
 import EventiPage from './pages/EventiPage'
 import ImportPage from './pages/ImportPage'
 import AgendaPage from './pages/AgendaPage'
+import FiereDbPage from './pages/FiereDbPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -53,7 +55,9 @@ function App() {
                 <Route path="creators"       element={<CreatorsPage />} />
                 <Route path="collaborations" element={<CollaborationsPage />} />
                 <Route path="trattativa"       element={<TrattativaPage />} />
+                <Route path="trattative-fiere" element={<TrattativeFierePage />} />
                 <Route path="eventi"         element={<EventiPage />} />
+                <Route path="db-fiere"      element={<FiereDbPage />} />
                 <Route path="agenda" element={<AgendaPage />} />
                 <Route path="finance"        element={<FinancePage />} />
                 <Route path="agenti"         element={<AgentDashboardPage />} />

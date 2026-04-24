@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Briefcase, Users, Handshake,
   DollarSign, Target, LogOut, Menu, X,
-  BarChart3, Calendar, Import, ChevronRight
+  BarChart3, Calendar, ChevronRight, CalendarRange
 } from 'lucide-react'
 import { ToastContainer } from './Toast'
 import { ConfirmContainer } from './ConfirmModal'
@@ -13,15 +13,27 @@ import { APP_VERSION } from '../constants/changelog'
 
 const NAV_GROUPS = [
   {
-    label: 'Operativo',
+    label: 'Stats & Agenda',
     items: [
       { name: 'Dashboard',       href: '/dashboard',     icon: LayoutDashboard },
       { name: 'Agenda', href: '/agenda', icon: Calendar },
+    ]
+  },
+  {
+    label: 'Brand & Creators',
+    items: [
       { name: 'Brand',           href: '/brands',        icon: Briefcase },
       { name: 'Creators',         href: '/creators',      icon: Users },
       { name: 'Trattative',        href: '/trattativa',      icon: Target },
       { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
-      { name: 'Fiere & Eventi',  href: '/eventi',    icon: Calendar }
+    ]
+  },
+  {
+    label: 'Gestione Fiere & Eventi',
+    items: [
+      { name: 'DB Fiere & Eventi', href: '/db-fiere', icon: CalendarRange },
+      { name: 'Trattative Fiere', href: '/trattative-fiere', icon: Target },
+      { name: 'Fiere & Eventi', href: '/eventi', icon: Calendar },
     ]
   },
   {
@@ -42,7 +54,7 @@ function NavItem({ item, active, onClick }) {
     <Link
       to={item.href}
       onClick={onClick}
-      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+      className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
         active
           ? 'bg-yellow-400 text-gray-900 shadow-sm'
           : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -73,7 +85,7 @@ function SidebarContent({ onClose }) {
   return (
     <div className="flex flex-col h-full bg-gray-950 border-r border-white/5">
       {/* Logo */}
-      <div className="flex items-center justify-between h-20 px-4 border-b border-white/5 flex-shrink-0">
+      <div className="flex items-center justify-between h-[72px] px-4 py-3 border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/20">
             <img src="/icon.svg" alt="C3 logo" className="w-8 h-8" />
@@ -94,12 +106,12 @@ function SidebarContent({ onClose }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 min-h-0 overflow-y-hidden px-3 py-3 space-y-4">
         {NAV_GROUPS.map(group => {
           if (group.adminOnly && !isAdmin) return null
           return (
             <div key={group.label}>
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-widest mb-2 px-3">
+              <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-widest mb-1.5 px-3">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -118,8 +130,8 @@ function SidebarContent({ onClose }) {
       </nav>
 
       {/* User footer */}
-      <div className="p-3 border-t border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors">
+      <div className="p-2.5 border-t border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition-colors">
           <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center flex-shrink-0 shadow-sm">
             <span className="text-xs font-black text-gray-900">
               {(userProfile?.nomeCompleto || user?.email)?.[0]?.toUpperCase()}

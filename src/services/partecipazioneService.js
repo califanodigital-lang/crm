@@ -9,7 +9,7 @@ const toCamelCase = (p) => {
     eventoId: p.evento_id,
     creatorId: p.creator_id,
     creatorNome: p.creator_nome,
-    tipoContratto: p.tipo_contratto,
+    rimborsoSpese: p.rimborso_spese,
     panel: p.panel,
     workshop: p.workshop,
     masterGdr: p.master_gdr,
@@ -20,19 +20,22 @@ const toCamelCase = (p) => {
     moderazione: p.moderazione,
     accredito: p.accredito,
     meetGreet: p.meet_greet,
+    hostPalco: p.host_palco,
+    hostGaraCosplay: p.host_gara_cosplay,
     fee: p.fee,
     note: p.note,
     dataInizioPartecipazione: p.data_inizio_partecipazione,
     dataFinePartecipazione: p.data_fine_partecipazione,
     pagato: p.pagato,
     pagato_agency: p.pagato_agency,
+    tipo: p.tipo || 'partecipante',
   }
 }
 
 const toSnakeCase = (p) => ({
   evento_id: p.eventoId,
   creator_id: p.creatorId,
-  tipo_contratto: cleanValue(p.tipoContratto),
+  rimborso_spese: cleanValue(p.rimborsoSpese),
   panel: p.panel || false,
   workshop: p.workshop || false,
   master_gdr: p.masterGdr || false,
@@ -43,12 +46,15 @@ const toSnakeCase = (p) => ({
   moderazione: p.moderazione || false,
   accredito: p.accredito || false,
   meet_greet: p.meetGreet || false,
+  host_palco: p.hostPalco || false,
+  host_gara_cosplay: p.hostGaraCosplay || false,
   fee: cleanValue(p.fee),
   note: cleanValue(p.note),
   data_inizio_partecipazione: cleanValue(p.dataInizioPartecipazione),
   data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),
   pagato: p.pagato || false,
   pagato_agency: p.pagato_agency || false,
+  tipo: p.tipo || 'partecipante',
 })
 
 // GET: Partecipazioni per evento

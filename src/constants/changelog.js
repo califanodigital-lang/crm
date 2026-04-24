@@ -1,6 +1,32 @@
-export const APP_VERSION = 'v0.13.1-beta'
+export const APP_VERSION = 'v0.15.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.15.0-beta',
+    date: '2026-04-24',
+    items: [
+      'Nuovo flusso fiere completo: DB Fiere & Eventi → Trattative Fiere → Fiere & Eventi, coerente con il modello già usato per Brand, Trattative e Collaborazioni.',
+      'Nuova sezione "Trattative Fiere": agente che ha contattato la fiera, data contatto, follow-up automatici (+4 giorni e +7 giorni), stati operativi e passaggio automatico in Fiere & Eventi quando la fiera entra in trattativa.',
+      'DB Fiere & Eventi esteso con dati master più strutturati: tipologia evento, circuito, date evento, referente, contatti e gestione dedicata dei circuiti censiti.',
+      'Fiere & Eventi aggiornato per leggere e mostrare circuito e tipologia evento, mantenendo il collegamento con DB Fiere e Trattative Fiere.',
+      'Audit e pulizia del flusso fiere: corretto il sync tra Trattative Fiere ed Eventi per evitare l’azzeramento involontario di campi già compilati durante gli aggiornamenti.',
+      'Pulizia UI/UX su Eventi: introdotto reset centralizzato del form evento, aggiunto il campo note nel form e ridotte alcune ridondanze nei lookup dei circuiti.',
+    ]
+  },
+  {
+    version: 'v0.14.0-beta',
+    date: '2026-04-24',
+    items: [
+      'Fiere & Eventi evoluta: aggiunte nuove attivita creator (Meet & Greet, Host Palco, Host Gara Cosplay), distinzione tra creator partecipanti e proposti, modifica diretta dei partecipanti e vista card con focus su fee, rimborsi e pagamenti.',
+      'Nuova sezione "Gestione Fiere & Eventi": database dedicato per fiere/eventi chiusi o pianificati, calendario contatti a 6 mesi, creazione manuale di nuove schede e creazione di eventi operativi collegati direttamente dalla gestione.',
+      'Sincronizzazione tra Gestione Fiere & Eventi e Fiere & Eventi: chiudendo una fiera la scheda viene aggiornata nel database senza duplicazioni, grazie al collegamento stabile tra record gestionale ed evento operativo.',
+      'Creator potenziati: email multiple nella sezione "Email/PEC", piu nuovi campi residenza, P.IVA e codice fiscale.',
+      'Trattative piu sicure e guidate: lock dei responsabili economici (sales/ima/senior) una volta impostati per i non admin, campi obbligatori al salvataggio e timeline date piu smart in base alla fase della trattativa.',
+      'Collaborazioni migliorate: colonna "Data Firma" in tabella, supporto a pagamenti creator in tranches con avanzamento parziale, indicatore visivo dedicato e cambio automatico dello stato in base ai pagamenti.',
+      'UI e naming affinati nelle fiere: "Location" rinominato in "Regione" e "Tipo contratto" rinominato in "Rimborso spese" vicino alla fee.',
+      'Fix critico lista creator nelle fiere: i creator inseriti da CRM tornano correttamente selezionabili anche quando vengono aggiunti a posteriori.',
+    ]
+  },
   {
     version: 'v0.13.2-beta',
     date: '2026-04-24',

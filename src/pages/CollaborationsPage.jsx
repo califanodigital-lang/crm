@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, DollarSign, Calendar, CheckCircle, XCircle, Archive, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
+import { formatDate } from '../utils/date'
 import CollaborationForm from '../components/CollaborationForm'
 import { 
   getAllCollaborations, 
@@ -86,13 +87,37 @@ export default function CollaborationsPage() {
     setLoading(false)
   }
 
-  const handleTogglePagato = async (tipo, valore, data) => {
-    const { id } = pagamentoModal
-    const payload = tipo === 'creator'
-      ? { pagato: valore, dataPagamentoCreator: data || null }
-      : { pagato_agency: valore, dataPagamentoAgency: data || null }
-    await updateCollaboration(id, { ...collaborations.find(c => c.id === id), ...payload })
+  const handleTogglePagato = async (tipo, valore, data, updatedTranche = null) => {
+    const collab = collaborations.find(c => c.id === pagamentoModal.id)
+    let payload = {}
+
+    if (updatedTranche !== null) {
+      const allPaid = updatedTranche.every(t => t.pagato)
+      const lastDate = [...updatedTranche].reverse().find(t => t.pagato)?.data || null
+      payload = { tranche: updatedTranche, pagato: allPaid, dataPagamentoCreator: allPaid ? (lastDate || null) : collab.dataPagamentoCreator }
+    } else if (tipo === 'creator') {
+      payload = { pagato: valore, dataPagamentoCreator: data || null }
+    } else {
+      payload = { pagato_agency: valore, dataPagamentoAgency: data || null }
+    }
+
+    const newPagato = 'pagato' in payload ? payload.pagato : (collab.pagato || false)
+    const newPagatoAgency = 'pagato_agency' in payload ? payload.pagato_agency : (collab.pagato_agency || false)
+
+    const wasCompleted = collab.stato === 'COMPLETATA'
+    if (newPagato && newPagatoAgency) {
+      payload.stato = 'COMPLETATA'
+    } else if (newPagatoAgency && !newPagato && !['COMPLETATA', 'ANNULLATA'].includes(collab.stato)) {
+      payload.stato = 'ATTESA_PAGAMENTO_CREATOR'
+    } else if (newPagato && !newPagatoAgency && !['COMPLETATA', 'ANNULLATA'].includes(collab.stato)) {
+      payload.stato = 'ATTESA_PAGAMENTO_AGENCY'
+    }
+
+    await updateCollaboration(collab.id, { ...collab, ...payload })
     setPagamentoModal(null)
+    if (payload.stato === 'COMPLETATA' && !wasCompleted) {
+      toast.success('Tutti i pagamenti registrati — collaborazione completata!')
+    }
     loadData()
   }
 
@@ -366,6 +391,7 @@ export default function CollaborationsPage() {
                     <SortTh field="brand">Brand</SortTh>
                     <SortTh field="adv">Tipo ADV</SortTh>
                     <SortTh field="pagamento">Pagamento</SortTh>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Data Firma</th>
                     <SortTh field="stato">Stato</SortTh>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato Creator</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagata Agency</th>
@@ -381,14 +407,26 @@ export default function CollaborationsPage() {
                       <td className="py-3 px-4 font-semibold text-gray-900">
                         €{collab.pagamento ? parseFloat(collab.pagamento).toLocaleString() : '0'}
                       </td>
+                      <td className="py-3 px-4 text-gray-600 text-sm">
+                        {formatDate(collab.dataFirma) || '—'}
+                      </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={collab.stato} />
                       </td>
                       <td className="py-3 px-4 text-center">
                         <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'creator', currentValue: collab.pagato, dataAttuale: collab.dataPagamentoCreator })}>
-                          {collab.pagato
-                            ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                            : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />}
+                          {(() => {
+                            const tr = collab.tranche || []
+                            if (tr.length > 1) {
+                              const paid = tr.filter(t => t.pagato).length
+                              if (paid === 0) return <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
+                              if (paid < tr.length) return <CheckCircle className="w-5 h-5 text-yellow-500 mx-auto" title={`${paid}/${tr.length} tranches pagate`} />
+                              return <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                            }
+                            return collab.pagato
+                              ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                              : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
+                          })()}
                         </button>
                       </td>
                     <td className="py-3 px-4 text-center">
@@ -425,6 +463,7 @@ export default function CollaborationsPage() {
           )}
         {pagamentoModal && <PagamentoDateModal
           modal={pagamentoModal}
+          collab={collaborations.find(c => c.id === pagamentoModal.id)}
           onConfirm={handleTogglePagato}
           onClose={() => setPagamentoModal(null)}
         />}
@@ -453,15 +492,69 @@ export default function CollaborationsPage() {
   )
 }
 
-function PagamentoDateModal({ modal, onConfirm, onClose }) {
-  const [data, setData] = useState(modal.dataAttuale || new Date().toISOString().split('T')[0])
+function PagamentoDateModal({ modal, collab, onConfirm, onClose }) {
+  const today = new Date().toISOString().split('T')[0]
+  const [data, setData] = useState(modal.dataAttuale || today)
   const nuovoValore = !modal.currentValue
+  const hasTranche = modal.tipo === 'creator' && (collab?.tranche?.length > 1)
+  const [trancheState, setTrancheState] = useState(
+    hasTranche ? collab.tranche.map(t => ({ ...t })) : []
+  )
+
+  if (hasTranche) {
+    return (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+          <h3 className="text-base font-bold text-gray-900 mb-1">Tranches pagamento creator</h3>
+          <p className="text-sm text-gray-400 mb-4">Segna le singole tranches come pagate</p>
+          <div className="space-y-3 mb-5">
+            {trancheState.map((t, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={t.pagato}
+                  onChange={(e) => {
+                    const updated = [...trancheState]
+                    updated[i] = { ...updated[i], pagato: e.target.checked, data: e.target.checked ? (updated[i].data || today) : null }
+                    setTrancheState(updated)
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm text-gray-700 w-24 shrink-0">
+                  Tranche {i + 1}{t.importo ? ` — €${t.importo}` : ''}
+                </span>
+                {t.pagato && (
+                  <input
+                    type="date"
+                    className="input text-xs py-1"
+                    value={t.data || today}
+                    onChange={(e) => {
+                      const updated = [...trancheState]
+                      updated[i] = { ...updated[i], data: e.target.value }
+                      setTrancheState(updated)
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">Annulla</button>
+            <button
+              onClick={() => onConfirm('creator', null, null, trancheState)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-green-500 hover:bg-green-600"
+            >Salva</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
         <h3 className="text-base font-bold text-gray-900 mb-1">
-          {nuovoValore ? '✓ Segna come pagato' : '✕ Rimuovi pagamento'}
+          {nuovoValore ? 'Segna come pagato' : 'Rimuovi pagamento'}
         </h3>
         <p className="text-sm text-gray-400 mb-4">
           {modal.tipo === 'creator' ? 'Pagamento Creator' : 'Pagamento Agency'}

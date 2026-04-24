@@ -9,8 +9,11 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     nome: '',
     nomeCompleto: '',
-    email: '',
+    emails: [],
     cellulare: '',
+    residenza: '',
+    piva: '',
+    codiceFiscale: '',
     cluster: [],
     regioni: [],
     categoriaAdv: '',
@@ -45,7 +48,12 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
   }, [onCancel])
 
   useEffect(() => {
-    if (creator) setFormData(creator)
+    if (creator) {
+      const emails = creator.emails?.length > 0
+        ? creator.emails
+        : (creator.email ? [creator.email] : [])
+      setFormData({ ...creator, emails })
+    }
     if (creator?.id) {
     // Carica piattaforme esistenti del creator
     import('../services/piattaformeService').then(({ getPiattaformeByCreator }) => {
@@ -131,14 +139,35 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
           />
         </div>
 
-        <div>
-          <label className="label">Email</label>
-          <input
-            type="email"
-            className="input"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          />
+        <div className="md:col-span-2">
+          <label className="label">Email / PEC</label>
+          <div className="space-y-2">
+            {(formData.emails || []).map((em, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="email"
+                  className="input flex-1"
+                  value={em}
+                  onChange={(e) => {
+                    const updated = [...formData.emails]
+                    updated[i] = e.target.value
+                    setFormData({ ...formData, emails: updated })
+                  }}
+                  placeholder="email@esempio.com"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, emails: formData.emails.filter((_, idx) => idx !== i) })}
+                  className="px-3 py-2 text-red-500 hover:text-red-700 border border-gray-200 rounded-lg hover:bg-red-50"
+                >✕</button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, emails: [...(formData.emails || []), ''] })}
+              className="text-sm text-yellow-700 hover:text-yellow-900 font-semibold"
+            >+ Aggiungi email o PEC</button>
+          </div>
         </div>
 
         <div>
@@ -147,6 +176,34 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             className="input"
             value={formData.cellulare}
             onChange={(e) => setFormData({ ...formData, cellulare: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="label">Residenza</label>
+          <input
+            className="input"
+            value={formData.residenza || ''}
+            onChange={(e) => setFormData({ ...formData, residenza: e.target.value })}
+            placeholder="Città, Provincia"
+          />
+        </div>
+
+        <div>
+          <label className="label">Partita IVA</label>
+          <input
+            className="input"
+            value={formData.piva || ''}
+            onChange={(e) => setFormData({ ...formData, piva: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="label">Codice Fiscale</label>
+          <input
+            className="input"
+            value={formData.codiceFiscale || ''}
+            onChange={(e) => setFormData({ ...formData, codiceFiscale: e.target.value })}
           />
         </div>
 

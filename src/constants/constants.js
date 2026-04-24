@@ -26,6 +26,18 @@ export const STATI_TRATTATIVA_ATTIVI = STATI_TRATTATIVA
 export const getStatoTrattativa = (value) =>
   STATI_TRATTATIVA.find(s => s.value === value) || STATI_TRATTATIVA[0]
 
+export const STATI_TRATTATIVA_FIERA = [
+  { value: 'CONTATTATO',        label: 'Contattato',        color: 'bg-blue-100 text-blue-700',    dot: 'bg-blue-500' },
+  { value: 'IN_TRATTATIVA',     label: 'In Trattativa',     color: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-500' },
+  { value: 'NESSUNA_RISPOSTA',  label: 'Nessuna Risposta',  color: 'bg-gray-100 text-gray-400',    dot: 'bg-gray-300' },
+  { value: 'CHIUSO_PERSO',      label: 'Chiuso Perso',      color: 'bg-red-100 text-red-700',      dot: 'bg-red-500' },
+]
+
+export const STATI_TRATTATIVA_FIERA_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO']
+
+export const getStatoTrattativaFiera = (value) =>
+  STATI_TRATTATIVA_FIERA.find(s => s.value === value) || STATI_TRATTATIVA_FIERA[0]
+
 // ── STATI COLLABORAZIONE ─────────────────────────────────────
 export const STATI_COLLABORAZIONE = [
   { value: 'IN_LAVORAZIONE',          label: 'In Lavorazione',         color: 'bg-purple-100 text-purple-700' },
@@ -42,6 +54,13 @@ export const getStatoCollaborazione = (value) =>
 export const CANALI_CONTATTO = ['Email', 'Telefono', 'Form sito web', 'LinkedIn', 'Instagram DM', 'Altro']
 
 export const CANALI_TRATTATIVA = ['Call', 'Email', 'WhatsApp', 'Meeting', 'Altro']
+
+export const TIPOLOGIE_EVENTO = [
+  'Comics',
+  'Fiere',
+  'Festival',
+  'Eventi Generici',
+]
 
 // ── CONTATTATO PER ───────────────────────────────────────────
 export const CONTATTATO_PER_OPTIONS = [
@@ -130,4 +149,6 @@ export const ATTIVITA_EVENTO = [
   { key: 'moderazione',    label: 'Moderazione' },
   { key: 'accredito',      label: 'Accredito' },
   { key: 'meetGreet',      label: 'Meet & Greet' },
+  { key: 'hostPalco',      label: 'Host Palco' },
+  { key: 'hostGaraCosplay', label: 'Host Gara Cosplay' },
 ]
