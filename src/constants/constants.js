@@ -117,3 +117,17 @@ export const TIPO_ADV_OPTIONS = [
   'Post Instagram', 'Reel Instagram', 'TikTok', 'Twitch',
   'Partnership Lunga', 'Fiera / Evento', 'Pacchetto Multi-Piattaforma', 'Altro'
 ]
+
+// ── ATTIVITÀ EVENTO ───────────────────────────────────────────
+export const ATTIVITA_EVENTO = [
+  { key: 'panel',          label: 'Panel' },
+  { key: 'workshop',       label: 'Workshop' },
+  { key: 'masterGdr',      label: 'Master GDR' },
+  { key: 'giochiTavolo',   label: 'Giochi Tavolo' },
+  { key: 'giudiceCosplay', label: 'Giudice Cosplay' },
+  { key: 'firmacopie',     label: 'Firmacopie' },
+  { key: 'palco',          label: 'Palco' },
+  { key: 'moderazione',    label: 'Moderazione' },
+  { key: 'accredito',      label: 'Accredito' },
+  { key: 'meetGreet',      label: 'Meet & Greet' },
+]

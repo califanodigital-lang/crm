@@ -7,7 +7,7 @@ import { getPiattaformeByCreator } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { getTrattativeByCreator } from '../services/trattativaService'
-import { getStatoTrattativa } from '../constants/constants'
+import { getStatoTrattativa, ATTIVITA_EVENTO } from '../constants/constants'
 import { getImpegniByCreator, createImpegno, deleteImpegno } from '../services/creatorImpegniService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
@@ -623,16 +623,7 @@ const handleDeleteImpegno = async (id) => {
                 <tbody>
                   {partecipazioni.map((p) => {
                     // Estrai attività
-                    const attivita = []
-                    if (p.panel) attivita.push('Panel')
-                    if (p.workshop) attivita.push('Workshop')
-                    if (p.masterGdr) attivita.push('Master GDR')
-                    if (p.giochiTavolo) attivita.push('Giochi Tavolo')
-                    if (p.giudiceCosplay) attivita.push('Giudice Cosplay')
-                    if (p.firmacopie) attivita.push('Firmacopie')
-                    if (p.palco) attivita.push('Palco')
-                    if (p.moderazione) attivita.push('Moderazione')
-                    if (p.accredito) attivita.push('Accredito')
+                    const attivita = ATTIVITA_EVENTO.filter(a => p[a.key]).map(a => a.label)
                     
                     return (
                       <tr key={p.id} className="border-b border-gray-100">

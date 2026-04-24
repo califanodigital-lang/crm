@@ -6,6 +6,7 @@ import { getAllCreators } from '../services/creatorService'
 import { Calendar, MapPin, Plus, Edit, Trash2, Users, X } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
 import {formatDate} from '../utils/date'
+import { ATTIVITA_EVENTO } from '../constants/constants'
 
 export default function EventiPage() {
   const { userProfile } = useAuth()
@@ -32,6 +33,7 @@ export default function EventiPage() {
     palco: false,
     moderazione: false,
     accredito: false,
+    meetGreet: false,
     fee: '',
     pagato: false,
     pagato_agency: false,
@@ -116,6 +118,7 @@ export default function EventiPage() {
       palco: false,
       moderazione: false,
       accredito: false,
+      meetGreet: false,
       fee: '',
       pagato: false,
       pagato_agency: false,
@@ -314,10 +317,10 @@ export default function EventiPage() {
               <button onClick={handleAddPartecipazione} className="px-4 py-2 bg-yellow-400 rounded-lg font-semibold hover:bg-yellow-500">Aggiungi</button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {['panel', 'workshop', 'masterGdr', 'giochiTavolo', 'giudiceCosplay', 'firmacopie', 'palco', 'moderazione', 'accredito'].map(key => (
+              {ATTIVITA_EVENTO.map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2">
                   <input type="checkbox" checked={partForm[key]} onChange={(e) => setPartForm({...partForm, [key]: e.target.checked})} />
-                  <span className="text-sm capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                  <span className="text-sm">{label}</span>
                 </label>
               ))}
             </div>
@@ -344,9 +347,7 @@ export default function EventiPage() {
                 <tr key={p.id} className="border-b">
                   <td className="py-2 font-medium">{p.creatorNome}</td>
                   <td className="py-2 text-sm">
-                    {[p.panel && 'Panel', p.workshop && 'Workshop', p.masterGdr && 'Master GDR', p.giochiTavolo && 'Giochi',
-                      p.giudiceCosplay && 'Giudice', p.firmacopie && 'Firmacopie', p.palco && 'Palco', p.moderazione && 'Moderazione']
-                      .filter(Boolean).join(', ') || '-'}
+                    {ATTIVITA_EVENTO.map(({ key, label }) => p[key] && label).filter(Boolean).join(', ') || '-'}
                   </td>
                   <td className="py-2 text-sm">
                     {formatDate(p.dataInizioPartecipazione) || formatDate(p.dataFinePartecipazione)

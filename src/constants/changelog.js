@@ -2,6 +2,13 @@ export const APP_VERSION = 'v0.13.1-beta'
 
 export const CHANGELOG = [
   {
+    version: 'v0.13.2-beta',
+    date: '2026-04-24',
+    items: [
+      'Aggiunta spunta "Meet & Greet" nella sezione fiere. Spostanto in constants.js la nomenclatura.'
+    ]
+  },
+  {
     version: 'v0.13.1-beta',
     date: '2026-04-22',
     items: [
