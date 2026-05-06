@@ -17,6 +17,8 @@ import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
 import { PagamentoRow } from '../components/PagamentoRow'
 import ContrattiRicorrentiTab from '../components/ContrattiRicorrentiTab'
+import ClientiTerziTab from '../components/ClientiTerziTab'
+import Modal from '../components/Modal'
 import { formatDate } from '../utils/date'
 import { supabase } from '../lib/supabase'
 import { CATEGORIE_USCITA, TIPI_ENTRATA } from '../constants/constants'
@@ -24,7 +26,15 @@ import { CATEGORIE_USCITA, TIPI_ENTRATA } from '../constants/constants'
 // Parsa "YYYY-MM-DD" come data locale (evita shift UTC→locale)
 const parseLD = (s) => { if (!s) return null; const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d) }
 
-const emptyFattura   = { numeroFattura: '', dataFattura: '', soggettoNome: '', importo: '', tipo: 'MANUALE', collabId: null, versamentoId: null, contrattoId: null, linkDocumento: '', note: '' }
+const getMonthRange = (month) => {
+  const [year, monthIndex] = month.split('-').map(Number)
+  return {
+    start: new Date(year, monthIndex - 1, 1),
+    end: new Date(year, monthIndex, 0),
+  }
+}
+
+const emptyFattura   = { mese: '', numeroFattura: '', dataFattura: '', soggettoNome: '', importo: '', tipo: 'MANUALE', collabId: null, versamentoId: null, contrattoId: null, linkDocumento: '', note: '' }
 const emptyVersamento = { creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', dataFattura: '', linkFattura: '', verificato: false }
 const emptyUscita    = { categoria: '', descrizione: '', importo: '', fornitore: '', note: '', pagata: false }
 
@@ -43,6 +53,7 @@ export default function FinancePage() {
   const [versamenti, setVersamenti]           = useState([])
   const [fattureEmesse, setFattureEmesse]     = useState([])
   const [contrattiAttiviTotale, setContrattiAttiviTotale] = useState(0)
+  const [contrattiAttivi, setContrattiAttivi] = useState([])
 
   // Uscite
   const [pagamenti, setPagamenti]   = useState([])
@@ -56,6 +67,7 @@ export default function FinancePage() {
   const [uscitaForm, setUscitaForm]         = useState(emptyUscita)
   const [showUscitaForm, setShowUscitaForm] = useState(false)
   const [editingUscita, setEditingUscita]   = useState(null)
+  const renderInlineFatturaForm = false
 
   // Collapse state
   const [open, setOpen] = useState({ collab: true, versamenti: false, contratti: false, fatture: true, agenti: true, varie: true })
@@ -88,13 +100,14 @@ export default function FinancePage() {
     ))
 
     // Contratti fissi attivi — per il totale P&L
-    const oggi = new Date(); oggi.setHours(0, 0, 0, 0)
+    const { start: monthStart, end: monthEnd } = getMonthRange(selectedMonth)
     const attivi = (contrattiRes.data || []).filter(c => {
       if (!c.attivo) return false
       const fine   = c.dataFine ? parseLD(c.dataFine) : null
       const inizio = parseLD(c.dataInizio)
-      return !(fine && fine < oggi) && inizio <= oggi
+      return inizio <= monthEnd && (!fine || fine >= monthStart)
     })
+    setContrattiAttivi(attivi)
     setContrattiAttiviTotale(attivi.reduce((s, c) => s + parseFloat(c.importoMensile || 0), 0))
 
     setVersamenti(versamentiRes.data || [])
@@ -128,19 +141,94 @@ export default function FinancePage() {
   // ── Fatture helpers ───────────────────────────────────────
   const getFatturaForCollab      = (id) => fattureEmesse.find(f => f.collabId === id)
   const getFatturaForVersamento  = (id) => fattureEmesse.find(f => f.versamentoId === id)
+  const getFatturaForContratto   = (id) => fattureEmesse.find(f => f.contrattoId === id)
+  const getCollabFatturaLabel = (c) => [c.creatorNome, c.brandNome].filter(Boolean).join(' - ') || 'Collaborazione'
+
+  const collabFatturabili = collabCompletate.filter(c => !getFatturaForCollab(c.id))
+  const contrattiFatturabili = contrattiAttivi.filter(c => !getFatturaForContratto(c.id))
+  const versamentiFatturabili = versamenti.filter(v => !getFatturaForVersamento(v.id))
 
   const openFatturaPrecompilata = (overrides) => {
-    setFatturaForm({ ...emptyFattura, ...overrides })
+    setFatturaForm({ ...emptyFattura, mese: `${selectedMonth}-01`, ...overrides })
     setShowFatturaForm(true)
-    if (!open.fatture) setOpen(p => ({ ...p, fatture: true }))
   }
 
+  const handleTipoFatturaChange = (tipo) => {
+    setFatturaForm({
+      ...emptyFattura,
+      mese: `${selectedMonth}-01`,
+      tipo,
+    })
+  }
+
+  const handleFatturaSourceChange = (sourceId) => {
+    if (!sourceId) {
+      setFatturaForm(p => ({ ...p, collabId: null, contrattoId: null, versamentoId: null, soggettoNome: '', importo: '' }))
+      return
+    }
+
+    if (fatturaForm.tipo === 'COLLAB') {
+      const c = collabFatturabili.find(item => item.id === sourceId)
+      if (!c) return
+      setFatturaForm(p => ({ ...p, collabId: c.id, contrattoId: null, versamentoId: null, soggettoNome: getCollabFatturaLabel(c), importo: c.feeManagement || '' }))
+    } else if (fatturaForm.tipo === 'RICORRENTE') {
+      const c = contrattiFatturabili.find(item => item.id === sourceId)
+      if (!c) return
+      setFatturaForm(p => ({ ...p, collabId: null, contrattoId: c.id, versamentoId: null, soggettoNome: c.soggettoNome || c.nome || '', importo: c.importoMensile || '' }))
+    } else if (fatturaForm.tipo === 'VERSAMENTO') {
+      const v = versamentiFatturabili.find(item => item.id === sourceId)
+      if (!v) return
+      setFatturaForm(p => ({ ...p, collabId: null, contrattoId: null, versamentoId: v.id, soggettoNome: v.creatorNome || '', importo: v.importoVersato || '' }))
+    }
+  }
+
+  const getFatturaSourceValue = () => {
+    if (fatturaForm.tipo === 'COLLAB') return fatturaForm.collabId || ''
+    if (fatturaForm.tipo === 'RICORRENTE') return fatturaForm.contrattoId || ''
+    if (fatturaForm.tipo === 'VERSAMENTO') return fatturaForm.versamentoId || ''
+    return ''
+  }
+
+  const getFatturaSourceOptions = () => {
+    if (fatturaForm.tipo === 'COLLAB') {
+      return collabFatturabili.map(c => ({
+        value: c.id,
+        label: `${getCollabFatturaLabel(c)} - €${parseFloat(c.feeManagement || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`,
+      }))
+    }
+    if (fatturaForm.tipo === 'RICORRENTE') {
+      return contrattiFatturabili.map(c => ({
+        value: c.id,
+        label: `${c.nome} (${c.soggettoNome}) - €${parseFloat(c.importoMensile || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`,
+      }))
+    }
+    if (fatturaForm.tipo === 'VERSAMENTO') {
+      return versamentiFatturabili.map(v => ({
+        value: v.id,
+        label: `${v.creatorNome || 'Creator'}${v.tipoPagamento ? ` - ${v.tipoPagamento}` : ''} - €${parseFloat(v.importoVersato || 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`,
+      }))
+    }
+    return []
+  }
+
+  const fatturaSourceOptions = getFatturaSourceOptions()
+  const fatturaNeedsSource = fatturaForm.tipo !== 'MANUALE'
+  const canSaveFattura = Boolean(
+    fatturaForm.soggettoNome &&
+    fatturaForm.importo &&
+    (!fatturaNeedsSource || getFatturaSourceValue())
+  )
+
   const handleSaveFattura = async () => {
+    if (fatturaForm.tipo !== 'MANUALE' && !fatturaForm.collabId && !fatturaForm.contrattoId && !fatturaForm.versamentoId) {
+      toast.error('Seleziona una voce da fatturare')
+      return
+    }
     if (!fatturaForm.soggettoNome || !fatturaForm.importo) {
       toast.error('Soggetto e importo obbligatori')
       return
     }
-    const { error } = await createFattura({ ...fatturaForm, mese: `${selectedMonth}-01` })
+    const { error } = await createFattura({ ...fatturaForm, mese: fatturaForm.mese || `${selectedMonth}-01` })
     if (error) { toast.error('Errore salvataggio fattura'); return }
     toast.success('Fattura registrata')
     setShowFatturaForm(false)
@@ -328,7 +416,7 @@ export default function FinancePage() {
 
       {/* ── Tabs ── */}
       <div className="flex border-b border-gray-200 mb-6">
-        {[{ key: 'entrate', label: 'Entrate' }, { key: 'uscite', label: 'Uscite' }].map(t => (
+        {[{ key: 'entrate', label: 'Entrate' }, { key: 'uscite', label: 'Uscite' }, { key: 'clientiTerzi', label: 'Clienti Terzi' }].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={`pb-3 px-5 font-semibold text-sm border-b-2 transition-colors ${
               activeTab === t.key ? 'border-yellow-400 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -370,7 +458,7 @@ export default function FinancePage() {
                           <td className="py-2.5 px-3">
                             <FatturaBadge
                               fattura={getFatturaForCollab(c.id)}
-                              onOpen={() => openFatturaPrecompilata({ tipo: 'COLLAB', soggettoNome: c.brandNome, importo: c.feeManagement || '', collabId: c.id })}
+                              onOpen={() => openFatturaPrecompilata({ tipo: 'COLLAB', soggettoNome: getCollabFatturaLabel(c), importo: c.feeManagement || '', collabId: c.id })}
                             />
                           </td>
                         </tr>
@@ -467,7 +555,6 @@ export default function FinancePage() {
               <div className="flex items-center justify-between py-3">
                 <button className="flex items-center gap-2 flex-1 text-left" onClick={() => toggleSection('contratti')}>
                   <h3 className="font-bold text-gray-800">Contratti Fissi</h3>
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">/mese</span>
                 </button>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold text-gray-600">
@@ -481,7 +568,17 @@ export default function FinancePage() {
             </div>
             {open.contratti && (
               <div className="mt-2">
-                <ContrattiRicorrentiTab />
+                <ContrattiRicorrentiTab
+                  selectedMonth={selectedMonth}
+                  onDataChanged={loadData}
+                  onOpenFattura={(contratto, mese) => openFatturaPrecompilata({
+                    mese,
+                    tipo: 'RICORRENTE',
+                    soggettoNome: contratto.soggettoNome || contratto.nome || '',
+                    importo: contratto.importoMensile || '',
+                    contrattoId: contratto.id,
+                  })}
+                />
               </div>
             )}
           </div>
@@ -492,13 +589,13 @@ export default function FinancePage() {
             {open.fatture && (
               <div className="space-y-4">
                 <div className="flex justify-end">
-                  <button onClick={() => { setFatturaForm(emptyFattura); setShowFatturaForm(v => !v) }}
+                  <button onClick={() => { setFatturaForm(emptyFattura); setShowFatturaForm(true) }}
                     className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-500">
                     <Plus className="w-4 h-4" /> Nuova Fattura
                   </button>
                 </div>
 
-                {showFatturaForm && (
+                {renderInlineFatturaForm && showFatturaForm && (
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <h4 className="font-semibold text-gray-700 text-sm mb-3">Registra Fattura Emessa</h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -587,6 +684,10 @@ export default function FinancePage() {
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === 'clientiTerzi' && (
+        <ClientiTerziTab onDataChanged={loadData} />
       )}
 
       {/* ════════════════ USCITE ════════════════ */}
@@ -746,6 +847,72 @@ export default function FinancePage() {
             )}
           </div>
         </div>
+      )}
+
+      {showFatturaForm && (
+        <Modal
+          title="Registra Fattura Emessa"
+          subtitle="Collega la fattura a una fee collaborazione, a un versamento creator o registrala come entrata manuale."
+          onClose={() => { setShowFatturaForm(false); setFatturaForm(emptyFattura) }}
+          maxWidth="max-w-3xl"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Tipo *</label>
+              <select className="input" value={fatturaForm.tipo} onChange={e => handleTipoFatturaChange(e.target.value)}>
+                {TIPI_ENTRATA.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            {fatturaNeedsSource && (
+              <div>
+                <label className="label">
+                  {fatturaForm.tipo === 'COLLAB'
+                    ? 'Collaborazione da fatturare *'
+                    : fatturaForm.tipo === 'RICORRENTE'
+                    ? 'Contratto fisso da fatturare *'
+                    : 'Versamento creator da fatturare *'}
+                </label>
+                <select
+                  className="input"
+                  value={getFatturaSourceValue()}
+                  onChange={e => handleFatturaSourceChange(e.target.value)}
+                  disabled={fatturaSourceOptions.length === 0}
+                >
+                  <option value="">
+                    {fatturaSourceOptions.length === 0 ? 'Nessuna voce disponibile' : 'Seleziona...'}
+                  </option>
+                  {fatturaSourceOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="label">Soggetto *</label>
+              <input className="input" value={fatturaForm.soggettoNome} onChange={e => setFatturaForm(p => ({ ...p, soggettoNome: e.target.value }))} placeholder="Nome cliente / brand" />
+            </div>
+            <div>
+              <label className="label">Importo * (€)</label>
+              <input type="number" step="0.01" className="input" value={fatturaForm.importo} onChange={e => setFatturaForm(p => ({ ...p, importo: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">N. Fattura</label>
+              <input className="input" value={fatturaForm.numeroFattura} onChange={e => setFatturaForm(p => ({ ...p, numeroFattura: e.target.value }))} placeholder="es. 2026/001" />
+            </div>
+            <div>
+              <label className="label">Data Fattura</label>
+              <input type="date" className="input" value={fatturaForm.dataFattura} onChange={e => setFatturaForm(p => ({ ...p, dataFattura: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label">Link Documento</label>
+              <input type="url" className="input" value={fatturaForm.linkDocumento} onChange={e => setFatturaForm(p => ({ ...p, linkDocumento: e.target.value }))} placeholder="Drive, OneDrive..." />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-5">
+            <button onClick={() => { setShowFatturaForm(false); setFatturaForm(emptyFattura) }}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Annulla</button>
+            <button onClick={handleSaveFattura} disabled={!canSaveFattura}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm ${canSaveFattura ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>Registra</button>
+          </div>
+        </Modal>
       )}
 
     </div>

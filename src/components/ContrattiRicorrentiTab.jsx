@@ -18,6 +18,7 @@ import { getAllCreators } from '../services/creatorService'
 import { confirm } from './ConfirmModal'
 import { toast } from './Toast'
 import { formatDate } from '../utils/date'
+import Modal from './Modal'
 
 const TIPO_OPTIONS = [
   { value: 'BRAND',   label: 'Brand' },
@@ -45,10 +46,11 @@ const getStatoContratto = (c) => {
 const tipoIcon  = (t) => t === 'BRAND' ? <Building2 className="w-3 h-3" /> : t === 'CREATOR' ? <Users className="w-3 h-3" /> : <User className="w-3 h-3" />
 const tipoColor = (t) => t === 'BRAND' ? 'bg-blue-50 text-blue-700' : t === 'CREATOR' ? 'bg-purple-50 text-purple-700' : 'bg-orange-50 text-orange-700'
 
-// Ultimi N mesi nel formato "YYYY-MM-01"
-const getLastMonths = (n = 3) => {
+// Ultimi N mesi nel formato "YYYY-MM-01", centrati sul mese di Finance.
+const getLastMonths = (referenceMonth, n = 3) => {
   const months = []
-  const d = new Date()
+  const [year, month] = referenceMonth.split('-').map(Number)
+  const d = new Date(year, month - 1, 1)
   for (let i = 0; i < n; i++) {
     const y = d.getFullYear()
     const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -61,23 +63,19 @@ const getLastMonths = (n = 3) => {
 const formatMese = (mese) =>
   new Date(mese + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short', year: '2-digit' })
 
-const currentMese = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
+const monthToMese = (month) => `${month}-01`
 
 const emptyContratto   = { nome: '', tipoSoggetto: 'TERZO', soggettoNome: '', soggettoId: '', importoMensile: '', dataInizio: '', dataFine: '', attivo: true, note: '' }
 const emptyClienteTerzo = { nome: '', email: '', telefono: '', sitoWeb: '', note: '' }
 
-const LAST_MONTHS = getLastMonths(3)
-
-const getAllMonths = (dataInizio, dataFine) => {
+const getAllMonths = (dataInizio, dataFine, referenceMonth) => {
   if (!dataInizio) return []
   const months = []
-  const today = new Date()
+  const [refYear, refMonth] = referenceMonth.split('-').map(Number)
+  const referenceEnd = new Date(refYear, refMonth, 0)
   const start = parseLocalDate(dataInizio)
-  const endRaw = dataFine ? parseLocalDate(dataFine) : today
-  const endCapped = endRaw > today ? today : endRaw
+  const endRaw = dataFine ? parseLocalDate(dataFine) : referenceEnd
+  const endCapped = endRaw > referenceEnd ? referenceEnd : endRaw
   const cur = new Date(start.getFullYear(), start.getMonth(), 1)
   const limit = new Date(endCapped.getFullYear(), endCapped.getMonth(), 1)
   while (cur <= limit) {
@@ -89,7 +87,17 @@ const getAllMonths = (dataInizio, dataFine) => {
   return months
 }
 
-export default function ContrattiRicorrentiTab() {
+const isActiveInMonth = (c, selectedMonth) => {
+  if (!c.attivo) return false
+  const [year, month] = selectedMonth.split('-').map(Number)
+  const monthStart = new Date(year, month - 1, 1)
+  const monthEnd = new Date(year, month, 0)
+  const inizio = parseLocalDate(c.dataInizio)
+  const fine = c.dataFine ? parseLocalDate(c.dataFine) : null
+  return inizio <= monthEnd && (!fine || fine >= monthStart)
+}
+
+export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toISOString().slice(0, 7), onDataChanged, onOpenFattura }) {
   const [contratti,    setContratti]    = useState([])
   const [clientiTerzi, setClientiTerzi] = useState([])
   const [brands,       setBrands]       = useState([])
@@ -106,6 +114,7 @@ export default function ContrattiRicorrentiTab() {
   const [showFormTerzo,    setShowFormTerzo]    = useState(false)
   const [editingTerzo,     setEditingTerzo]     = useState(null)
   const [formTerzo,        setFormTerzo]        = useState(emptyClienteTerzo)
+  const renderInlineClientiTerzi = false
 
   useEffect(() => { loadAll() }, [])
 
@@ -127,8 +136,12 @@ export default function ContrattiRicorrentiTab() {
   }
 
   const totaleAttivo = contratti
-    .filter(c => getStatoContratto(c).label === 'Attivo')
+    .filter(c => isActiveInMonth(c, selectedMonth))
     .reduce((s, c) => s + parseFloat(c.importoMensile || 0), 0)
+
+  const contrattiAttiviNelMese = contratti.filter(c => isActiveInMonth(c, selectedMonth)).length
+  const lastMonths = getLastMonths(selectedMonth, 3)
+  const currentMonthKey = monthToMese(selectedMonth)
 
   // ── Pagamenti handlers ─────────────────────────────────────
   const isPagato = (contrattoId, mese) =>
@@ -143,16 +156,17 @@ export default function ContrattiRicorrentiTab() {
     })
   }
 
-  const handleTogglePagamento = async (contrattoId, mese) => {
-    const current = isPagato(contrattoId, mese)
+  const handleTogglePagamento = async (contratto, mese) => {
+    const current = isPagato(contratto.id, mese)
     // Ottimistico
     setPagamenti(prev => {
-      const existing = prev.find(p => p.contrattoId === contrattoId && p.mese === mese)
-      if (existing) return prev.map(p => p.contrattoId === contrattoId && p.mese === mese ? { ...p, pagato: !current } : p)
-      return [...prev, { id: '_tmp', contrattoId, mese, pagato: true }]
+      const existing = prev.find(p => p.contrattoId === contratto.id && p.mese === mese)
+      if (existing) return prev.map(p => p.contrattoId === contratto.id && p.mese === mese ? { ...p, pagato: !current } : p)
+      return [...prev, { id: '_tmp', contrattoId: contratto.id, mese, pagato: true }]
     })
-    const { error } = await upsertPagamentoContratto(contrattoId, mese, !current)
+    const { error } = await upsertPagamentoContratto(contratto.id, mese, !current)
     if (error) { toast.error('Errore aggiornamento pagamento'); loadAll() }
+    if (!error && !current) onOpenFattura?.(contratto, mese)
   }
 
   // ── Contratti handlers ─────────────────────────────────────
@@ -168,7 +182,8 @@ export default function ContrattiRicorrentiTab() {
     if (error) { toast.error('Errore durante il salvataggio'); return }
     toast.success(editingContratto ? 'Contratto aggiornato' : 'Contratto creato')
     closeFormContratto()
-    loadAll()
+    await loadAll()
+    onDataChanged?.()
   }
 
   const handleEditContratto = (c) => { setEditingContratto(c); setFormContratto({ ...c }); setShowForm(true) }
@@ -178,7 +193,8 @@ export default function ContrattiRicorrentiTab() {
     if (!ok) return
     await deleteContrattoRicorrente(id)
     toast.success('Contratto eliminato')
-    loadAll()
+    await loadAll()
+    onDataChanged?.()
   }
 
   const closeFormContratto = () => { setShowForm(false); setEditingContratto(null); setFormContratto(emptyContratto) }
@@ -200,7 +216,8 @@ export default function ContrattiRicorrentiTab() {
     if (error) { toast.error('Errore durante il salvataggio'); return }
     toast.success(editingTerzo ? 'Cliente aggiornato' : 'Cliente creato')
     closeFormTerzo()
-    loadAll()
+    await loadAll()
+    onDataChanged?.()
   }
 
   const handleDeleteTerzo = async (id) => {
@@ -208,7 +225,8 @@ export default function ContrattiRicorrentiTab() {
     if (!ok) return
     await deleteClienteTerzo(id)
     toast.success('Cliente eliminato')
-    loadAll()
+    await loadAll()
+    onDataChanged?.()
   }
 
   const closeFormTerzo = () => { setShowFormTerzo(false); setEditingTerzo(null); setFormTerzo(emptyClienteTerzo) }
@@ -223,21 +241,21 @@ export default function ContrattiRicorrentiTab() {
     <div className="space-y-6 mt-6">
 
       {/* ── Summary ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card bg-green-50 border border-green-100">
-          <p className="text-sm font-medium text-green-700">Entrate fisse mensili (attive)</p>
+          <p className="text-sm font-medium text-green-700">Entrate fisse nel mese selezionato</p>
           <p className="text-3xl font-bold text-green-800 mt-1">
             €{totaleAttivo.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-green-600 mt-1">
-            {contratti.filter(c => getStatoContratto(c).label === 'Attivo').length} contratti attivi
+            {contrattiAttiviNelMese} contratti attivi nel mese
           </p>
         </div>
         <div className="card">
           <p className="text-sm text-gray-500">Contratti totali</p>
           <p className="text-3xl font-bold text-gray-800 mt-1">{contratti.length}</p>
         </div>
-        <div className="card">
+        <div className="hidden">
           <p className="text-sm text-gray-500">Clienti Terzi censiti</p>
           <p className="text-3xl font-bold text-gray-800 mt-1">{clientiTerzi.length}</p>
         </div>
@@ -359,7 +377,7 @@ export default function ContrattiRicorrentiTab() {
               <tbody>
                 {contratti.map(c => {
                   const stato   = getStatoContratto(c)
-                  const cur     = currentMese()
+                  const cur     = currentMonthKey
                   const isOpen  = expandedHistory.has(c.id)
                   return (
                     <Fragment key={c.id}>
@@ -386,13 +404,13 @@ export default function ContrattiRicorrentiTab() {
                         {/* Pagamenti — 3 dot quick view + toggle storico */}
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
-                            {LAST_MONTHS.map(mese => {
+                            {lastMonths.map(mese => {
                               const paid = isPagato(c.id, mese)
                               const isCurrent = mese === cur
                               return (
                                 <button
                                   key={mese}
-                                  onClick={() => handleTogglePagamento(c.id, mese)}
+                                  onClick={() => handleTogglePagamento(c, mese)}
                                   title={`${formatMese(mese)}: ${paid ? '✓ Pagato — clicca per annullare' : 'Non pagato — clicca per segnare pagato'}`}
                                   className="flex flex-col items-center gap-0.5 transition-all"
                                 >
@@ -430,7 +448,7 @@ export default function ContrattiRicorrentiTab() {
                         </td>
                       </tr>
                       {isOpen && (() => {
-                        const allMonths = getAllMonths(c.dataInizio, c.dataFine)
+                        const allMonths = getAllMonths(c.dataInizio, c.dataFine, selectedMonth)
                         const byYear = {}
                         allMonths.forEach(m => {
                           const y = m.slice(0, 4)
@@ -455,7 +473,7 @@ export default function ContrattiRicorrentiTab() {
                                           return (
                                             <button
                                               key={mese}
-                                              onClick={() => handleTogglePagamento(c.id, mese)}
+                                              onClick={() => handleTogglePagamento(c, mese)}
                                               title={`${formatMese(mese)}: ${paid ? '✓ Pagato — clicca per annullare' : 'Non pagato — clicca per segnare pagato'}`}
                                               className="flex flex-col items-center gap-0.5 transition-all"
                                             >
@@ -489,19 +507,17 @@ export default function ContrattiRicorrentiTab() {
       </div>
 
       {/* ── Clienti Terzi (collassabile) ── */}
-      <div className="card">
-        <button className="flex items-center justify-between w-full" onClick={() => setShowClientiTerzi(v => !v)}>
+      <div className="hidden">
+        <button className="flex items-center justify-between w-full" onClick={() => setShowClientiTerzi(true)}>
           <div className="flex items-center gap-2">
             <User className="w-5 h-5 text-gray-400" />
             <h2 className="text-lg font-bold text-gray-900">Clienti Terzi</h2>
             <span className="text-xs text-gray-400 font-normal">({clientiTerzi.length} censiti)</span>
           </div>
-          {showClientiTerzi
-            ? <ChevronUp className="w-4 h-4 text-gray-400" />
-            : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          <span className="text-xs font-semibold text-yellow-700">Gestisci</span>
         </button>
 
-        {showClientiTerzi && (
+        {renderInlineClientiTerzi && showClientiTerzi && (
           <div className="mt-4">
             <div className="flex justify-end mb-4">
               <button onClick={() => { closeFormTerzo(); setShowFormTerzo(v => !v) }}
@@ -589,6 +605,103 @@ export default function ContrattiRicorrentiTab() {
           </div>
         )}
       </div>
+
+      {showClientiTerzi && (
+        <Modal
+          title="Clienti Terzi"
+          subtitle="Anagrafica dei soggetti esterni usati nei contratti fissi."
+          onClose={() => { setShowClientiTerzi(false); closeFormTerzo() }}
+          maxWidth="max-w-4xl"
+        >
+          <div className="flex justify-end mb-4">
+            <button onClick={() => { closeFormTerzo(); setShowFormTerzo(true) }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-500">
+              <Plus className="w-4 h-4" />
+              Nuovo Cliente
+            </button>
+          </div>
+
+          {showFormTerzo && (
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <h3 className="font-semibold text-gray-800 mb-4">
+                {editingTerzo ? 'Modifica Cliente' : 'Nuovo Cliente Terzo'}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Nome / Ragione sociale *</label>
+                  <input className="input" value={formTerzo.nome}
+                    onChange={e => setFormTerzo(p => ({ ...p, nome: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Email</label>
+                  <input type="email" className="input" value={formTerzo.email || ''}
+                    onChange={e => setFormTerzo(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Telefono</label>
+                  <input className="input" value={formTerzo.telefono || ''}
+                    onChange={e => setFormTerzo(p => ({ ...p, telefono: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Sito Web</label>
+                  <input type="url" className="input" value={formTerzo.sitoWeb || ''}
+                    onChange={e => setFormTerzo(p => ({ ...p, sitoWeb: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="label">Note</label>
+                  <input className="input" value={formTerzo.note || ''}
+                    onChange={e => setFormTerzo(p => ({ ...p, note: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <button onClick={closeFormTerzo}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">Annulla</button>
+                <button onClick={handleSaveTerzo}
+                  className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-500">Salva</button>
+              </div>
+            </div>
+          )}
+
+          {clientiTerzi.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-10">Nessun cliente terzo censito.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/50">
+                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Nome</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Email</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Telefono</th>
+                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Sito</th>
+                    <th className="py-2.5 px-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientiTerzi.map(t => (
+                    <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 group">
+                      <td className="py-2.5 px-3 font-medium text-sm text-gray-900">{t.nome}</td>
+                      <td className="py-2.5 px-3 text-sm text-gray-500">{t.email || '—'}</td>
+                      <td className="py-2.5 px-3 text-sm text-gray-500">{t.telefono || '—'}</td>
+                      <td className="py-2.5 px-3 text-sm text-gray-500">{t.sitoWeb || '—'}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => {
+                            setEditingTerzo(t)
+                            setFormTerzo({ nome: t.nome, email: t.email || '', telefono: t.telefono || '', sitoWeb: t.sitoWeb || '', note: t.note || '' })
+                            setShowFormTerzo(true)
+                          }} className="p-1.5 hover:bg-yellow-50 text-yellow-600 rounded-lg"><Edit className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteTerzo(t.id)}
+                            className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   )
 }
