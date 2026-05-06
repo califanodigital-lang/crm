@@ -137,6 +137,25 @@ export const TIPO_ADV_OPTIONS = [
   'Partnership Lunga', 'Fiera / Evento', 'Pacchetto Multi-Piattaforma', 'Altro'
 ]
 
+// ── FINANCE ───────────────────────────────────────────────────
+export const CATEGORIE_USCITA = [
+  { value: 'SOFTWARE',   label: 'Software & Abbonamenti' },
+  { value: 'CONSULENZA', label: 'Consulenza Esterna' },
+  { value: 'MARKETING',  label: 'Marketing & Advertising' },
+  { value: 'AFFITTO',    label: 'Affitto & Sede' },
+  { value: 'UTENZE',     label: 'Utenze' },
+  { value: 'TRASFERTA',  label: 'Trasferte & Vitto' },
+  { value: 'FISCALE',    label: 'Oneri Fiscali & Tributari' },
+  { value: 'ALTRO',      label: 'Altro' },
+]
+
+export const TIPI_ENTRATA = [
+  { value: 'COLLAB',     label: 'Collaborazione' },
+  { value: 'RICORRENTE', label: 'Contratto Fisso' },
+  { value: 'VERSAMENTO', label: 'Versamento Creator' },
+  { value: 'MANUALE',    label: 'Entrata Manuale' },
+]
+
 // ── ATTIVITÀ EVENTO ───────────────────────────────────────────
 export const ATTIVITA_EVENTO = [
   { key: 'panel',          label: 'Panel' },

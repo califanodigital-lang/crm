@@ -1,6 +1,20 @@
-export const APP_VERSION = 'v0.15.1-beta'
+export const APP_VERSION = 'v0.16.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.16.0-beta',
+    date: '2026-05-06',
+    items: [
+      'Finance completamente ristrutturata in due soli tab — Entrate e Uscite — con una dashboard P&L sempre visibile in cima: Saldo Netto (verde/rosso), Totale Entrate, Totale Uscite e Totale Fatturato.',
+      'Tab Entrate organizzato in quattro sezioni collassabili: Fee Collaborazioni (filtra per data effettiva di pagamento agenzia), Versamenti Creator (spostati dall\'ex tab Incassato), Contratti Fissi e Registro Fatture Emesse.',
+      'Nuovo sistema di fatturazione: ogni voce di entrata (collaborazione o versamento creator) mostra un pulsante "+ Fattura" che pre-compila automaticamente il form con soggetto e importo. Le fatture vengono registrate nel Registro Fatture con numero, data, link documento e tipo.',
+      'Tab Uscite organizzato in due sezioni: Pagamenti Agenti (invariato) e nuova sezione Uscite Varie per spese amministrative generiche — categorie configurabili (Software, Consulenza, Marketing, Affitto, Utenze, Trasferte, Fiscale, Altro), fornitore, descrizione e toggle pagata/non pagata.',
+      'Nuove costanti in constants.js: CATEGORIE_USCITA e TIPI_ENTRATA (usate nei form Finance e nei badge delle fatture).',
+      'Fix critico Finance: il filtro delle collaborazioni nell\'ex tab Entrate usava data_firma invece di data_pagamento_agency, causando la comparsa di collab nel mese sbagliato.',
+      'Fix stats cards Finance: i contatori Totale/Creator/Media erano sempre a zero perché il dato revenue non veniva mai caricato; ora derivano direttamente dalle collaborazioni completate nel mese.',
+      'Storico completo pagamenti nei Contratti Ricorrenti: ogni riga ha un pulsante "▼ storico" che espande tutti i mesi dalla data di inizio contratto, raggruppati per anno, con gli stessi dot cliccabili della vista rapida a 3 mesi.',
+    ]
+  },
   {
     version: 'v0.15.1-beta',
     date: '2026-04-24',
