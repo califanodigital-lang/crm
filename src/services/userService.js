@@ -4,6 +4,7 @@ const toCamelCase = (profile) => {
   if (!profile) return null
   return {
     id: profile.id,
+    email: profile.email,
     role: profile.role,
     nomeCompleto: profile.nome_completo,
     agenteNome: profile.agente_nome,

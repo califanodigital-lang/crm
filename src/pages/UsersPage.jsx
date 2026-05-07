@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllUsers, updateUserProfile } from '../services/userService'
 import { supabase } from '../lib/supabase'
-import { Shield, User, Plus, X, Edit } from 'lucide-react'
+import { Shield, User, Plus, X, Edit, Eye, EyeOff } from 'lucide-react'
 import { toast } from '../components/Toast'
 
 const DEFAULT_FORM = {
@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState(DEFAULT_FORM)
   const [editingUser, setEditingUser] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     if (userProfile?.role === 'ADMIN') {
@@ -56,6 +57,7 @@ export default function UsersPage() {
   const resetForm = () => {
     setFormData(DEFAULT_FORM)
     setEditingUser(null)
+    setShowPassword(false)
     setShowForm(false)
   }
 
@@ -76,6 +78,30 @@ export default function UsersPage() {
     setShowForm(true)
   }
 
+  const getFunctionErrorMessage = async (error) => {
+    const context = error?.context
+
+    if (context && typeof context.json === 'function') {
+      try {
+        const body = await context.json()
+        return body?.error || body?.message || error.message
+      } catch {
+        // Fallback sotto.
+      }
+    }
+
+    if (context && typeof context.text === 'function') {
+      try {
+        const text = await context.text()
+        return text || error.message
+      } catch {
+        // Fallback sotto.
+      }
+    }
+
+    return error?.context?.error_description || error?.context?.msg || error?.details || error?.message
+  }
+
   const createUserViaEdgeFunction = async () => {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
       body: {
@@ -87,12 +113,14 @@ export default function UsersPage() {
         feeRicerca: formData.feeRicerca,
         feeContatto: formData.feeContatto,
         feeChiusura: formData.feeChiusura,
-        riceveFee: formData.riceveFee
+        riceveFee: formData.riceveFee,
+        fissoMensile: formData.fissoMensile,
       }
     })
 
     if (error) {
-      throw new Error(error.message || 'Errore chiamata funzione')
+      const details = await getFunctionErrorMessage(error)
+      throw new Error(details || 'Edge Function admin-create-user non raggiungibile')
     }
 
     if (!data?.success) {
@@ -119,6 +147,7 @@ export default function UsersPage() {
             fee_contatto: formData.feeContatto,
             fee_chiusura: formData.feeChiusura,
             riceve_fee: formData.riceveFee,
+            fisso_mensile: formData.fissoMensile,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingUser.id)
@@ -229,14 +258,24 @@ export default function UsersPage() {
               {!editingUser && (
                 <div>
                   <label className="label">Password *</label>
-                  <input
-                    type="password"
-                    className="input"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="input pr-10"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title={showPassword ? 'Nascondi password' : 'Mostra password'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
