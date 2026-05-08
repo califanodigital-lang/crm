@@ -139,6 +139,9 @@ const toCamelCase = (collab) => {
     assegnatario: collab.assegnatario || [],
     creatoDa: collab.creato_da,
     tranche: collab.tranche || [],
+    fatturaEmessa: collab.fattura_emessa ?? null,
+    numeroFattura: collab.numero_fattura ?? null,
+    dataFattura: collab.data_fattura ?? null,
   }
 }
 
@@ -170,6 +173,9 @@ const toSnakeCase = (collab) => {
     assegnatario: collab.assegnatario || [],
     creato_da: cleanValue(collab.creatoDa),
     tranche: collab.tranche?.length > 0 ? collab.tranche : null,
+    fattura_emessa: collab.fatturaEmessa ?? null,
+    numero_fattura: cleanValue(collab.numeroFattura),
+    data_fattura: cleanValue(collab.dataFattura),
     pagato: collab.tranche?.length > 0
       ? collab.tranche.every(t => t.pagato)
       : (collab.pagato || false),

@@ -23,6 +23,7 @@ const toCamelCase = (p) => {
     hostPalco: p.host_palco,
     hostGaraCosplay: p.host_gara_cosplay,
     fee: p.fee,
+    feesBreakdown: p.fees_breakdown || [],
     note: p.note,
     dataInizioPartecipazione: p.data_inizio_partecipazione,
     dataFinePartecipazione: p.data_fine_partecipazione,
@@ -48,7 +49,15 @@ const toSnakeCase = (p) => ({
   meet_greet: p.meetGreet || false,
   host_palco: p.hostPalco || false,
   host_gara_cosplay: p.hostGaraCosplay || false,
-  fee: cleanValue(p.fee),
+  ...(() => {
+    const hasBreakdown = p.feesBreakdown?.some(f => parseFloat(f.importo) > 0)
+    return {
+      fee: hasBreakdown
+        ? p.feesBreakdown.reduce((s, f) => s + (parseFloat(f.importo) || 0), 0)
+        : cleanValue(p.fee),
+      fees_breakdown: hasBreakdown ? p.feesBreakdown : null,
+    }
+  })(),
   note: cleanValue(p.note),
   data_inizio_partecipazione: cleanValue(p.dataInizioPartecipazione),
   data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),

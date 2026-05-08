@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs = require\\('fs'\\); const content = fs.readFileSync\\('c:/Users/laura/Desktop/crm/src/pages/TrattativeFierePage.jsx', 'utf8'\\); const lines = content.split\\('\\\\n'\\); const line = lines[252]; for\\(let i=25;i<40;i++\\){console.log\\(i, line.charCodeAt\\(i\\).toString\\(16\\), line[i]\\)}\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const content=fs.readFileSync\\('c:/Users/laura/Desktop/crm/src/pages/TrattativaPage.jsx','utf8'\\);const lines=content.split\\('\\\\n'\\);let found=0;lines.forEach\\(\\(line,i\\)=>{const chars=[...line];const has=chars.some\\(c=>c==='‘'||c==='’'\\);if\\(has&&found<10\\){found++;const sample=line.trim\\(\\).slice\\(0,70\\);console.log\\(i+1,sample\\);}}\\);\")"
+    ]
+  }
+}

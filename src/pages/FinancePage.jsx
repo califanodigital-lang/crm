@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllCreators } from '../services/creatorService'
-import { getAllCollaborations } from '../services/collaborationService'
+import { getAllCollaborations, updateCollaboration } from '../services/collaborationService'
 import { getAllContrattiRicorrenti } from '../services/contrattiRicorrentiService'
 import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento } from '../services/versamentoService'
 import { getPagamentiByMese, generaPagamentiMese, upsertPagamentoAgente } from '../services/pagamentiAgentiService'
@@ -230,6 +230,21 @@ export default function FinancePage() {
     }
     const { error } = await createFattura({ ...fatturaForm, mese: fatturaForm.mese || `${selectedMonth}-01` })
     if (error) { toast.error('Errore salvataggio fattura'); return }
+
+    // Se la fattura è collegata a una collaborazione, aggiorna anche i campi
+    // fattura_emessa/numero_fattura/data_fattura sulla collab (usati dall'indicatore in Collaborazioni)
+    if (fatturaForm.tipo === 'COLLAB' && fatturaForm.collabId) {
+      const collab = collabCompletate.find(c => c.id === fatturaForm.collabId)
+      if (collab) {
+        await updateCollaboration(fatturaForm.collabId, {
+          ...collab,
+          fatturaEmessa: true,
+          numeroFattura: fatturaForm.numeroFattura || null,
+          dataFattura: fatturaForm.dataFattura || null,
+        })
+      }
+    }
+
     toast.success('Fattura registrata')
     setShowFatturaForm(false)
     setFatturaForm(emptyFattura)

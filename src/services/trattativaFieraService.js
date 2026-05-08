@@ -90,6 +90,7 @@ const syncEventoFromTrattativa = async (trattativa) => {
     stato: 'APERTA',
   }
 
+  // La trattativa è già collegata a un evento → aggiorna quello
   if (trattativa.eventoId) {
     const { data: currentEvento, error: currentError } = await getEventoById(trattativa.eventoId)
     if (currentError) return { data: null, error: currentError }
@@ -101,6 +102,29 @@ const syncEventoFromTrattativa = async (trattativa) => {
     return { data, error }
   }
 
+  // La fiera ha già un evento in Fiere & Eventi → riusa quello invece di crearne uno nuovo
+  if (trattativa.fieraDbId) {
+    const { data: existingRaw, error: existingError } = await supabase
+      .from('eventi')
+      .select('id')
+      .eq('fiera_db_id', trattativa.fieraDbId)
+      .maybeSingle()
+
+    if (existingError) return { data: null, error: existingError }
+
+    if (existingRaw) {
+      const { data: currentEvento, error: currentError } = await getEventoById(existingRaw.id)
+      if (currentError) return { data: null, error: currentError }
+
+      const { data, error } = await updateEvento(existingRaw.id, {
+        ...currentEvento,
+        ...baseEventoPayload,
+      })
+      return { data, error }
+    }
+  }
+
+  // Nessun evento esistente → crea
   const { data, error } = await createEvento(baseEventoPayload)
   return { data, error }
 }

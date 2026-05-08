@@ -3,7 +3,8 @@ import { Calendar, Edit, ExternalLink, Plus, Search, Trash2 } from 'lucide-react
 import { useAuth } from '../contexts/AuthContext'
 import DateRangeFilter from '../components/DateRangeFilter'
 import { getAllCircuiti } from '../services/circuitiService'
-import { getAllFiereDb } from '../services/fieraDbService'
+import { createFieraDb, getAllFiereDb } from '../services/fieraDbService'
+import { deleteEvento } from '../services/eventoService'
 import { getActiveAgents } from '../services/userService'
 import {
   createTrattativaFiera,
@@ -44,6 +45,7 @@ const EMPTY_FORM = {
   dataFollowup2: '',
   note: '',
   eventoId: '',
+  creaFieraAutomaticamente: true,
 }
 
 const addDays = (dateString, days) => {
@@ -84,7 +86,7 @@ export default function TrattativeFierePage() {
   const [showClosed, setShowClosed] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStato, setFilterStato] = useState('ALL')
-  const [dateRange, setDateRange] = useState(() => getDefaultMonthlyRange())
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
@@ -176,23 +178,55 @@ export default function TrattativeFierePage() {
   }
 
   const handleSave = async () => {
-    if (!formData.fieraDbId || !formData.nome.trim()) {
-      toast.error('Seleziona una fiera del database e compila il nome.')
+    if (!formData.nome.trim()) {
+      toast.error("Compila il nome della fiera.")
+      return
+    }
+    if (!formData.fieraDbId && !formData.creaFieraAutomaticamente) {
+      toast.error("Seleziona una fiera dal database oppure attiva la creazione automatica.")
       return
     }
     if (!formData.agente) {
-      toast.error('Seleziona l’agente che ha contattato la fiera.')
+      toast.error("Seleziona l\'agente che ha contattato la fiera.")
       return
     }
     if (!formData.dataContatto) {
-      toast.error('Inserisci la data di contatto.')
+      toast.error("Inserisci la data di contatto.")
       return
+    }
+
+    let currentFormData = { ...formData }
+
+    if (!editing && formData.creaFieraAutomaticamente) {
+      const fieraPayload = {
+        nome: formData.nome,
+        tipo: formData.tipo || null,
+        circuitoId: formData.circuitoId || null,
+        location: formData.location || null,
+        citta: formData.citta || null,
+        dataInizio: formData.dataInizio || null,
+        dataFine: formData.dataFine || null,
+        referente: formData.referente || null,
+        contatto: formData.contatto || null,
+        telefono: formData.telefono || null,
+        sitoWeb: formData.sitoWeb || null,
+        note: formData.note || null,
+      }
+      const { data: fieraData, error: fieraError, reused } = await createFieraDb(fieraPayload)
+      if (fieraError) {
+        toast.error("Errore durante la registrazione nel DB Fiere.")
+        return
+      }
+      currentFormData = { ...currentFormData, fieraDbId: fieraData.id }
+      if (reused) {
+        toast.success("Fiera già presente nel DB: scheda aggiornata con i nuovi dati.")
+      }
     }
 
     const previousEventoId = editing?.eventoId || null
     const action = editing
-      ? updateTrattativaFiera(editing.id, formData)
-      : createTrattativaFiera(formData)
+      ? updateTrattativaFiera(editing.id, currentFormData)
+      : createTrattativaFiera(currentFormData)
 
     const { data, error } = await action
     if (error) {
@@ -214,19 +248,40 @@ export default function TrattativeFierePage() {
   }
 
   const handleDelete = async (id) => {
+    const trattativa = trattative.find(t => t.id === id)
+
     const ok = await confirm('La trattativa fiera verrà eliminata definitivamente.', {
       title: 'Eliminare questa trattativa fiera?',
       confirmLabel: 'Elimina',
     })
     if (!ok) return
 
+    let eliminaEvento = false
+    if (trattativa?.eventoId) {
+      eliminaEvento = await confirm(
+        `Questa trattativa è collegata all'evento "${trattativa.nome}" in Fiere & Eventi. Vuoi eliminare anche quell'evento?`,
+        { title: 'Eliminare anche l\'evento collegato?', confirmLabel: 'Sì, elimina anche l\'evento' }
+      )
+    }
+
     const { error } = await deleteTrattativaFiera(id)
     if (error) {
-      toast.error('Errore durante l’eliminazione')
+      toast.error('Errore durante l\'eliminazione')
       return
     }
 
-    toast.success('Trattativa fiera eliminata')
+    if (eliminaEvento && trattativa.eventoId) {
+      const { error: eventoError } = await deleteEvento(trattativa.eventoId)
+      if (eventoError) {
+        toast.error('Trattativa eliminata, ma errore nell\'eliminazione dell\'evento collegato.')
+        loadData()
+        return
+      }
+      toast.success('Trattativa ed evento collegato eliminati.')
+    } else {
+      toast.success('Trattativa fiera eliminata.')
+    }
+
     loadData()
   }
 
@@ -431,7 +486,7 @@ export default function TrattativeFierePage() {
                       </button>
                       {trattativa.eventoId && (
                         <button
-                          onClick={() => navigate('/eventi')}
+                          onClick={() => navigate('/eventi', { state: { openEventoId: trattativa.eventoId } })}
                           className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Vai a Fiere & Eventi"
                         >
@@ -466,14 +521,27 @@ export default function TrattativeFierePage() {
                   Le date di follow-up vengono proposte automaticamente a +4 giorni dal contatto e +7 giorni dal primo follow-up.
                 </p>
               </div>
-              <button onClick={() => { setFormOpen(false); setEditing(null); setFormData(EMPTY_FORM) }} className="px-4 py-2 border rounded-lg hover:bg-gray-50">
-                Annulla
-              </button>
+              <div className="flex items-center gap-2">
+                {editing?.eventoId && (
+                  <button
+                    onClick={() => navigate('/eventi', { state: { openEventoId: editing.eventoId } })}
+                    className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-semibold hover:bg-blue-100 text-sm flex items-center gap-1.5"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Vai a Fiere &amp; Eventi
+                  </button>
+                )}
+                <button onClick={() => { setFormOpen(false); setEditing(null); setFormData(EMPTY_FORM) }} className="px-4 py-2 border rounded-lg hover:bg-gray-50">
+                  Annulla
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="label">Scheda DB Fiere *</label>
+                <label className="label">
+                  Scheda DB Fiere {!editing && !formData.creaFieraAutomaticamente ? '*' : ''}
+                </label>
                 <select
                   className="input"
                   value={formData.fieraDbId}
@@ -485,6 +553,26 @@ export default function TrattativeFierePage() {
                   ))}
                 </select>
               </div>
+              {!editing && (
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-gray-300 accent-yellow-500"
+                      checked={!!formData.creaFieraAutomaticamente}
+                      onChange={(e) => setFormData(prev => ({ ...prev, creaFieraAutomaticamente: e.target.checked }))}
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Censisci automaticamente nel DB Fiere
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1 ml-[26px]">
+                    {formData.creaFieraAutomaticamente
+                      ? 'La fiera verrà aggiunta o aggiornata nel Database Fiere. I duplicati vengono rilevati automaticamente per nome, tipo e regione.'
+                      : 'La trattativa sarà creata senza modificare il DB Fiere.'}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="label">Nome evento *</label>
                 <input className="input" value={formData.nome} onChange={(e) => setFormData(prev => ({ ...prev, nome: e.target.value }))} />

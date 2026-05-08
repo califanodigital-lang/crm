@@ -33,6 +33,20 @@ import { getDefaultMonthlyRange, isDateInRange, isDateRangeDisabled } from '../u
 const STATI_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO', 'COLLAB_GENERATA']
 const PRIORITA_ORDER = { URGENTE: 0, ALTA: 1, NORMALE: 2, BASSA: 3 }
 
+// Campi da raccogliere per ogni cambio di stato
+const STATO_FIELDS_CONFIG = {
+  PRIMO_CONTATTO:    [{ key: 'dataContatto',      label: 'Data contatto',                required: true  }],
+  FOLLOW_UP_1:       [{ key: 'dataFollowup1',      label: 'Data 1° follow-up',            required: true  }],
+  FOLLOW_UP_2:       [{ key: 'dataFollowup2',      label: 'Data 2° follow-up',            required: true  }],
+  RICONTATTO_FUTURO: [
+    { key: 'dataRicontatto',    label: 'Data ricontatto previsto',  required: true  },
+    { key: 'reminderRicontatto',label: 'Reminder promemoria',       required: false },
+  ],
+  IN_TRATTATIVA:     [{ key: 'dataCall',           label: 'Data call / incontro',         required: false }],
+  PREVENTIVO_INVIATO:[{ key: 'dataPreventivo',     label: 'Data invio preventivo',        required: true  }],
+  CONTRATTO_INVIATO: [{ key: 'dataPreventivo',     label: 'Data invio contratto',         required: false }],
+}
+
 const getTrattativaReferenceDate = (trattativa) => {
   switch (trattativa.stato) {
     case 'PRIMO_CONTATTO':
@@ -107,6 +121,71 @@ function StatoBadgeInline({ trattativa, onUpdate }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function StatoChangeModal({ pendingChange, onConfirm, onCancel }) {
+  const today = new Date().toISOString().slice(0, 10)
+  const { trattativaId, nuovoStato, trattativa } = pendingChange
+  const stateFields = STATO_FIELDS_CONFIG[nuovoStato] || []
+  const cfg = getStatoTrattativa(nuovoStato)
+
+  const [fieldValues, setFieldValues] = useState(() => {
+    const vals = {}
+    stateFields.forEach(f => { vals[f.key] = trattativa[f.key] || today })
+    return vals
+  })
+
+  const isValid = stateFields.filter(f => f.required).every(f => !!fieldValues[f.key])
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-1">
+          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${cfg.dot}`} />
+            {cfg.label}
+          </span>
+          <h3 className="text-base font-bold text-gray-900">Dati richiesti per questa fase</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Inserisci i dati per <strong>{trattativa.brandNome}</strong> prima di confermare il passaggio.
+        </p>
+
+        <div className="space-y-3 mb-5">
+          {stateFields.map(field => (
+            <div key={field.key}>
+              <label className="label">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              <input
+                type="date"
+                className="input"
+                value={fieldValues[field.key] || ''}
+                onChange={e => setFieldValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50"
+          >
+            Annulla
+          </button>
+          <button
+            onClick={() => onConfirm(trattativaId, nuovoStato, fieldValues)}
+            disabled={!isValid}
+            className="px-4 py-2 bg-yellow-400 rounded-xl text-sm font-semibold hover:bg-yellow-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Conferma passaggio
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -288,7 +367,7 @@ export default function TrattativaPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStato, setFilterStato] = useState('ALL')
   const [filterAssegnatario, setFilterAssegnatario] = useState('ALL')
-  const [dateRange, setDateRange] = useState(() => getDefaultMonthlyRange())
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [mostraArchiviati, setMostraArchiviati] = useState(false)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({})
@@ -298,6 +377,7 @@ export default function TrattativaPage() {
   const [brands, setBrands] = useState([])
   const [sortField, setSortField] = useState('priorita')
   const [sortDir, setSortDir] = useState('asc')
+  const [pendingStatoChange, setPendingStatoChange] = useState(null)
   const { userProfile } = useAuth()
   const isAgent = userProfile?.role === 'AGENT'
 
@@ -362,17 +442,39 @@ export default function TrattativaPage() {
     setLoading(false)
   }
 
-  const handleStatoChange = async (id, nuovoStato) => {
-    const { error } = await updateStatoTrattativa(id, nuovoStato)
+  const handleStatoChange = (id, nuovoStato) => {
+    const fields = STATO_FIELDS_CONFIG[nuovoStato]
+    if (fields) {
+      const trattativa = trattative.find(t => t.id === id)
+      setPendingStatoChange({ trattativaId: id, nuovoStato, trattativa })
+      return
+    }
+    // Nessun campo richiesto: aggiorna direttamente
+    doStatoChange(id, nuovoStato)
+  }
+
+  const doStatoChange = async (id, nuovoStato, dateFields = {}) => {
+    const trattativa = trattative.find(t => t.id === id)
+    const hasDateFields = Object.keys(dateFields).length > 0
+    const { error } = hasDateFields
+      ? await updateTrattativa(id, { ...trattativa, stato: nuovoStato, ...dateFields })
+      : await updateStatoTrattativa(id, nuovoStato)
     if (error) {
       toast.error('Errore aggiornamento stato')
       return
     }
     const cfg = getStatoTrattativa(nuovoStato)
     toast.success(`Stato → ${cfg.label}`)
-    setTrattative(prev => prev.map(trattativa => (
-      trattativa.id === id ? { ...trattativa, stato: nuovoStato } : trattativa
-    )))
+    if (hasDateFields) {
+      await loadData()
+    } else {
+      setTrattative(prev => prev.map(t => (t.id === id ? { ...t, stato: nuovoStato } : t)))
+    }
+  }
+
+  const handleStatoChangeConfirm = async (id, nuovoStato, dateFields) => {
+    setPendingStatoChange(null)
+    await doStatoChange(id, nuovoStato, dateFields)
   }
 
   const handleCreaCollab = async (trattativa) => {
@@ -717,6 +819,14 @@ export default function TrattativaPage() {
 
       {view === 'list' && <ListView />}
       {view === 'kanban' && <KanbanView />}
+
+      {pendingStatoChange && (
+        <StatoChangeModal
+          pendingChange={pendingStatoChange}
+          onConfirm={handleStatoChangeConfirm}
+          onCancel={() => setPendingStatoChange(null)}
+        />
+      )}
     </div>
   )
 }

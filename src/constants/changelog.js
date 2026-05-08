@@ -1,6 +1,23 @@
-export const APP_VERSION = 'v0.16.0-beta'
+export const APP_VERSION = 'v0.17.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.17.0-beta',
+    date: '2026-05-08',
+    items: [
+      'Periodo di default "Vedi Tutto" in Collaborazioni, Trattative e Trattative Fiere: le sezioni non filtrano più per mese corrente all\'apertura, mostrando subito tutti i record.',
+      'Trattative Fiere: al momento della creazione è ora possibile censire automaticamente la fiera nel DB Fiere con un\'unica checkbox. I duplicati vengono rilevati automaticamente per nome, tipo e regione.',
+      'Fix bug duplicazione eventi: passare una trattativa fiera in stato "In Trattativa" non crea più un evento duplicato se la fiera era già presente in Fiere & Eventi tramite fiera_db_id.',
+      'Eliminazione trattativa fiera: se la trattativa ha un evento collegato in Fiere & Eventi, viene ora proposto un secondo alert per eliminare anche l\'evento.',
+      'Cambio stato Trattativa con modal guidata: passando una card kanban (o dropdown lista) a un nuovo stato si apre una maschera che chiede le date rilevanti per quella fase (es. data call per In Trattativa, data preventivo per Preventivo Inviato). Annullare ripristina lo stato precedente.',
+      'Pagamento Agency nelle Collaborazioni integrato con la fatturazione: premendo "Pagamento Agency" si apre un form che registra contestualmente la fattura emessa in Finance. Il collegamento è bidirezionale.',
+      'Indicatore arancione in Collaborazioni per pagamenti agency senza fattura: cliccandolo si apre la modal "Regolarizza fattura" invece del semplice toggle di rimozione.',
+      'Sync Finance ↔ Collaborazioni: emettere una fattura da Finance aggiorna automaticamente i campi fattura_emessa, numero_fattura e data_fattura sulla collaborazione corrispondente.',
+      'Navigazione diretta Trattative Fiere ↔ Fiere & Eventi: pulsante "Vai a Fiere & Eventi" nella riga di tabella e nella maschera di modifica (visibile solo quando la trattativa ha un evento collegato); pulsante "← Trattativa Fiera" nel dettaglio evento (visibile solo quando l\'evento ha un trattativaFieraId).',
+      'Fiere & Eventi ora accessibile anche agli agenti: la sezione "Aggiungi Creator" e la relativa gestione erano bloccate al solo profilo Admin.',
+      'Fee multiple per creator negli eventi: nella sezione presenze è possibile aggiungere più voci fee con descrizione e importo separati. Il totale viene calcolato automaticamente e salvato nel campo fee. Il dettaglio è conservato nella colonna fees_breakdown (jsonb) su partecipazioni_eventi.',
+    ]
+  },
   {
     version: 'v0.16.0-beta',
     date: '2026-05-06',

@@ -14,6 +14,7 @@ import {
 } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
 import { getAllBrands } from '../services/brandService'
+import { createFattura } from '../services/fattureEmesseService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { getStatoCollaborazione } from '../constants/constants'
@@ -40,7 +41,7 @@ export default function CollaborationsPage() {
   const [mostraArchivio, setMostraArchivio] = useState(false)
   const [sortField, setSortField] = useState('stato')
   const [sortDir, setSortDir] = useState('asc')
-  const [dateRange, setDateRange] = useState(() => getDefaultMonthlyRange())
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
 
 
   // Gestisci pre-riempimento da altre pagine
@@ -90,7 +91,7 @@ export default function CollaborationsPage() {
     setLoading(false)
   }
 
-  const handleTogglePagato = async (tipo, valore, data, updatedTranche = null) => {
+  const handleTogglePagato = async (tipo, valore, data, updatedTranche = null, fatturaData = null) => {
     const collab = collaborations.find(c => c.id === pagamentoModal.id)
     let payload = {}
 
@@ -102,6 +103,11 @@ export default function CollaborationsPage() {
       payload = { pagato: valore, dataPagamentoCreator: data || null }
     } else {
       payload = { pagato_agency: valore, dataPagamentoAgency: data || null }
+      if (fatturaData !== null) {
+        payload.fatturaEmessa = fatturaData.emessa
+        payload.numeroFattura = fatturaData.emessa ? (fatturaData.numero || null) : null
+        payload.dataFattura = fatturaData.emessa ? (fatturaData.dataFattura || null) : null
+      }
     }
 
     const newPagato = 'pagato' in payload ? payload.pagato : (collab.pagato || false)
@@ -117,6 +123,28 @@ export default function CollaborationsPage() {
     }
 
     await updateCollaboration(collab.id, { ...collab, ...payload })
+
+    // Se è un pagamento agency con fattura, crea il record in fatture_emesse
+    // per collegarlo al registro Finance ed evitare doppie emissioni
+    if (tipo === 'agency' && valore && fatturaData?.emessa) {
+      const dataPagamento = data || new Date().toISOString().slice(0, 10)
+      const mese = dataPagamento.slice(0, 7) + '-01'
+      const soggettoNome = [collab.creatorNome, collab.brandNome].filter(Boolean).join(' - ')
+      const { error: fatturaError } = await createFattura({
+        tipo: 'COLLAB',
+        collabId: collab.id,
+        mese,
+        soggettoNome,
+        importo: collab.feeManagement || 0,
+        numeroFattura: fatturaData.numero || null,
+        dataFattura: fatturaData.dataFattura || dataPagamento,
+        note: null,
+      })
+      if (fatturaError) {
+        toast.error('Pagamento salvato, ma errore nel registro Finance. Vai su Finance per registrare la fattura manualmente.')
+      }
+    }
+
     setPagamentoModal(null)
     if (payload.stato === 'COMPLETATA' && !wasCompleted) {
       toast.success('Tutti i pagamenti registrati — collaborazione completata!')
@@ -444,10 +472,19 @@ export default function CollaborationsPage() {
                         </button>
                       </td>
                     <td className="py-3 px-4 text-center">
-                      <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'agency', currentValue: collab.pagato_agency, dataAttuale: collab.dataPagamentoAgency })}>
-                        {collab.pagato_agency
-                          ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                          : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />}
+                      <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'agency', currentValue: collab.pagato_agency, dataAttuale: collab.dataPagamentoAgency, fatturaEmessa: collab.fatturaEmessa })}>
+                        {collab.pagato_agency ? (
+                          collab.fatturaEmessa === true
+                            ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" title="Pagato — fattura emessa" />
+                            : (
+                              <span className="inline-flex flex-col items-center gap-0.5" title="Pagato senza fattura">
+                                <CheckCircle className="w-5 h-5 text-orange-500 mx-auto" />
+                                <span className="text-[9px] font-bold text-orange-500 leading-none">NO FATT.</span>
+                              </span>
+                            )
+                        ) : (
+                          <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
+                        )}
                       </button>
                     </td>
                       <td className="py-3 px-4">
@@ -514,6 +551,10 @@ function PagamentoDateModal({ modal, collab, onConfirm, onClose }) {
   const [trancheState, setTrancheState] = useState(
     hasTranche ? collab.tranche.map(t => ({ ...t })) : []
   )
+  // Stato fattura (solo per agency, solo quando si segna come pagato)
+  const [emettiFattura, setEmettiFattura] = useState(true)
+  const [numeroFattura, setNumeroFattura] = useState(collab?.numeroFattura || '')
+  const [dataFattura, setDataFattura] = useState(collab?.dataFattura || today)
 
   if (hasTranche) {
     return (
@@ -564,6 +605,80 @@ function PagamentoDateModal({ modal, collab, onConfirm, onClose }) {
     )
   }
 
+  // Caso: agency già pagata ma senza fattura → modalità regolarizzazione
+  const isAgencyRegolarizza = modal.tipo === 'agency' && !nuovoValore && modal.fatturaEmessa !== true
+  const isAgencyNew = modal.tipo === 'agency' && nuovoValore
+
+  const handleConfirm = () => {
+    if (isAgencyRegolarizza) {
+      // Mantieni pagato_agency = true, aggiungi solo la fattura
+      onConfirm(modal.tipo, true, modal.dataAttuale, null, { emessa: true, numero: numeroFattura, dataFattura })
+      return
+    }
+    const fatturaPayload = isAgencyNew
+      ? { emessa: emettiFattura, numero: numeroFattura, dataFattura }
+      : null
+    onConfirm(modal.tipo, nuovoValore, nuovoValore ? data : null, null, fatturaPayload)
+  }
+
+  // Modalità regolarizzazione: pagamento già presente, fattura mancante
+  if (isAgencyRegolarizza) {
+    return (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+            <h3 className="text-base font-bold text-gray-900">Fattura mancante</h3>
+          </div>
+          <p className="text-sm text-gray-500 mb-4">
+            Il pagamento agency è registrato ma non risulta alcuna fattura emessa. Inserisci i dati per regolarizzare Finance.
+          </p>
+
+          <div className="space-y-3 mb-2">
+            <div>
+              <label className="label">Numero fattura</label>
+              <input
+                className="input"
+                placeholder="es. 2025/001"
+                value={numeroFattura}
+                onChange={e => setNumeroFattura(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Data fattura</label>
+              <input
+                type="date"
+                className="input"
+                value={dataFattura}
+                onChange={e => setDataFattura(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-between mt-5">
+            <button
+              onClick={() => onConfirm(modal.tipo, false, null)}
+              className="px-3 py-2 text-red-600 border border-red-200 rounded-xl text-xs hover:bg-red-50"
+            >
+              Rimuovi pagamento
+            </button>
+            <div className="flex gap-2">
+              <button onClick={onClose} className="px-4 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">
+                Annulla
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold"
+              >
+                Emetti fattura
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
@@ -573,6 +688,7 @@ function PagamentoDateModal({ modal, collab, onConfirm, onClose }) {
         <p className="text-sm text-gray-400 mb-4">
           {modal.tipo === 'creator' ? 'Pagamento Creator' : 'Pagamento Agency'}
         </p>
+
         {nuovoValore && (
           <div className="mb-4">
             <label className="label">Data pagamento</label>
@@ -580,13 +696,55 @@ function PagamentoDateModal({ modal, collab, onConfirm, onClose }) {
               onChange={(e) => setData(e.target.value)} />
           </div>
         )}
-        <div className="flex gap-3 justify-end">
+
+        {isAgencyNew && (
+          <div className="border-t border-gray-100 pt-4 mt-2 space-y-3">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded accent-orange-500"
+                checked={emettiFattura}
+                onChange={e => setEmettiFattura(e.target.checked)}
+              />
+              <span className="text-sm font-medium text-gray-700">Emetti fattura</span>
+            </label>
+
+            {emettiFattura ? (
+              <>
+                <div>
+                  <label className="label">Numero fattura</label>
+                  <input
+                    className="input"
+                    placeholder="es. 2025/001"
+                    value={numeroFattura}
+                    onChange={e => setNumeroFattura(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Data fattura</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={dataFattura}
+                    onChange={e => setDataFattura(e.target.value)}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                Il pagamento verrà registrato senza fattura. La riga apparirà in arancione nella lista.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end mt-5">
           <button onClick={onClose}
             className="px-4 py-2 border border-gray-200 rounded-xl text-sm hover:bg-gray-50">
             Annulla
           </button>
           <button
-            onClick={() => onConfirm(modal.tipo, nuovoValore, nuovoValore ? data : null)}
+            onClick={handleConfirm}
             className={`px-4 py-2 rounded-xl text-sm font-semibold text-white ${nuovoValore ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}>
             {nuovoValore ? 'Conferma pagamento' : 'Rimuovi'}
           </button>
