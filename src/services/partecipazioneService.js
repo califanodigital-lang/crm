@@ -29,6 +29,9 @@ const toCamelCase = (p) => {
     dataFinePartecipazione: p.data_fine_partecipazione,
     pagato: p.pagato,
     pagato_agency: p.pagato_agency,
+    fatturaEmessa: p.fattura_emessa ?? false,
+    numeroFattura: p.numero_fattura ?? null,
+    dataFattura: p.data_fattura ?? null,
     tipo: p.tipo || 'partecipante',
   }
 }
@@ -63,6 +66,9 @@ const toSnakeCase = (p) => ({
   data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),
   pagato: p.pagato || false,
   pagato_agency: p.pagato_agency || false,
+  fattura_emessa: p.fatturaEmessa ?? false,
+  numero_fattura: p.numeroFattura ?? null,
+  data_fattura: p.dataFattura ?? null,
   tipo: p.tipo || 'partecipante',
 })
 
@@ -136,6 +142,37 @@ export const updatePartecipazione = async (id, partecipazioneData) => {
 
     if (error) throw error
     return { data: toCamelCase(data), error: null }
+  } catch (error) {
+    console.error('Error:', error)
+    return { data: null, error }
+  }
+}
+
+// GET: Tutte le partecipazioni per le fiere attive (per sezione Finance Fee Fiere)
+export const getAllPartecipazioniAgency = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('partecipazioni_eventi')
+      .select(`
+        *,
+        creators (nome),
+        eventi!inner (id, nome, data_inizio, citta, stato)
+      `)
+      .eq('tipo', 'partecipante')
+      .neq('eventi.stato', 'CHIUSA')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return {
+      data: data.map(p => ({
+        ...toCamelCase(p),
+        creatorNome: p.creators?.nome || 'N/A',
+        eventoId: p.evento_id,
+        eventoNome: p.eventi?.nome || '—',
+        eventoDataInizio: p.eventi?.data_inizio,
+        eventoCitta: p.eventi?.citta,
+      })),
+      error: null,
+    }
   } catch (error) {
     console.error('Error:', error)
     return { data: null, error }

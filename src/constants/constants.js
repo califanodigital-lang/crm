@@ -153,6 +153,7 @@ export const TIPI_ENTRATA = [
   { value: 'COLLAB',     label: 'Collaborazione' },
   { value: 'RICORRENTE', label: 'Contratto Fisso' },
   { value: 'VERSAMENTO', label: 'Versamento Creator' },
+  { value: 'FIERA',      label: 'Fee Fiera' },
   { value: 'MANUALE',    label: 'Entrata Manuale' },
 ]
 

@@ -1,6 +1,20 @@
-export const APP_VERSION = 'v0.17.0-beta'
+export const APP_VERSION = 'v0.18.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.18.0-beta',
+    date: '2026-05-08',
+    items: [
+      'Pagamento Agency nelle Fiere & Eventi integrato con la fatturazione: premendo il pulsante "Pag. Agency" si apre una modal con tre modalità — nuovo pagamento (con opzione fattura), regolarizzazione fattura mancante e rimozione pagamento. Il flusso è identico a quello delle Collaborazioni.',
+      'Indicatore arancione in Fiere & Eventi per pagamenti agency senza fattura: colore distinto (arancione = pagato ma senza fattura, blu = pagato con fattura) sia nella vista tabella sia nella vista card.',
+      'Nuova sezione "Fee Fiere" in Finance → Entrate: mostra tutti i creator partecipanti nelle fiere attive (non chiuse), raggruppati per evento. Per ogni creator è visibile la fee, lo stato del pagamento agency e il pulsante "+ Fattura" se non ancora emessa.',
+      'Sync Finance ↔ Fiere & Eventi: emettere una fattura da Finance nella sezione Fee Fiere aggiorna automaticamente i campi fattura_emessa, numero_fattura e data_fattura sulla partecipazione corrispondente.',
+      'Fatture emesse di tipo FIERA collegate alla partecipazione tramite partecipazione_id: il collegamento è tracciabile in entrambe le direzioni.',
+      'Fix mese fattura in Finance: la fattura viene registrata nel mese derivato dalla data fattura inserita, non dal mese di riferimento selezionato nel selettore globale.',
+      'Fix focus negli input del form Clienti Terzi: risolto il problema per cui ogni carattere digitato causava la perdita del focus. La causa era la definizione di componenti interni al render del parent.',
+      'Tabella fee creator nelle Fiere & Eventi: la colonna fee mostra ora le singole voci del breakdown invece del solo totale, con descrizione e importo per riga.',
+    ]
+  },
   {
     version: 'v0.17.0-beta',
     date: '2026-05-08',

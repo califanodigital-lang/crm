@@ -11,6 +11,7 @@ const toCamelCase = (f) => ({
   collabId: f.collab_id,
   contrattoId: f.contratto_id,
   versamentoId: f.versamento_id,
+  partecipazioneId: f.partecipazione_id,
   linkDocumento: f.link_documento,
   note: f.note,
   createdAt: f.created_at,
@@ -26,6 +27,7 @@ const toSnakeCase = (f) => ({
   collab_id: f.collabId || null,
   contratto_id: f.contrattoId || null,
   versamento_id: f.versamentoId || null,
+  partecipazione_id: f.partecipazioneId || null,
   link_documento: f.linkDocumento || null,
   note: f.note || null,
 })

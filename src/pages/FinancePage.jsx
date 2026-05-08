@@ -9,6 +9,7 @@ import { getAllUsers } from '../services/userService'
 import { getAllAgentsStats } from '../services/agentService'
 import { getFattureByMese, createFattura, deleteFattura } from '../services/fattureEmesseService'
 import { getUsciteByMese, createUscita, updateUscita, deleteUscita, togglePagataUscita } from '../services/usciteVarieService'
+import { getAllPartecipazioniAgency, updatePartecipazione } from '../services/partecipazioneService'
 import {
   CheckCircle, XCircle, ExternalLink, DollarSign, TrendingUp, TrendingDown,
   Plus, Trash2, Edit, ChevronDown, ChevronUp, FileText,
@@ -34,7 +35,7 @@ const getMonthRange = (month) => {
   }
 }
 
-const emptyFattura   = { mese: '', numeroFattura: '', dataFattura: '', soggettoNome: '', importo: '', tipo: 'MANUALE', collabId: null, versamentoId: null, contrattoId: null, linkDocumento: '', note: '' }
+const emptyFattura   = { mese: '', numeroFattura: '', dataFattura: '', soggettoNome: '', importo: '', tipo: 'MANUALE', collabId: null, versamentoId: null, contrattoId: null, partecipazioneId: null, linkDocumento: '', note: '' }
 const emptyVersamento = { creatorId: '', tipoPagamento: '', importoVersato: '', numeroFattura: '', dataFattura: '', linkFattura: '', verificato: false }
 const emptyUscita    = { categoria: '', descrizione: '', importo: '', fornitore: '', note: '', pagata: false }
 
@@ -55,6 +56,9 @@ export default function FinancePage() {
   const [contrattiAttiviTotale, setContrattiAttiviTotale] = useState(0)
   const [contrattiAttivi, setContrattiAttivi] = useState([])
 
+  // Fiere
+  const [fieraPartecipazioni, setFieraPartecipazioni] = useState([])
+
   // Uscite
   const [pagamenti, setPagamenti]   = useState([])
   const [allUsers, setAllUsers]     = useState([])
@@ -70,7 +74,7 @@ export default function FinancePage() {
   const renderInlineFatturaForm = false
 
   // Collapse state
-  const [open, setOpen] = useState({ collab: true, versamenti: false, contratti: false, fatture: true, agenti: true, varie: true })
+  const [open, setOpen] = useState({ collab: true, versamenti: false, contratti: false, fiere: true, fatture: true, agenti: true, varie: true })
   const toggleSection = (k) => setOpen(p => ({ ...p, [k]: !p[k] }))
 
   useEffect(() => {
@@ -81,7 +85,7 @@ export default function FinancePage() {
     setLoading(true)
     const meseFull = `${selectedMonth}-01`
 
-    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, agentsStatsRes, usciteRes] = await Promise.all([
+    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, agentsStatsRes, usciteRes, fieraRes] = await Promise.all([
       getAllCreators(),
       getAllCollaborations(),
       getAllContrattiRicorrenti(),
@@ -91,6 +95,7 @@ export default function FinancePage() {
       getAllUsers(),
       getAllAgentsStats(selectedMonth),
       getUsciteByMese(meseFull),
+      getAllPartecipazioniAgency(),
     ])
 
     setCreators(creatorsRes.data || [])
@@ -125,6 +130,7 @@ export default function FinancePage() {
     })))
 
     setUsciteVarie(usciteRes.data || [])
+    setFieraPartecipazioni(fieraRes.data || [])
     setLoading(false)
   }
 
@@ -212,7 +218,7 @@ export default function FinancePage() {
   }
 
   const fatturaSourceOptions = getFatturaSourceOptions()
-  const fatturaNeedsSource = fatturaForm.tipo !== 'MANUALE'
+  const fatturaNeedsSource = !['MANUALE', 'FIERA'].includes(fatturaForm.tipo)
   const canSaveFattura = Boolean(
     fatturaForm.soggettoNome &&
     fatturaForm.importo &&
@@ -228,16 +234,29 @@ export default function FinancePage() {
       toast.error('Soggetto e importo obbligatori')
       return
     }
-    const { error } = await createFattura({ ...fatturaForm, mese: fatturaForm.mese || `${selectedMonth}-01` })
+    const meseDaData = fatturaForm.dataFattura
+      ? `${fatturaForm.dataFattura.slice(0, 7)}-01`
+      : `${selectedMonth}-01`
+    const { error } = await createFattura({ ...fatturaForm, mese: meseDaData })
     if (error) { toast.error('Errore salvataggio fattura'); return }
 
-    // Se la fattura è collegata a una collaborazione, aggiorna anche i campi
-    // fattura_emessa/numero_fattura/data_fattura sulla collab (usati dall'indicatore in Collaborazioni)
     if (fatturaForm.tipo === 'COLLAB' && fatturaForm.collabId) {
       const collab = collabCompletate.find(c => c.id === fatturaForm.collabId)
       if (collab) {
         await updateCollaboration(fatturaForm.collabId, {
           ...collab,
+          fatturaEmessa: true,
+          numeroFattura: fatturaForm.numeroFattura || null,
+          dataFattura: fatturaForm.dataFattura || null,
+        })
+      }
+    }
+
+    if (fatturaForm.tipo === 'FIERA' && fatturaForm.partecipazioneId) {
+      const part = fieraPartecipazioni.find(p => p.id === fatturaForm.partecipazioneId)
+      if (part) {
+        await updatePartecipazione(part.id, {
+          ...part,
           fatturaEmessa: true,
           numeroFattura: fatturaForm.numeroFattura || null,
           dataFattura: fatturaForm.dataFattura || null,
@@ -597,6 +616,92 @@ export default function FinancePage() {
               </div>
             )}
           </div>
+
+          {/* Fee Fiere */}
+          {(() => {
+            const fieraByEvento = {}
+            fieraPartecipazioni.forEach(p => {
+              if (!fieraByEvento[p.eventoId]) {
+                fieraByEvento[p.eventoId] = { eventoNome: p.eventoNome, eventoDataInizio: p.eventoDataInizio, eventoCitta: p.eventoCitta, creators: [] }
+              }
+              fieraByEvento[p.eventoId].creators.push(p)
+            })
+            const fieraGroups = Object.values(fieraByEvento)
+            const totFeeFiere = fieraPartecipazioni.reduce((s, p) => s + parseFloat(p.fee || 0), 0)
+            const pendingCount = fieraPartecipazioni.filter(p => !p.fatturaEmessa).length
+            return (
+              <div className="card">
+                <SectionHeader
+                  label="Fee Fiere"
+                  count={fieraPartecipazioni.length}
+                  total={totFeeFiere}
+                  sectionKey="fiere"
+                  badge={pendingCount > 0 && (
+                    <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-semibold">{pendingCount} da fatturare</span>
+                  )}
+                />
+                {open.fiere && (
+                  fieraGroups.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-6">Nessuna fee fiera con pagamento agency registrato.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {fieraGroups.map((gruppo, gi) => (
+                        <div key={gi} className="border border-gray-100 rounded-xl overflow-hidden">
+                          <div className="bg-gray-50 px-4 py-2 flex items-center gap-3">
+                            <span className="font-semibold text-gray-800 text-sm">{gruppo.eventoNome}</span>
+                            {gruppo.eventoDataInizio && (
+                              <span className="text-xs text-gray-400">{formatDate(gruppo.eventoDataInizio)}</span>
+                            )}
+                            {gruppo.eventoCitta && (
+                              <span className="text-xs text-gray-400">{gruppo.eventoCitta}</span>
+                            )}
+                          </div>
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-gray-100 bg-gray-50/50">
+                                <th className="text-left py-2 px-4 text-xs font-bold text-gray-500 uppercase">Creator</th>
+                                <th className="text-right py-2 px-4 text-xs font-bold text-gray-500 uppercase">Fee</th>
+                                <th className="text-center py-2 px-4 text-xs font-bold text-gray-500 uppercase">Pag. Agency</th>
+                                <th className="text-left py-2 px-4 text-xs font-bold text-gray-500 uppercase">Fattura</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {gruppo.creators.map(p => (
+                                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                  <td className="py-2.5 px-4 text-sm font-medium">{p.creatorNome}</td>
+                                  <td className="py-2.5 px-4 text-right font-semibold text-green-700">
+                                    {p.fee ? `€${parseFloat(p.fee).toLocaleString('it-IT', { minimumFractionDigits: 2 })}` : '—'}
+                                  </td>
+                                  <td className="py-2.5 px-4 text-center">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                      p.pagato_agency ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-400'
+                                    }`}>
+                                      {p.pagato_agency ? '✓ Sì' : '✗ No'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-4">
+                                    <FatturaBadge
+                                      fattura={p.fatturaEmessa ? { numeroFattura: p.numeroFattura } : null}
+                                      onOpen={() => openFatturaPrecompilata({
+                                        tipo: 'FIERA',
+                                        soggettoNome: `${p.creatorNome} - ${gruppo.eventoNome}`,
+                                        importo: p.fee || '',
+                                        partecipazioneId: p.id,
+                                      })}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+            )
+          })()}
 
           {/* Fatture Emesse */}
           <div className="card">

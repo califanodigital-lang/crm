@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../services/eventoService'
+import { createFattura } from '../services/fattureEmesseService'
 import { getAllCircuiti } from '../services/circuitiService'
 import { getPartecipazioniByEvento, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
@@ -11,6 +12,82 @@ import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import { ATTIVITA_EVENTO, TIPOLOGIE_EVENTO } from '../constants/constants'
 import { toast } from '../components/Toast'
+
+function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }) {
+  const [emettiFattura, setEmettiFattura] = useState(false)
+  const [numeroFattura, setNumeroFattura] = useState('')
+  const [dataFattura, setDataFattura] = useState('')
+
+  const isRegolarizza = partecipazione.pagato_agency && !partecipazione.fatturaEmessa
+  const isRemove = partecipazione.pagato_agency && partecipazione.fatturaEmessa
+  const showInvoiceForm = isRegolarizza || (emettiFattura && !isRemove)
+
+  if (isRemove) {
+    return (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Rimuovere il pagamento?</h3>
+          <p className="text-sm text-gray-500 mb-5">La fattura emessa rimarrà nel registro Finance.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Annulla</button>
+            <button onClick={() => onConfirm({ newPagato: false, fatturaData: null })}
+              className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200">Rimuovi</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-1">
+          {isRegolarizza ? 'Regolarizza fattura' : 'Pagamento Agency'}
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          {isRegolarizza
+            ? `${partecipazione.creatorNome} — ${eventoNome}. Il pagamento è già registrato; emetti la fattura mancante.`
+            : `${partecipazione.creatorNome} — €${partecipazione.fee || 0} — ${eventoNome}`}
+        </p>
+
+        {!isRegolarizza && (
+          <label className="flex items-center gap-2 cursor-pointer text-sm mb-4">
+            <input type="checkbox" checked={emettiFattura} onChange={e => setEmettiFattura(e.target.checked)} />
+            <span className="font-medium text-gray-700">Emetti fattura</span>
+          </label>
+        )}
+
+        {showInvoiceForm && (
+          <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
+            <div>
+              <label className="label">N. Fattura</label>
+              <input className="input text-sm" placeholder="es. 2026/042"
+                value={numeroFattura} onChange={e => setNumeroFattura(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Data Fattura</label>
+              <input type="date" className="input text-sm"
+                value={dataFattura} onChange={e => setDataFattura(e.target.value)} />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Annulla</button>
+          <button
+            onClick={() => onConfirm({
+              newPagato: true,
+              fatturaData: showInvoiceForm ? { emessa: true, numero: numeroFattura, data: dataFattura } : null
+            })}
+            className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-500"
+          >
+            {isRegolarizza ? 'Emetti fattura' : 'Conferma pagamento'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const FeeCell = ({ p, align = 'right' }) => {
   const breakdown = p.feesBreakdown?.filter(f => parseFloat(f.importo) > 0)
@@ -74,6 +151,7 @@ export default function EventiPage() {
   const [eventoForm, setEventoForm] = useState(EMPTY_EVENTO_FORM)
   const [partForm, setPartForm] = useState(EMPTY_PART_FORM)
   const [editingPart, setEditingPart] = useState(null)
+  const [agencyModal, setAgencyModal] = useState(null)
 
   const getCircuitoName = (circuitoId) =>
     circuiti.find(circuito => circuito.id === circuitoId)?.nome || '—'
@@ -176,6 +254,35 @@ export default function EventiPage() {
   const handleTogglePagamento = async (partecipazione, campo) => {
     const updated = { ...partecipazione, [campo]: !partecipazione[campo] }
     await updatePartecipazione(partecipazione.id, updated)
+    loadPartecipazioni(selectedEvento.id)
+  }
+
+  const handlePagamentoAgency = (p) => setAgencyModal({ partecipazione: p })
+
+  const handleAgencyConfirm = async ({ newPagato, fatturaData }) => {
+    const p = agencyModal.partecipazione
+    await updatePartecipazione(p.id, {
+      ...p,
+      pagato_agency: newPagato,
+      fatturaEmessa: fatturaData ? true : (newPagato ? p.fatturaEmessa : false),
+      numeroFattura: fatturaData?.numero || (newPagato ? p.numeroFattura : null),
+      dataFattura: fatturaData?.data || (newPagato ? p.dataFattura : null),
+    })
+    if (fatturaData && newPagato) {
+      const mese = fatturaData.data
+        ? `${fatturaData.data.slice(0, 7)}-01`
+        : `${new Date().toISOString().slice(0, 7)}-01`
+      await createFattura({
+        mese,
+        numeroFattura: fatturaData.numero || null,
+        dataFattura: fatturaData.data || null,
+        soggettoNome: `${p.creatorNome} - ${selectedEvento?.nome || 'Fiera'}`,
+        importo: p.fee || 0,
+        tipo: 'FIERA',
+        partecipazioneId: p.id,
+      })
+    }
+    setAgencyModal(null)
     loadPartecipazioni(selectedEvento.id)
   }
 
@@ -521,9 +628,15 @@ export default function EventiPage() {
                       </button>
                     </td>
                     <td className="py-2 text-center">
-                      <button onClick={() => handleTogglePagamento(p, 'pagato_agency')}
-                        className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${p.pagato_agency ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                        {p.pagato_agency ? '✓ Sì' : '✗ No'}
+                      <button onClick={() => handlePagamentoAgency(p)}
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
+                          p.pagato_agency && p.fatturaEmessa
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : p.pagato_agency
+                            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        }`}>
+                        {p.pagato_agency ? (p.fatturaEmessa ? '✓ Sì' : '⚠ Fatt.') : '✗ No'}
                       </button>
                     </td>
                     <td className="py-2 text-right">
@@ -592,9 +705,15 @@ export default function EventiPage() {
                       className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${p.pagato ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
                       {p.pagato ? '✓ Creator Pagato' : '✗ Creator'}
                     </button>
-                    <button onClick={() => handleTogglePagamento(p, 'pagato_agency')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${p.pagato_agency ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                      {p.pagato_agency ? '✓ Agency Pagata' : '✗ Agency'}
+                    <button onClick={() => handlePagamentoAgency(p)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        p.pagato_agency && p.fatturaEmessa
+                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                          : p.pagato_agency
+                          ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}>
+                      {p.pagato_agency ? (p.fatturaEmessa ? '✓ Agency Pagata' : '⚠ Senza Fattura') : '✗ Agency'}
                     </button>
                   </div>
                 </div>
@@ -648,6 +767,16 @@ export default function EventiPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Modal pagamento agency */}
+        {agencyModal && (
+          <PagamentoAgencyModal
+            partecipazione={agencyModal.partecipazione}
+            eventoNome={selectedEvento?.nome || ''}
+            onClose={() => setAgencyModal(null)}
+            onConfirm={handleAgencyConfirm}
+          />
+        )}
 
         {/* Modal modifica partecipazione */}
         {editingPart && (
