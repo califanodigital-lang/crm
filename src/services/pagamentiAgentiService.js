@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const clean = (v) => (v === '' || v === undefined) ? null : v
 
@@ -17,12 +18,11 @@ const toCC = (p) => ({
 // GET: pagamenti di un mese
 export const getPagamentiByMese = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('pagamenti_agenti')
       .select('*')
       .eq('mese', mese)
-      .order('agente_nome')
-    if (error) throw error
+      .order('agente_nome'))
     return { data: data.map(toCC), error: null }
   } catch (e) { return { data: null, error: e } }
 }
@@ -30,12 +30,11 @@ export const getPagamentiByMese = async (mese) => {
 // GET: pagamenti di un agente
 export const getPagamentiByAgente = async (agenteNome) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('pagamenti_agenti')
       .select('*')
       .eq('agente_nome', agenteNome)
-      .order('mese', { ascending: false })
-    if (error) throw error
+      .order('mese', { ascending: false }))
     return { data: data.map(toCC), error: null }
   } catch (e) { return { data: null, error: e } }
 }

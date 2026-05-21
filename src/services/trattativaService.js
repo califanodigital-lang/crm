@@ -1,5 +1,6 @@
 // src/services/trattativaService.js
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const normalizeBrandName = (value) =>
   (value || '')
@@ -155,11 +156,10 @@ const toSnakeCase = (t) => ({
 
 export const getAllTrattative = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('proposte_brand')
       .select('*')
-      .order('created_at', { ascending: false })
-    if (error) throw error
+      .order('created_at', { ascending: false }))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) { return { data: null, error } }
 }
@@ -175,13 +175,12 @@ export const getTrattativaById = async (id) => {
 
 export const getTrattativeByBrand = async (brandId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('proposte_brand')
       .select('*')
       .eq('brand_id', brandId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }
@@ -190,11 +189,10 @@ export const getTrattativeByBrand = async (brandId) => {
 
 export const getTrattativeByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('proposte_brand').select('*')
       .contains('creator_suggeriti', [creatorId])
-      .order('created_at', { ascending: false })
-    if (error) throw error
+      .order('created_at', { ascending: false }))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) { return { data: null, error } }
 }
@@ -315,9 +313,8 @@ export const deleteTrattativa = async (id) => {
 // ── STATS ────────────────────────────────────────────────────
 export const getTrattativeStats = async () => {
   try {
-    const { data, error } = await supabase
-      .from('proposte_brand').select('stato, priorita, agente')
-    if (error) throw error
+    const data = await fetchAllRows(() => supabase
+      .from('proposte_brand').select('stato, priorita, agente'))
 
     const count = (val) => data.filter(t => t.stato === val).length
     return {

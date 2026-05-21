@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -20,12 +21,11 @@ const toSnakeCase = (circuito) => ({
 
 export const getAllCircuiti = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('circuiti_eventi')
       .select('*')
-      .order('nome', { ascending: true })
+      .order('nome', { ascending: true }))
 
-    if (error) throw error
     return { data: (data || []).map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching circuiti:', error)

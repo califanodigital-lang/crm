@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toDateKey = (value) => {
   if (!value) return null
@@ -58,39 +59,30 @@ export const getAgendaItems = async () => {
     versamentiRes,
     impegniRes
   ] = await Promise.all([
-    supabase.from('creators').select('*'),
-    supabase.from('brands').select('*'),
-    supabase.from('proposte_brand').select('*'),
-    supabase.from('collaborations').select('*'),
-    supabase.from('eventi').select('*'),
-    supabase
+    fetchAllRows(() => supabase.from('creators').select('*')),
+    fetchAllRows(() => supabase.from('brands').select('*')),
+    fetchAllRows(() => supabase.from('proposte_brand').select('*')),
+    fetchAllRows(() => supabase.from('collaborations').select('*')),
+    fetchAllRows(() => supabase.from('eventi').select('*')),
+    fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`
         *,
         creators (nome),
         eventi:evento_id (nome)
-      `),
-    supabase.from('versamenti').select('*'),
-    supabase
+      `)),
+    fetchAllRows(() => supabase.from('versamenti').select('*')),
+    fetchAllRows(() => supabase
       .from('creator_impegni')
       .select(`
         *,
         creators (nome)
-      `)
+      `))
   ])
-
-  if (creatorsRes.error) throw creatorsRes.error
-  if (brandsRes.error) throw brandsRes.error
-  if (trattativeRes.error) throw trattativeRes.error
-  if (collabRes.error) throw collabRes.error
-  if (eventiRes.error) throw eventiRes.error
-  if (partecipazioniRes.error) throw partecipazioniRes.error
-  if (versamentiRes.error) throw versamentiRes.error
-  if (impegniRes.error) throw impegniRes.error
 
   const items = []
 
-  ;(creatorsRes.data || []).forEach(c => {
+  ;(creatorsRes || []).forEach(c => {
     pushSingle(items, c.ricontattare, {
       tipo: 'CREATOR_RICONTATTO',
       titolo: `Ricontattare creator · ${c.nome}`,
@@ -132,7 +124,7 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(brandsRes.data || []).forEach(b => {
+  ;(brandsRes || []).forEach(b => {
     pushSingle(items, b.data_contatto, {
       tipo: 'BRAND_CONTATTO',
       titolo: `Contatto brand · ${b.nome}`,
@@ -174,7 +166,7 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(trattativeRes.data || []).forEach(t => {
+  ;(trattativeRes || []).forEach(t => {
     pushSingle(items, t.data_contatto, {
       tipo: 'TRATTATIVA_CONTATTO',
       titolo: `Contatto trattativa · ${t.brand_nome}`,
@@ -240,7 +232,7 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(collabRes.data || []).forEach(c => {
+  ;(collabRes || []).forEach(c => {
     pushSingle(items, c.data_firma, {
       tipo: 'COLLAB_FIRMA',
       titolo: `Firma collaborazione · ${c.brand_nome}`,
@@ -251,16 +243,16 @@ export const getAgendaItems = async () => {
     })
 
       // Promemoria generici
-    ;(impegniRes.data || [])
-      .filter(i => i.tipo === 'PROMEMORIA')
+    ;(impegniRes || [])
+      .filter(() => false)
       .forEach(i => {
-        pushItem({
+        pushSingle(items, i.data_inizio, {
           tipo: 'PROMEMORIA',
-          label: `Promemoria · ${i.creato_da || 'Utente'}`,
+          titolo: `Promemoria · ${i.creato_da || 'Utente'}`,
           descrizione: i.titolo,
           refId: i.id,
           color: 'bg-gray-100 text-gray-700',
-        }, { [i.data_inizio]: true })
+        })
       })
 
     pushSingle(items, c.data_pubblicazione, {
@@ -309,7 +301,7 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(eventiRes.data || []).forEach(e => {
+  ;(eventiRes || []).forEach(e => {
     pushRange(items, e.data_inizio, e.data_fine || e.data_inizio, {
       tipo: 'EVENTO',
       titolo: e.nome,
@@ -325,7 +317,7 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(partecipazioniRes.data || []).forEach(p => {
+  ;(partecipazioniRes || []).forEach(p => {
     pushRange(
       items,
       p.data_inizio_partecipazione,
@@ -343,7 +335,7 @@ export const getAgendaItems = async () => {
     )
   })
 
-  ;(versamentiRes.data || []).forEach(v => {
+  ;(versamentiRes || []).forEach(v => {
     pushSingle(items, v.mese, {
       tipo: 'VERSAMENTO_MESE',
       titolo: `Versamento mese`,
@@ -359,8 +351,18 @@ export const getAgendaItems = async () => {
     })
   })
 
-  ;(impegniRes.data || []).forEach(i => {
-    console.log(i)
+  ;(impegniRes || []).forEach(i => {
+    if (i.tipo === 'PROMEMORIA') {
+      pushSingle(items, i.data_inizio, {
+        tipo: 'PROMEMORIA',
+        titolo: i.titolo,
+        descrizione: i.creato_da ? `Creato da ${i.creato_da}` : null,
+        note: i.note,
+        refId: i.id
+      })
+      return
+    }
+
     pushRange(items, i.data_inizio, i.data_fine || i.data_inizio, {
       tipo: 'IMPEGNO_CREATOR',
       titolo: `${i.creators?.nome || 'Creator'} · ${i.titolo}`,
@@ -376,8 +378,8 @@ export const getAgendaItems = async () => {
 
 export const getCreatorAvailabilityForEventDay = async (eventoId, dayKey) => {
   const [creatorsRes, partecipazioniRes, collabRes, impegniRes] = await Promise.all([
-    supabase.from('creators').select('id, nome, stato'),
-    supabase
+    fetchAllRows(() => supabase.from('creators').select('id, nome, stato')),
+    fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`
         creator_id,
@@ -386,23 +388,18 @@ export const getCreatorAvailabilityForEventDay = async (eventoId, dayKey) => {
         data_fine_partecipazione,
         creators (nome),
         eventi:evento_id (id, nome, data_inizio, data_fine)
-      `),
-    supabase
+      `)),
+    fetchAllRows(() => supabase
       .from('collaborations')
-      .select('creator_id, brand_nome, data_pubblicazione'),
-    supabase
+      .select('creator_id, brand_nome, data_pubblicazione')),
+    fetchAllRows(() => supabase
       .from('creator_impegni')
-      .select('creator_id, titolo, data_inizio, data_fine')
+      .select('creator_id, titolo, data_inizio, data_fine'))
   ])
 
-  if (creatorsRes.error) throw creatorsRes.error
-  if (partecipazioniRes.error) throw partecipazioniRes.error
-  if (collabRes.error) throw collabRes.error
-  if (impegniRes.error) throw impegniRes.error
+  const activeCreators = (creatorsRes || []).filter(c => c.stato === '1 Sotto contratto')
 
-  const activeCreators = (creatorsRes.data || []).filter(c => c.stato === '1 Sotto contratto')
-
-  const assegnatiEvento = (partecipazioniRes.data || [])
+  const assegnatiEvento = (partecipazioniRes || [])
     .filter(p => p.evento_id === eventoId)
     .filter(p =>
       overlaps(
@@ -422,7 +419,7 @@ export const getCreatorAvailabilityForEventDay = async (eventoId, dayKey) => {
   const assegnatiIds = new Set(assegnatiEvento.map(x => x.id))
   const busyMap = {}
 
-  ;(partecipazioniRes.data || []).forEach(p => {
+  ;(partecipazioniRes || []).forEach(p => {
     if (p.evento_id === eventoId) return
     const start = p.data_inizio_partecipazione || p.eventi?.data_inizio
     const end = p.data_fine_partecipazione || p.eventi?.data_fine || p.eventi?.data_inizio
@@ -432,14 +429,14 @@ export const getCreatorAvailabilityForEventDay = async (eventoId, dayKey) => {
     }
   })
 
-  ;(collabRes.data || []).forEach(c => {
+  ;(collabRes || []).forEach(c => {
     if (c.data_pubblicazione && sameDay(c.data_pubblicazione, dayKey)) {
       if (!busyMap[c.creator_id]) busyMap[c.creator_id] = []
       busyMap[c.creator_id].push(`Pubblicazione: ${c.brand_nome}`)
     }
   })
 
-  ;(impegniRes.data || []).forEach(i => {
+  ;(impegniRes || []).forEach(i => {
     if (overlaps(dayKey, dayKey, i.data_inizio, i.data_fine || i.data_inizio)) {
       if (!busyMap[i.creator_id]) busyMap[i.creator_id] = []
       busyMap[i.creator_id].push(`Impegno: ${i.titolo}`)
@@ -543,6 +540,7 @@ export const itemTypeLabel = (tipo) => {
     PRESENZA_EVENTO: 'Presenza evento',
     VERSAMENTO_MESE: 'Versamento mese',
     FATTURA: 'Fattura',
+    PROMEMORIA: 'Promemoria',
     IMPEGNO_CREATOR: 'Impegno creator'
   }
   return map[tipo] || tipo
@@ -579,6 +577,7 @@ export const itemTypeColor = (tipo) => {
     PRESENZA_EVENTO: 'bg-emerald-100 text-emerald-700',
     VERSAMENTO_MESE: 'bg-slate-100 text-slate-700',
     FATTURA: 'bg-stone-100 text-stone-700',
+    PROMEMORIA: 'bg-gray-100 text-gray-700',
     IMPEGNO_CREATOR: 'bg-rose-100 text-rose-700'
   }
   return map[tipo] || 'bg-gray-100 text-gray-700'

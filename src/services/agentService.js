@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toNumber = (value) => parseFloat(value || 0) || 0
 
@@ -72,7 +73,7 @@ const getAgentContribution = (collab, agenteNome) => {
 }
 
 const fetchAllCollaborations = async () => {
-  const { data, error } = await supabase
+  const data = await fetchAllRows(() => supabase
     .from('collaborations')
     .select(`
       id,
@@ -93,9 +94,8 @@ const fetchAllCollaborations = async () => {
       created_at,
       creators (nome)
     `)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }))
 
-  if (error) throw error
   return data.map(normalizeCollab)
 }
 

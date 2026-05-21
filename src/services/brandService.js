@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => {
   if (value === '' || value === undefined) return null
@@ -56,15 +57,28 @@ const toSnakeCase = (brand) => {
   }
 }
 
-export const getAllBrands = async () => {
-  try {
-    const { data, error } = await supabase
+const buildBrandsQuery = (searchTerm = null) => {
+  let query = supabase
       .from('brands')
       .select('*')
-      .order('nome', { ascending: true })
 
-    if (error) throw error
-    return { data: data.map(toCamelCase), error: null }
+  if (searchTerm) {
+    query = query.or(`nome.ilike.%${searchTerm}%,settore.ilike.%${searchTerm}%`)
+  }
+
+  return query
+    .order('nome', { ascending: true })
+}
+
+const fetchBrands = async ({ searchTerm = null } = {}) => {
+  const brands = await fetchAllRows(() => buildBrandsQuery(searchTerm))
+  return brands.map(toCamelCase)
+}
+
+export const getAllBrands = async () => {
+  try {
+    const data = await fetchBrands()
+    return { data, error: null }
   } catch (error) {
     console.error('Error fetching brands:', error)
     return { data: null, error }
@@ -137,14 +151,8 @@ export const deleteBrand = async (id) => {
 
 export const searchBrands = async (searchTerm) => {
   try {
-    const { data, error } = await supabase
-      .from('brands')
-      .select('*')
-      .or(`nome.ilike.%${searchTerm}%,settore.ilike.%${searchTerm}%`)
-      .order('nome', { ascending: true })
-
-    if (error) throw error
-    return { data: data.map(toCamelCase), error: null }
+    const data = await fetchBrands({ searchTerm })
+    return { data, error: null }
   } catch (error) {
     console.error('Error searching brands:', error)
     return { data: null, error }

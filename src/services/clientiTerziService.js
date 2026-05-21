@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toCamelCase = (c) => ({
   id: c.id,
@@ -20,11 +21,10 @@ const toSnakeCase = (c) => ({
 
 export const getAllClientiTerzi = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('clienti_terzi')
       .select('*')
-      .order('nome')
-    if (error) throw error
+      .order('nome'))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

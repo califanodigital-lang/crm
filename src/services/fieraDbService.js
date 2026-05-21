@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const normalizeValue = (value) => (value || '').trim().toLowerCase()
@@ -57,13 +58,10 @@ const isSameFieraKey = (left, right) =>
   isSameOptionalValue(left.citta, right.citta)
 
 const getFieraCandidates = async () => {
-  const { data, error } = await supabase
+  return fetchAllRows(() => supabase
     .from('fiere_db')
     .select('id, nome, tipo, location, citta, evento_origine_id, created_at, updated_at')
-    .order('updated_at', { ascending: false, nullsFirst: false })
-
-  if (error) throw error
-  return data || []
+    .order('updated_at', { ascending: false, nullsFirst: false }))
 }
 
 const getFieraById = async (id) => {
@@ -113,12 +111,11 @@ const computeProssimoContatto = (ultimaData) => {
 
 export const getAllFiereDb = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('fiere_db')
       .select('*')
-      .order('prossimo_contatto', { ascending: true, nullsFirst: false })
+      .order('prossimo_contatto', { ascending: true, nullsFirst: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching fiere_db:', error)

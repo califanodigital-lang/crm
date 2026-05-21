@@ -1,6 +1,16 @@
-export const APP_VERSION = 'v0.18.0-beta'
+export const APP_VERSION = 'v0.18.1-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.18.1-beta',
+    date: '2026-05-21',
+    items: [
+      'Fix caricamento liste complete da Supabase: Brand, Creator, Collaborazioni, Trattative, Fiere/Eventi, Agenda, Finance e anagrafiche collegate ora leggono i dati a pagine successive, evitando il limite implicito che nascondeva record oltre il primo blocco.',
+      'Ricerca Brand/Creator resa coerente con il caricamento paginato: risultati come "WePlay" vengono trovati anche quando il record si trova oltre il limite standard della prima richiesta.',
+      'Trattative Brand: nella creazione di una nuova trattativa in stato Ricerca la sezione Contatti Brand e ora visibile subito, senza dover salvare e riaprire la trattativa in modifica.',
+      'Fix ricerca Trattative Brand: la barra di ricerca non perde piu il focus dopo il primo carattere digitato.',
+    ]
+  },
   {
     version: 'v0.18.0-beta',
     date: '2026-05-08',

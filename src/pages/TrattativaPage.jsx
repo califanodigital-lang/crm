@@ -1,5 +1,5 @@
 // src/pages/TrattativaPage.jsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Plus, Search, Edit, Trash2, List, LayoutGrid,
   ChevronDown, ChevronUp, ChevronsUpDown, Archive, ArrowRight, AlertCircle,
@@ -28,7 +28,7 @@ import {
 import { getAllBrands } from '../services/brandService'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/date'
-import { getDefaultMonthlyRange, isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
+import { isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 
 const STATI_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO', 'COLLAB_GENERATA']
 const PRIORITA_ORDER = { URGENTE: 0, ALTA: 1, NORMALE: 2, BASSA: 3 }
@@ -383,20 +383,16 @@ export default function TrattativaPage() {
 
   useEffect(() => {
     if (isAgent && userProfile?.agenteNome) {
-      setFilterAssegnatario(userProfile.agenteNome)
+      Promise.resolve().then(() => setFilterAssegnatario(userProfile.agenteNome))
     }
   }, [isAgent, userProfile])
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadBrands = async () => {
+  const loadBrands = useCallback(async () => {
     const { data } = await getAllBrands()
     setBrands(data || [])
-  }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     const [trattativeRes, statsRes, agentiRes, creatorsRes] = await Promise.all([
       getAllTrattative(),
@@ -411,7 +407,11 @@ export default function TrattativaPage() {
     setAgenti(agentiRes.data || [])
     setCreators(creatorsRes.data || [])
     setLoading(false)
-  }
+  }, [loadBrands])
+
+  useEffect(() => {
+    Promise.resolve().then(loadData)
+  }, [loadData])
 
   const handleSave = async (data) => {
     setLoading(true)
@@ -814,11 +814,11 @@ export default function TrattativaPage() {
         </div>
       </div>
 
-      <StatsBar />
-      <Filters />
+      {StatsBar()}
+      {Filters()}
 
-      {view === 'list' && <ListView />}
-      {view === 'kanban' && <KanbanView />}
+      {view === 'list' && ListView()}
+      {view === 'kanban' && KanbanView()}
 
       {pendingStatoChange && (
         <StatoChangeModal

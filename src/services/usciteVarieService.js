@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toCamelCase = (u) => ({
   id: u.id,
@@ -26,12 +27,11 @@ const toSnakeCase = (u) => ({
 
 export const getUsciteByMese = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('uscite_varie')
       .select('*')
       .eq('mese', mese)
-      .order('created_at', { ascending: false })
-    if (error) throw error
+      .order('created_at', { ascending: false }))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

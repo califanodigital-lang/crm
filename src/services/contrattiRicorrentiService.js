@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const clean = (v) => (v === '' || v === undefined) ? null : v
 
@@ -30,11 +31,10 @@ const toSnakeCase = (c) => ({
 
 export const getAllContrattiRicorrenti = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('contratti_ricorrenti')
       .select('*')
-      .order('data_inizio', { ascending: false })
-    if (error) throw error
+      .order('data_inizio', { ascending: false }))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

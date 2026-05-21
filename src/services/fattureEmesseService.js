@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toCamelCase = (f) => ({
   id: f.id,
@@ -34,12 +35,11 @@ const toSnakeCase = (f) => ({
 
 export const getFattureByMese = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('fatture_emesse')
       .select('*')
       .eq('mese', mese)
-      .order('created_at', { ascending: false })
-    if (error) throw error
+      .order('created_at', { ascending: false }))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

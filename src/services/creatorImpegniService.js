@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -25,13 +26,12 @@ const toSnakeCase = (row) => ({
 
 export const getImpegniByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('creator_impegni')
       .select('*')
       .eq('creator_id', creatorId)
-      .order('data_inizio', { ascending: true })
+      .order('data_inizio', { ascending: true }))
 
-    if (error) throw error
     return { data: (data || []).map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 // Utility per convertire valori vuoti in null
 const cleanValue = (value) => {
@@ -79,12 +80,11 @@ const toSnakeCase = (creator) => {
 // GET: Tutti i creator
 export const getAllCreators = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('creators')
       .select('*')
-      .order('nome', { ascending: true })
+      .order('nome', { ascending: true }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching creators:', error)
@@ -163,13 +163,12 @@ export const deleteCreator = async (id) => {
 // SEARCH: Cerca creator per nome
 export const searchCreators = async (searchTerm) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('creators')
       .select('*')
       .or(`nome.ilike.%${searchTerm}%,nome_completo.ilike.%${searchTerm}%`)
-      .order('nome', { ascending: true })
+      .order('nome', { ascending: true }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error searching creators:', error)

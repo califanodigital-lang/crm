@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -43,12 +44,11 @@ const toSnakeCase = (e) => ({
 // GET: Tutti gli eventi
 export const getAllEventi = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('eventi')
       .select('*')
-      .order('data_inizio', { ascending: false })
+      .order('data_inizio', { ascending: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error:', error)
@@ -132,7 +132,7 @@ export const deleteEvento = async (id) => {
 
 export const getPartecipazioniByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`
         *,
@@ -145,9 +145,7 @@ export const getPartecipazioniByCreator = async (creatorId) => {
         )
       `)
       .eq('creator_id', creatorId)
-      .order('eventi(data_inizio)', { ascending: false })
-
-    if (error) throw error
+      .order('eventi(data_inizio)', { ascending: false }))
 
     // Mappa con info evento embedded
     const mapped = data.map(p => ({

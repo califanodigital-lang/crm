@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { syncRevenueFromCollaboration, unsyncRevenueFromCollaboration } from './revenueService'
+import { fetchAllRows } from './supabasePagination'
 
 
 const syncTrattativaFromCollaboration = async (collab) => {
@@ -185,16 +186,14 @@ const toSnakeCase = (collab) => {
 // GET: Tutte le collaborazioni con info creator
 export const getAllCollaborations = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('collaborations')
       .select(`
         *,
         creators (nome, nome_completo)
       `)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }))
 
-    if (error) throw error
-    
     const enrichedData = data.map(collab => ({
       ...toCamelCase(collab),
       creatorNome: collab.creators?.nome || 'N/A'
@@ -210,13 +209,12 @@ export const getAllCollaborations = async () => {
 // GET: Collaborazioni per un creator specifico
 export const getCollaborationsByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('collaborations')
       .select('*')
       .eq('creator_id', creatorId)
-      .order('data_firma', { ascending: false })
+      .order('data_firma', { ascending: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching creator collaborations:', error)
@@ -227,16 +225,14 @@ export const getCollaborationsByCreator = async (creatorId) => {
 // GET: Collaborazioni per un brand specifico
 export const getCollaborationsByBrand = async (brandId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('collaborations')
       .select(`
         *,
         creators (nome, nome_completo)
       `)
       .eq('brand_id', brandId)
-      .order('data_firma', { ascending: false })
-
-    if (error) throw error
+      .order('data_firma', { ascending: false }))
 
     const enrichedData = data.map(collab => ({
       ...toCamelCase(collab),
@@ -379,11 +375,9 @@ export const deleteCollaboration = async (id) => {
 // STATS: Calcola statistiche collaborazioni
 export const getCollaborationStats = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('collaborations')
-      .select('stato, pagamento, pagato')
-
-    if (error) throw error
+      .select('stato, pagamento, pagato'))
 
     const stats = {
       total: data.length,

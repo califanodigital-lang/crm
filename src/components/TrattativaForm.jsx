@@ -122,7 +122,15 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
   const isAdmin = userProfile?.role === 'ADMIN'
   const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
 
-  useEffect(() => { loadAgenti() }, [])
+  useEffect(() => {
+    let cancelled = false
+
+    getActiveAgents().then(({ data }) => {
+      if (!cancelled) setAgenti(data || [])
+    })
+
+    return () => { cancelled = true }
+  }, [])
   useEffect(() => { getAllCreators().then(({ data }) => setCreators(data || [])) }, [])
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
@@ -131,65 +139,69 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
   }, [onCancel])
 
 useEffect(() => {
-  // Se è una nuova trattativa, pre-imposta creatoDa e assegnatario
-  if (!trattativa && userProfile?.agenteNome) {
+  let cancelled = false
+
+  Promise.resolve().then(() => {
+    if (cancelled) return
+
+    if (!trattativa) {
+      if (!userProfile?.agenteNome) return
+
+      setFormData(prev => ({
+        ...prev,
+        creatoDa: userProfile.agenteNome,
+        assegnatario: userProfile.agenteNome ? [userProfile.agenteNome] : [],
+      }))
+
+      return
+    }
+
     setFormData(prev => ({
       ...prev,
-      creatoDa: userProfile.agenteNome,
-      assegnatario: userProfile.agenteNome ? [userProfile.agenteNome] : [],
+      ...trattativa,
+      brandNome: trattativa.brandNome ?? '',
+      brandId: trattativa.brandId ?? '',
+      settore: trattativa.settore ?? '',
+      priorita: trattativa.priorita ?? 'NORMALE',
+      stato: trattativa.stato ?? 'RICERCA_COMPLETATA',
+      sales: trattativa.sales ?? '',
+      ima: trattativa.ima ?? '',
+      senior: trattativa.senior ?? '',
+      creatorSuggeriti: trattativa.creatorSuggeriti ?? [],
+      creatorConfermati: trattativa.creatorConfermati ?? [],
+      riferimento: trattativa.riferimento ?? '',
+      contatto: trattativa.contatto ?? '',
+      telefono: trattativa.telefono ?? '',
+      sitoWeb: trattativa.sitoWeb ?? '',
+      canaleContatto: trattativa.canaleContatto ?? '',
+      dataContatto: trattativa.dataContatto ?? '',
+      contattatoPerCreator: trattativa.contattatoPerCreator ?? '',
+      contattatoPerTipo: trattativa.contattatoPerTipo ?? '',
+      risposta: trattativa.risposta ?? '',
+      dataFollowup1: trattativa.dataFollowup1 ?? '',
+      dataFollowup2: trattativa.dataFollowup2 ?? '',
+      dataRicontatto: trattativa.dataRicontatto ?? '',
+      motivoRicontatto: trattativa.motivoRicontatto ?? '',
+      canaleTrattativa: trattativa.canaleTrattativa ?? '',
+      noteTrattativa: trattativa.noteTrattativa ?? '',
+      dataPreventivo: trattativa.dataPreventivo ?? '',
+      importoPreventivo: trattativa.importoPreventivo ?? '',
+      linkPreventivo: trattativa.linkPreventivo ?? '',
+      reminderRicontatto: trattativa.reminderRicontatto ?? '',
+      noteStrategiche: trattativa.noteStrategiche ?? '',
+      callFissata: trattativa.callFissata ?? false,
+      dataCall: trattativa.dataCall ?? '',
+      creaBrandAutomaticamente: trattativa.creaBrandAutomaticamente ?? true,
+      assegnatario: trattativa.assegnatario || [],
+      creatoDa: trattativa.creatoDa ?? '',
+      feeCreatorMap: trattativa.feeCreatorMap ?? {},
+      linkVideoSorgente: trattativa.linkVideoSorgente ?? '',
+      creatorSorgente: trattativa.creatorSorgente ?? '',
     }))
+  })
 
-    return
-  }
-
-  setFormData(prev => ({
-    ...prev,
-    ...trattativa,
-    brandNome: trattativa.brandNome ?? '',
-    brandId: trattativa.brandId ?? '',
-    settore: trattativa.settore ?? '',
-    priorita: trattativa.priorita ?? 'NORMALE',
-    stato: trattativa.stato ?? 'RICERCA_COMPLETATA',
-    sales: trattativa.sales ?? '',
-    ima: trattativa.ima ?? '',
-    senior: trattativa.senior ?? '',
-    creatorSuggeriti: trattativa.creatorSuggeriti ?? [],
-    creatorConfermati: trattativa.creatorConfermati ?? [],
-    riferimento: trattativa.riferimento ?? '',
-    contatto: trattativa.contatto ?? '',
-    telefono: trattativa.telefono ?? '',
-    sitoWeb: trattativa.sitoWeb ?? '',
-    canaleContatto: trattativa.canaleContatto ?? '',
-    dataContatto: trattativa.dataContatto ?? '',
-    contattatoPerCreator: trattativa.contattatoPerCreator ?? '',
-    contattatoPerTipo: trattativa.contattatoPerTipo ?? '',
-    risposta: trattativa.risposta ?? '',
-    dataFollowup1: trattativa.dataFollowup1 ?? '',
-    dataFollowup2: trattativa.dataFollowup2 ?? '',
-    dataRicontatto: trattativa.dataRicontatto ?? '',
-    motivoRicontatto: trattativa.motivoRicontatto ?? '',
-    canaleTrattativa: trattativa.canaleTrattativa ?? '',
-    noteTrattativa: trattativa.noteTrattativa ?? '',
-    dataPreventivo: trattativa.dataPreventivo ?? '',
-    importoPreventivo: trattativa.importoPreventivo ?? '',
-    linkPreventivo: trattativa.linkPreventivo ?? '',
-    reminderRicontatto: trattativa.reminderRicontatto ?? '',
-    noteStrategiche: trattativa.noteStrategiche ?? '',
-    callFissata: trattativa.callFissata ?? false,
-    dataCall: trattativa.dataCall ?? '',
-    creaBrandAutomaticamente: trattativa.creaBrandAutomaticamente ?? true,
-    assegnatario: trattativa.assegnatario || [],
-    creatoDa: trattativa.creatoDa ?? '',
-    feeCreatorMap: trattativa.feeCreatorMap ?? {},
-    linkVideoSorgente: trattativa.linkVideoSorgente ?? '',
-    creatorSorgente: trattativa.creatorSorgente ?? '',
-  }))
-}, [trattativa])
-
-  const loadAgenti = async () => {
-    const { data } = await getActiveAgents()
-    setAgenti(data || [])
-  }
+  return () => { cancelled = true }
+}, [trattativa, userProfile?.agenteNome])
 
   const S = (field, val) => setFormData(prev => ({ ...prev, [field]: val }))
 
@@ -296,6 +308,7 @@ useEffect(() => {
   const fase = faseIndex(formData.stato)
   const isRicontattoFuturo = formData.stato === 'RICONTATTO_FUTURO'
   const isArchiviato = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO'].includes(formData.stato)
+  const showBrandContacts = fase >= 1 || isArchiviato || !!formData.brandId || !trattativa
   const statoConfig = getStatoTrattativa(formData.stato)
 
   return (
@@ -541,10 +554,10 @@ useEffect(() => {
         </div>
       </FormSection>
 
-      {/* ── CONTATTI BRAND — da ONBOARDING, o subito se brand già censito ── */}
+      {/* ── CONTATTI BRAND — disponibili anche in creazione prima che esista brandId ── */}
       <FormSection title="Contatti Brand"
         subtitle="Dati raccolti durante l'onboarding"
-        show={fase >= 1 || isArchiviato || !!formData.brandId}>
+        show={showBrandContacts}>
         <div>
           <label className="label">Referente</label>
           <input className="input" value={formData.riferimento}

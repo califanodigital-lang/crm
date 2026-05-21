@@ -1,14 +1,14 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 // ── PIATTAFORME MASTER ──────────────────────────────────────
 export const getAllPiattaforme = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('piattaforme')
       .select('*')
       .eq('attiva', true)
-      .order('ordine')
-    if (error) throw error
+      .order('ordine'))
     return { data, error: null }
   } catch (error) {
     return { data: null, error }
@@ -47,12 +47,11 @@ export const togglePiattaforma = async (id, attiva) => {
 // ── CREATOR PIATTAFORME ─────────────────────────────────────
 export const getPiattaformeByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('creator_piattaforme')
       .select('*')
       .eq('creator_id', creatorId)
-      .order('created_at')
-    if (error) throw error
+      .order('created_at'))
     return { data: data || [], error: null }
   } catch (error) {
     return { data: null, error }

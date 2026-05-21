@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { createEvento, getEventoById, updateEvento } from './eventoService'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const CLOSED_STATUSES = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO']
@@ -152,12 +153,11 @@ const maybeSyncEvento = async (trattativa) => {
 
 export const getAllTrattativeFiere = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('trattative_fiere')
       .select('*')
-      .order('data_inizio', { ascending: true, nullsFirst: false })
+      .order('data_inizio', { ascending: true, nullsFirst: false }))
 
-    if (error) throw error
     return { data: (data || []).map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching trattative fiere:', error)

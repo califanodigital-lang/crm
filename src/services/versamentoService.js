@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -36,13 +37,12 @@ const toSnakeCase = (v) => ({
 // GET: Versamenti per mese
 export const getVersamentByMonth = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('versamenti')
       .select(`*, creators (nome)`)
       .eq('mese', mese)
-      .order('verificato', { ascending: true })
+      .order('verificato', { ascending: true }))
 
-    if (error) throw error
     return { 
       data: data.map(v => ({...toCamelCase(v), creatorNome: v.creators?.nome})), 
       error: null 
@@ -56,13 +56,12 @@ export const getVersamentByMonth = async (mese) => {
 // GET: Versamenti per creator
 export const getVersamentByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('versamenti')
       .select('*')
       .eq('creator_id', creatorId)
-      .order('mese', { ascending: false })
+      .order('mese', { ascending: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error:', error)
@@ -73,12 +72,11 @@ export const getVersamentByCreator = async (creatorId) => {
 // GET: Tutti i versamenti
 export const getAllVersamenti = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('versamenti')
       .select(`*, creators (nome)`)
-      .order('mese', { ascending: false })
+      .order('mese', { ascending: false }))
 
-    if (error) throw error
     return { 
       data: data.map(v => ({...toCamelCase(v), creatorNome: v.creators?.nome})), 
       error: null 
@@ -143,12 +141,10 @@ export const deleteVersamento = async (id) => {
 // STATS: Conta verificati/non verificati
 export const getVersamentiStats = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('versamenti')
       .select('verificato, importo_versato')
-      .eq('mese', mese)
-
-    if (error) throw error
+      .eq('mese', mese))
 
     const stats = {
       totale: data.length,

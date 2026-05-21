@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toCamelCase = (profile) => {
   if (!profile) return null
@@ -56,12 +57,11 @@ export const getCurrentUserProfile = async () => {
 // GET: Tutti gli utenti (solo ADMIN)
 export const getAllUsers = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('user_profiles')
       .select('*')
-      .order('nome_completo')
+      .order('nome_completo'))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching users:', error)
@@ -72,13 +72,12 @@ export const getAllUsers = async () => {
 // GET: Solo agenti attivi (per dropdown)
 export const getActiveAgents = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('user_profiles')
       .select('*')
       .eq('attivo', true)
-      .order('agente_nome')
+      .order('agente_nome'))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error fetching agents:', error)

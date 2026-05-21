@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -75,12 +76,11 @@ const toSnakeCase = (p) => ({
 // GET: Partecipazioni per evento
 export const getPartecipazioniByEvento = async (eventoId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`*, creators (nome)`)
-      .eq('evento_id', eventoId)
+      .eq('evento_id', eventoId))
 
-    if (error) throw error
     return {
       data: data.map(p => ({
         ...toCamelCase(p),
@@ -97,15 +97,14 @@ export const getPartecipazioniByEvento = async (eventoId) => {
 // GET: Eventi per creator
 export const getEventiByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`
         *,
         eventi (*)
       `)
-      .eq('creator_id', creatorId)
+      .eq('creator_id', creatorId))
 
-    if (error) throw error
     return { data, error: null }
   } catch (error) {
     console.error('Error:', error)
@@ -151,7 +150,7 @@ export const updatePartecipazione = async (id, partecipazioneData) => {
 // GET: Tutte le partecipazioni per le fiere attive (per sezione Finance Fee Fiere)
 export const getAllPartecipazioniAgency = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('partecipazioni_eventi')
       .select(`
         *,
@@ -160,8 +159,7 @@ export const getAllPartecipazioniAgency = async () => {
       `)
       .eq('tipo', 'partecipante')
       .neq('eventi.stato', 'CHIUSA')
-      .order('created_at', { ascending: false })
-    if (error) throw error
+      .order('created_at', { ascending: false }))
     return {
       data: data.map(p => ({
         ...toCamelCase(p),

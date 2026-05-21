@@ -1,5 +1,6 @@
 // src/services/dashboardService.js
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 // KPI Globali
 export const getGlobalStats = async (mese) => {
@@ -7,11 +8,11 @@ export const getGlobalStats = async (mese) => {
     const now = new Date()
     const meseCorrente = mese || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
-    const [brandsRes, creatorsRes, collabsRes, revenueRes, brandContattatoRes] = await Promise.all([
+    const [brandsRes, creatorsRes, collabsData, revenueData, brandContattatoRes] = await Promise.all([
       supabase.from('brands').select('id', { count: 'exact' }),
       supabase.from('creators').select('id', { count: 'exact' }),
-      supabase.from('collaborations').select('id, stato, pagamento, pagato'),
-      supabase.from('revenue_mensile').select('importo, mese'),
+      fetchAllRows(() => supabase.from('collaborations').select('id, stato, pagamento, pagato')),
+      fetchAllRows(() => supabase.from('revenue_mensile').select('importo, mese')),
       supabase.from('proposte_brand').select('id', { count: 'exact' }).not('stato', 'in', '("NESSUNA_RISPOSTA","CHIUSO_PERSO")')
     ])
 
@@ -19,19 +20,19 @@ export const getGlobalStats = async (mese) => {
 
     const totalBrands    = brandsRes.count || 0
     const totalCreators  = creatorsRes.count || 0
-    const totalCollabs   = collabsRes.data?.length || 0
-    const activeCollabs  = collabsRes.data?.filter(c => STATI_ATTIVI.includes(c.stato)).length || 0
-    const completate     = collabsRes.data?.filter(c => c.stato === 'COMPLETATA' && c.pagato).length || 0
+    const totalCollabs   = collabsData.length
+    const activeCollabs  = collabsData.filter(c => STATI_ATTIVI.includes(c.stato)).length
+    const completate     = collabsData.filter(c => c.stato === 'COMPLETATA' && c.pagato).length
     const totalBrandContattati = brandContattatoRes.count || 0
 
     // Revenue da collaborazioni completate (fonte primaria)
-    const revenueCollabs = collabsRes.data
-      ?.filter(c => c.stato === 'COMPLETATA' && c.pagato)
+    const revenueCollabs = collabsData
+      .filter(c => c.stato === 'COMPLETATA' && c.pagato)
       .reduce((sum, c) => sum + (parseFloat(c.pagamento) || 0), 0) || 0
 
     // Revenue mese corrente da revenue_mensile
-    const monthlyRevenue = revenueRes.data
-      ?.filter(r => r.mese?.startsWith(meseCorrente))
+    const monthlyRevenue = revenueData
+      .filter(r => r.mese?.startsWith(meseCorrente))
       .reduce((sum, r) => sum + (parseFloat(r.importo) || 0), 0) || 0
 
     return {
@@ -50,13 +51,11 @@ export const getGlobalStats = async (mese) => {
 // Top 5 Creator per revenue
 export const getTopCreators = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('collaborations')
       .select('creator_id, pagamento, stato, pagato, creators(nome)')
       .eq('stato', 'COMPLETATA')
-      .eq('pagato', true)
-
-    if (error) throw error
+      .eq('pagato', true))
 
     const map = {}
     data.forEach(c => {
@@ -73,14 +72,12 @@ export const getTopCreators = async () => {
 }
 
   // Revenue ultimi 6 mesi (per grafico)
-  export const getRevenueChart = async (mese) => {
+  export const getRevenueChart = async () => {
     try {
-      const { data, error } = await supabase
+      const data = await fetchAllRows(() => supabase
         .from('revenue_mensile')
         .select('mese, importo')
-        .order('mese', { ascending: true })
-
-      if (error) throw error
+        .order('mese', { ascending: true }))
 
       const monthlyMap = {}
 
@@ -107,11 +104,9 @@ export const getTopCreators = async () => {
 // Proposte stats
 export const getProposteStats = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('proposte_brand')
-      .select('stato')
-
-    if (error) throw error
+      .select('stato'))
 
     const stats = {
       totale: data.length,

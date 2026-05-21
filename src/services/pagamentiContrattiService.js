@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const toCamelCase = (p) => ({
   id: p.id,
@@ -11,10 +12,9 @@ const toCamelCase = (p) => ({
 
 export const getAllPagamentiContratti = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('pagamenti_contratti')
-      .select('*')
-    if (error) throw error
+      .select('*'))
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     return { data: null, error }

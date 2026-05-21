@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -41,13 +42,12 @@ const getMonthStartFromDate = (dateString) => {
 // GET: Revenue per mese (con nomi creator)
 export const getRevenueByMonth = async (mese) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('revenue_mensile')
       .select(`*, creators (nome)`)
       .eq('mese', mese)
-      .order('importo', { ascending: false })
+      .order('importo', { ascending: false }))
 
-    if (error) throw error
     return { 
       data: data.map(r => ({...toCamelCase(r), creatorNome: r.creators?.nome})), 
       error: null 
@@ -61,13 +61,12 @@ export const getRevenueByMonth = async (mese) => {
 // GET: Revenue per creator (tutti i mesi)
 export const getRevenueByCreator = async (creatorId) => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('revenue_mensile')
       .select('*')
       .eq('creator_id', creatorId)
-      .order('mese', { ascending: false })
+      .order('mese', { ascending: false }))
 
-    if (error) throw error
     return { data: data.map(toCamelCase), error: null }
   } catch (error) {
     console.error('Error:', error)
@@ -78,12 +77,11 @@ export const getRevenueByCreator = async (creatorId) => {
 // GET: Tutte le revenue
 export const getAllRevenue = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('revenue_mensile')
       .select(`*, creators (nome)`)
-      .order('mese', { ascending: false })
+      .order('mese', { ascending: false }))
 
-    if (error) throw error
     return { 
       data: data.map(r => ({...toCamelCase(r), creatorNome: r.creators?.nome})), 
       error: null 
@@ -130,11 +128,9 @@ export const deleteRevenue = async (id) => {
 // STATS: Totale per mese
 export const getMonthlyTotals = async () => {
   try {
-    const { data, error } = await supabase
+    const data = await fetchAllRows(() => supabase
       .from('revenue_mensile')
-      .select('mese, importo')
-
-    if (error) throw error
+      .select('mese, importo'))
 
     // Raggruppa per mese
     const totals = data.reduce((acc, curr) => {
@@ -249,12 +245,10 @@ export const unsyncRevenueFromCollaboration = async (collaborationId) => {
 export const checkRevenueDiscrepancies = async () => {
   try {
     // Revenue totale per creator/mese
-    const { data: allRevenue, error } = await supabase
+    const allRevenue = await fetchAllRows(() => supabase
       .from('revenue_mensile')
       .select('creator_id, mese, importo, collaborazione_id')
-      .order('mese', { ascending: false })
-
-    if (error) throw error
+      .order('mese', { ascending: false }))
 
     // Aggrega per creator/mese
     const grouped = {}
