@@ -32,6 +32,29 @@ import { isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 
 const STATI_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO', 'COLLAB_GENERATA']
 const PRIORITA_ORDER = { URGENTE: 0, ALTA: 1, NORMALE: 2, BASSA: 3 }
+const STATI_CREATOR_SUGGERITI = [
+  'RICERCA_COMPLETATA',
+  'ONBOARDING',
+  'PRIMO_CONTATTO',
+  'FOLLOW_UP_1',
+  'FOLLOW_UP_2',
+  'RICONTATTO_FUTURO',
+  'IN_TRATTATIVA',
+]
+const STATI_CREATOR_CONFERMATI = [
+  'PREVENTIVO_INVIATO',
+  'CONTRATTO_INVIATO',
+  'CONTRATTO_FIRMATO',
+  'COLLAB_GENERATA',
+]
+
+const mostraCreatorSuggeriti = (stato) => STATI_CREATOR_SUGGERITI.includes(stato)
+
+const deveCopiareCreatorConfermati = (trattativa, nuovoStato) => (
+  STATI_CREATOR_CONFERMATI.includes(nuovoStato)
+  && (trattativa?.creatorSuggeriti || []).length > 0
+  && (trattativa?.creatorConfermati || []).length === 0
+)
 
 // Campi da raccogliere per ogni cambio di stato
 const STATO_FIELDS_CONFIG = {
@@ -200,7 +223,7 @@ function PrioritaBadge({ value }) {
 }
 
 function TrattativaRow({ trattativa, creators, onEdit, onDelete, onStatoChange, onCreaCollab }) {
-  const isStatoSuggerito = ['RICERCA_COMPLETATA', 'ONBOARDING', 'PRIMO_CONTATTO', 'FOLLOW_UP_1', 'FOLLOW_UP_2', 'RICONTATTO_FUTURO'].includes(trattativa.stato)
+  const isStatoSuggerito = mostraCreatorSuggeriti(trattativa.stato)
   const creatorNomi = (
     isStatoSuggerito
       ? (trattativa.creatorSuggeriti || [])
@@ -306,7 +329,7 @@ function TrattativaRow({ trattativa, creators, onEdit, onDelete, onStatoChange, 
 }
 
 function KanbanCard({ trattativa, creators, onEdit, onDelete, onCreaCollab, isDragging }) {
-  const isStatoSuggerito = ['RICERCA_COMPLETATA', 'ONBOARDING', 'PRIMO_CONTATTO', 'FOLLOW_UP_1', 'FOLLOW_UP_2', 'RICONTATTO_FUTURO'].includes(trattativa.stato)
+  const isStatoSuggerito = mostraCreatorSuggeriti(trattativa.stato)
   const creatorNomi = (
     isStatoSuggerito
       ? (trattativa.creatorSuggeriti || [])
@@ -456,8 +479,16 @@ export default function TrattativaPage() {
   const doStatoChange = async (id, nuovoStato, dateFields = {}) => {
     const trattativa = trattative.find(t => t.id === id)
     const hasDateFields = Object.keys(dateFields).length > 0
-    const { error } = hasDateFields
-      ? await updateTrattativa(id, { ...trattativa, stato: nuovoStato, ...dateFields })
+    const shouldSeedCreatorConfermati = deveCopiareCreatorConfermati(trattativa, nuovoStato)
+    const needsFullUpdate = hasDateFields || shouldSeedCreatorConfermati
+    const nextTrattativa = {
+      ...trattativa,
+      stato: nuovoStato,
+      ...dateFields,
+      ...(shouldSeedCreatorConfermati ? { creatorConfermati: trattativa.creatorSuggeriti } : {}),
+    }
+    const { error } = needsFullUpdate
+      ? await updateTrattativa(id, nextTrattativa)
       : await updateStatoTrattativa(id, nuovoStato)
     if (error) {
       toast.error('Errore aggiornamento stato')
@@ -465,7 +496,7 @@ export default function TrattativaPage() {
     }
     const cfg = getStatoTrattativa(nuovoStato)
     toast.success(`Stato → ${cfg.label}`)
-    if (hasDateFields) {
+    if (needsFullUpdate) {
       await loadData()
     } else {
       setTrattative(prev => prev.map(t => (t.id === id ? { ...t, stato: nuovoStato } : t)))

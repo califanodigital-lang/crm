@@ -45,6 +45,17 @@ const faseIndex = (stato) => {
   return idx === -1 ? 99 : idx
 }
 
+const shouldSeedCreatorConfermati = (stato, formData) => {
+  const targetIndex = FLOW_ORDER.indexOf(stato)
+
+  return (
+    targetIndex !== -1
+    && targetIndex >= FLOW_ORDER.indexOf('PREVENTIVO_INVIATO')
+    && (formData.creatorSuggeriti || []).length > 0
+    && (formData.creatorConfermati || []).length === 0
+  )
+}
+
 function FormSection({ title, subtitle, show, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   if (!show) return null
@@ -208,6 +219,9 @@ useEffect(() => {
   const handleStatoChange = (newStato) => {
     const updates = { stato: newStato }
     const today = todayLocal()
+    if (shouldSeedCreatorConfermati(newStato, formData)) {
+      updates.creatorConfermati = formData.creatorSuggeriti
+    }
     if (newStato === 'PRIMO_CONTATTO' && !formData.dataContatto) {
       updates.dataContatto = today
       if (!formData.dataFollowup1) {
