@@ -4,9 +4,9 @@ import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByBrand, createCollaboration } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
 import { toast } from '../components/Toast'
-import { confirm } from '../components/ConfirmModal'
 import { getTrattativeByBrand } from '../services/trattativaService'
 import { getStatoTrattativa } from '../constants/constants'
+import NotesLogField from './NotesLogField'
 
 export default function BrandDetail({ brand, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -265,13 +265,9 @@ function TrattativePerBrand({ brandId  }) {
             </div>
           )}
 
-          {/* Note */}
-          {brand.note && (
-            <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Note</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{brand.note}</p>
-            </div>
-          )}
+          <div className="card">
+            <NotesLogField value={brand.noteLog || []} deprecatedNote={brand.note} />
+          </div>
 
         </div>
       )}

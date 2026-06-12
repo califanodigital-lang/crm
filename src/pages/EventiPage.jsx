@@ -12,6 +12,7 @@ import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import { ATTIVITA_EVENTO, TIPOLOGIE_EVENTO } from '../constants/constants'
 import { toast } from '../components/Toast'
+import NotesLogField from '../components/NotesLogField'
 
 function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }) {
   const [emettiFattura, setEmettiFattura] = useState(false)
@@ -131,6 +132,7 @@ const EMPTY_EVENTO_FORM = {
   descrizione: '',
   link: '',
   note: '',
+  noteLog: [],
 }
 
 export default function EventiPage() {
@@ -157,16 +159,6 @@ export default function EventiPage() {
     circuiti.find(circuito => circuito.id === circuitoId)?.nome || '—'
 
   useEffect(() => {
-    const openId = location.state?.openEventoId
-    loadData().then(loadedEventi => {
-      if (openId && loadedEventi) {
-        const evento = loadedEventi.find(e => e.id === openId)
-        if (evento) handleViewDetail(evento)
-      }
-    })
-  }, [])
-
-  useEffect(() => {
     if (view !== 'add' && view !== 'edit') return
     const handler = (e) => {
       if (e.key === 'Escape') { setView('list'); setSelectedEvento(null) }
@@ -175,7 +167,7 @@ export default function EventiPage() {
     return () => document.removeEventListener('keydown', handler)
   }, [view])
 
-  const loadData = async () => {
+  async function loadData() {
     setLoading(true)
     const [eventiRes, creatorsRes, circuitiRes] = await Promise.all([getAllEventi(), getAllCreators(), getAllCircuiti()])
     const loadedEventi = eventiRes.data || []
@@ -218,11 +210,21 @@ export default function EventiPage() {
     loadData()
   }
 
-  const handleViewDetail = async (evento) => {
+  async function handleViewDetail(evento) {
     setSelectedEvento(evento)
     await loadPartecipazioni(evento.id)
     setView('detail')
   }
+
+  useEffect(() => {
+    const openId = location.state?.openEventoId
+    Promise.resolve().then(loadData).then(loadedEventi => {
+      if (openId && loadedEventi) {
+        const evento = loadedEventi.find(e => e.id === openId)
+        if (evento) handleViewDetail(evento)
+      }
+    })
+  }, [])
 
   const handleAddPartecipazione = async () => {
     if (!partForm.creatorId) return
@@ -390,8 +392,11 @@ export default function EventiPage() {
                 <input type="url" className="input" value={eventoForm.link} onChange={(e) => setEventoForm({...eventoForm, link: e.target.value})} />
               </div>
               <div className="md:col-span-2">
-                <label className="label">Note</label>
-                <textarea className="input" rows="3" value={eventoForm.note} onChange={(e) => setEventoForm({...eventoForm, note: e.target.value})} />
+                <NotesLogField
+                  value={eventoForm.noteLog || []}
+                  onChange={(noteLog) => setEventoForm({ ...eventoForm, noteLog })}
+                  deprecatedNote={eventoForm.note}
+                />
               </div>
             </div>
             <div className="mt-6 flex gap-3 justify-end">
@@ -463,12 +468,9 @@ export default function EventiPage() {
                 <a href={selectedEvento.link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline break-all">{selectedEvento.link}</a>
               </div>
             )}
-            {selectedEvento.note && (
-              <div className="mt-4">
-                <p className="font-semibold mb-1">Note</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedEvento.note}</p>
-              </div>
-            )}
+            <div className="md:col-span-2 mt-4">
+              <NotesLogField value={selectedEvento.noteLog || []} deprecatedNote={selectedEvento.note} />
+            </div>
           </div>
         </div>
 
@@ -950,7 +952,8 @@ export default function EventiPage() {
                     circuitoId: evento.circuitoId || '',
                     dataInizio: evento.dataInizio || '', dataFine: evento.dataFine || '',
                     location: evento.location || '', citta: evento.citta || '',
-                    descrizione: evento.descrizione || '', link: evento.link || '', note: evento.note || ''
+                    descrizione: evento.descrizione || '', link: evento.link || '', note: evento.note || '',
+                    noteLog: evento.noteLog || [],
                   })
                   setView('edit')
                 }}

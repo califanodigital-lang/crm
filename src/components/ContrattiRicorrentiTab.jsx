@@ -23,7 +23,7 @@ import Modal from './Modal'
 const TIPO_OPTIONS = [
   { value: 'BRAND',   label: 'Brand' },
   { value: 'CREATOR', label: 'Creator' },
-  { value: 'TERZO',   label: 'Cliente Terzo' },
+  { value: 'TERZO',   label: 'cliente' },
 ]
 
 // Parsa "YYYY-MM-DD" come data locale (evita lo shift UTC→locale)
@@ -206,7 +206,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
     ? creators.map(c    => ({ value: c.id, label: c.nome }))
     : clientiTerzi.map(t => ({ value: t.id, label: t.nome }))
 
-  // ── Clienti Terzi handlers ─────────────────────────────────
+  // ── Clienti handlers ─────────────────────────────────
   const handleSaveTerzo = async () => {
     if (!formTerzo.nome) { toast.error('Il nome è obbligatorio'); return }
     const fn = editingTerzo
@@ -256,7 +256,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
           <p className="text-3xl font-bold text-gray-800 mt-1">{contratti.length}</p>
         </div>
         <div className="hidden">
-          <p className="text-sm text-gray-500">Clienti Terzi censiti</p>
+          <p className="text-sm text-gray-500">Clienti censiti</p>
           <p className="text-3xl font-bold text-gray-800 mt-1">{clientiTerzi.length}</p>
         </div>
       </div>
@@ -310,7 +310,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
                   placeholder={
                     formContratto.tipoSoggetto === 'BRAND'   ? 'oppure digita nome brand...' :
                     formContratto.tipoSoggetto === 'CREATOR' ? 'oppure digita nome creator...' :
-                    'oppure digita nome cliente terzo...'
+                    'oppure digita nome cliente...'
                   } />
               </div>
               <div>
@@ -506,12 +506,12 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
         )}
       </div>
 
-      {/* ── Clienti Terzi (collassabile) ── */}
+      {/* ── Clienti (collassabile) ── */}
       <div className="hidden">
         <button className="flex items-center justify-between w-full" onClick={() => setShowClientiTerzi(true)}>
           <div className="flex items-center gap-2">
             <User className="w-5 h-5 text-gray-400" />
-            <h2 className="text-lg font-bold text-gray-900">Clienti Terzi</h2>
+            <h2 className="text-lg font-bold text-gray-900">Clienti</h2>
             <span className="text-xs text-gray-400 font-normal">({clientiTerzi.length} censiti)</span>
           </div>
           <span className="text-xs font-semibold text-yellow-700">Gestisci</span>
@@ -530,7 +530,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
             {showFormTerzo && (
               <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
                 <h3 className="font-semibold text-gray-800 mb-4">
-                  {editingTerzo ? 'Modifica Cliente' : 'Nuovo Cliente Terzo'}
+                  {editingTerzo ? 'Modifica Cliente' : 'Nuovo cliente'}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -569,7 +569,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
             )}
 
             {clientiTerzi.length === 0 ? (
-              <p className="text-center text-gray-400 text-sm py-6">Nessun cliente terzo censito.</p>
+              <p className="text-center text-gray-400 text-sm py-6">Nessun cliente censito.</p>
             ) : (
               <table className="w-full">
                 <thead>
@@ -608,7 +608,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
 
       {showClientiTerzi && (
         <Modal
-          title="Clienti Terzi"
+          title="Clienti"
           subtitle="Anagrafica dei soggetti esterni usati nei contratti fissi."
           onClose={() => { setShowClientiTerzi(false); closeFormTerzo() }}
           maxWidth="max-w-4xl"
@@ -624,7 +624,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
           {showFormTerzo && (
             <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-200">
               <h3 className="font-semibold text-gray-800 mb-4">
-                {editingTerzo ? 'Modifica Cliente' : 'Nuovo Cliente Terzo'}
+                {editingTerzo ? 'Modifica Cliente' : 'Nuovo cliente'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -663,7 +663,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
           )}
 
           {clientiTerzi.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-10">Nessun cliente terzo censito.</p>
+            <p className="text-center text-gray-400 text-sm py-10">Nessun cliente censito.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">

@@ -5,10 +5,11 @@ import { getCollaborationsByCreator, createCollaboration } from '../services/col
 import { getPartecipazioniByCreator } from '../services/eventoService'
 import { getPiattaformeByCreator } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
-import { confirm } from '../components/ConfirmModal'
 import { getTrattativeByCreator } from '../services/trattativaService'
 import { getStatoTrattativa, ATTIVITA_EVENTO } from '../constants/constants'
 import { getImpegniByCreator, createImpegno, deleteImpegno } from '../services/creatorImpegniService'
+import NotesLogField from './NotesLogField'
+import { getAllBrands } from '../services/brandService'
 
 export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [activeTab, setActiveTab] = useState('info')
@@ -18,6 +19,7 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
   const [partecipazioni, setPartecipazioni] = useState([])
   const [creatorPiattaforme, setCreatorPiattaforme] = useState([])
   const [impegni, setImpegni] = useState([])
+  const [brands, setBrands] = useState([])
   const [loadingImpegni, setLoadingImpegni] = useState(false)
   const [impegnoForm, setImpegnoForm] = useState({
     titolo: '',
@@ -35,10 +37,16 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     setLoadingImpegni(false)
   }
 
+  const loadBrands = async () => {
+    const { data } = await getAllBrands()
+    setBrands(data || [])
+  }
+
   // Carica collaborazioni quando si apre il tab
   useEffect(() => {
     loadPiattaformeCreator()
     loadImpegni()
+    loadBrands()
     if (activeTab === 'collaborazioni') {
       loadCollaborations()
     }
@@ -328,6 +336,20 @@ const handleDeleteImpegno = async (id) => {
 
           {/* Contratto */}
           <div className="card">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Anagrafica fiscale</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <InfoRow label="Nome" value={creator.nome} />
+              <InfoRow label="Cognome" value={creator.cognome} />
+              <InfoRow label="Nome completo" value={creator.nomeCompleto} />
+              <InfoRow label="Codice Fiscale" value={creator.codiceFiscale} />
+              <InfoRow label="Partita IVA" value={creator.piva} />
+              <InfoRow label="Residenza" value={creator.residenza} />
+              <InfoRow label="Domicilio Fiscale" value={creator.domicilioFiscale} />
+            </div>
+          </div>
+
+          {/* Contratto */}
+          <div className="card">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Calendar className="w-5 h-5" />
               Contratto
@@ -399,13 +421,9 @@ const handleDeleteImpegno = async (id) => {
             </div>
           )}
 
-          {/* Note */}
-          {creator.note && (
-            <div className="card">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Note</h2>
-              <p className="text-gray-700 whitespace-pre-wrap">{creator.note}</p>
-            </div>
-          )}
+          <div className="card">
+            <NotesLogField value={creator.noteLog || []} deprecatedNote={creator.note} />
+          </div>
 
           <div className="card mt-6">
             <div className="flex items-center gap-2 mb-4">

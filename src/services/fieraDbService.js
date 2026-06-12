@@ -3,14 +3,75 @@ import { fetchAllRows } from './supabasePagination'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const normalizeValue = (value) => (value || '').trim().toLowerCase()
+const DATE_SETS_COLUMN = 'date_sets'
+
 const isSameOptionalValue = (left, right) => {
   const normalizedLeft = normalizeValue(left)
   const normalizedRight = normalizeValue(right)
   return !normalizedLeft || !normalizedRight || normalizedLeft === normalizedRight
 }
 
+export const addMonths = (dateString, months) => {
+  if (!dateString) return null
+
+  const d = new Date(`${dateString}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return null
+
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
+
+const normalizeDateSet = (dateSet = {}) => {
+  const dataInizio = cleanValue(dateSet.dataInizio || dateSet.data_inizio)
+
+  return {
+    dataInizio,
+    dataFine: cleanValue(dateSet.dataFine || dateSet.data_fine),
+    prossimoContatto: cleanValue(dateSet.prossimoContatto || dateSet.prossimo_contatto) || addMonths(dataInizio, 6),
+  }
+}
+
+export const normalizeDateSets = (dateSets, fallback = {}) => {
+  const normalized = Array.isArray(dateSets)
+    ? dateSets.map(normalizeDateSet).filter(dateSet => dateSet.dataInizio || dateSet.dataFine || dateSet.prossimoContatto)
+    : []
+
+  if (normalized.length > 0) return normalized
+
+  const fallbackSet = normalizeDateSet({
+    dataInizio: fallback.dataInizio || fallback.data_inizio,
+    dataFine: fallback.dataFine || fallback.data_fine,
+    prossimoContatto: fallback.prossimoContatto || fallback.prossimo_contatto,
+  })
+
+  return fallbackSet.dataInizio || fallbackSet.dataFine || fallbackSet.prossimoContatto
+    ? [fallbackSet]
+    : []
+}
+
+export const getLatestDateSet = (dateSets = []) => {
+  const validDateSets = normalizeDateSets(dateSets)
+    .filter(dateSet => dateSet.dataInizio || dateSet.dataFine)
+
+  if (validDateSets.length === 0) return null
+
+  return [...validDateSets].sort((left, right) => {
+    const leftDate = left.dataInizio || left.dataFine || ''
+    const rightDate = right.dataInizio || right.dataFine || ''
+    return rightDate.localeCompare(leftDate)
+  })[0]
+}
+
+const isMissingDateSetsColumn = (error) => (
+  String(error?.message || '').includes(DATE_SETS_COLUMN)
+  || String(error?.details || '').includes(DATE_SETS_COLUMN)
+)
+
 const toCamelCase = (f) => {
   if (!f) return null
+  const dateSets = normalizeDateSets(f.date_sets, f)
+  const latestDateSet = getLatestDateSet(dateSets)
+
   return {
     id: f.id,
     nome: f.nome,
@@ -18,38 +79,48 @@ const toCamelCase = (f) => {
     circuitoId: f.circuito_id,
     location: f.location,
     citta: f.citta,
-    dataInizio: f.data_inizio,
-    dataFine: f.data_fine,
+    dataInizio: latestDateSet?.dataInizio || f.data_inizio,
+    dataFine: latestDateSet?.dataFine || f.data_fine,
     referente: f.referente,
     contatto: f.contatto,
     telefono: f.telefono,
     sitoWeb: f.sito_web,
-    ultimaData: f.ultima_data,
-    prossimoContatto: f.prossimo_contatto,
+    ultimaData: latestDateSet?.dataInizio || f.ultima_data,
+    prossimoContatto: latestDateSet?.prossimoContatto || f.prossimo_contatto,
+    dateSets,
     note: f.note,
+    noteLog: f.note_log || [],
     eventoOrigineId: f.evento_origine_id,
     createdAt: f.created_at,
     updatedAt: f.updated_at,
   }
 }
 
-const toSnakeCase = (f) => ({
-  nome: f.nome,
-  tipo: cleanValue(f.tipo),
-  circuito_id: cleanValue(f.circuitoId),
-  location: cleanValue(f.location),
-  citta: cleanValue(f.citta),
-  data_inizio: cleanValue(f.dataInizio),
-  data_fine: cleanValue(f.dataFine),
-  referente: cleanValue(f.referente),
-  contatto: cleanValue(f.contatto),
-  telefono: cleanValue(f.telefono),
-  sito_web: cleanValue(f.sitoWeb),
-  ultima_data: cleanValue(f.ultimaData),
-  prossimo_contatto: cleanValue(f.prossimoContatto),
-  note: cleanValue(f.note),
-  evento_origine_id: cleanValue(f.eventoOrigineId),
-})
+const toSnakeCase = (f, { includeDateSets = true } = {}) => {
+  const dateSets = normalizeDateSets(f.dateSets, f)
+  const latestDateSet = getLatestDateSet(dateSets)
+  const payload = {
+    nome: f.nome,
+    tipo: cleanValue(f.tipo),
+    circuito_id: cleanValue(f.circuitoId),
+    location: cleanValue(f.location),
+    citta: cleanValue(f.citta),
+    data_inizio: cleanValue(latestDateSet?.dataInizio || f.dataInizio),
+    data_fine: cleanValue(latestDateSet?.dataFine || f.dataFine),
+    referente: cleanValue(f.referente),
+    contatto: cleanValue(f.contatto),
+    telefono: cleanValue(f.telefono),
+    sito_web: cleanValue(f.sitoWeb),
+    ultima_data: cleanValue(latestDateSet?.dataInizio || f.ultimaData),
+    prossimo_contatto: cleanValue(latestDateSet?.prossimoContatto || f.prossimoContatto),
+    note: cleanValue(f.note),
+    note_log: f.noteLog || [],
+    evento_origine_id: cleanValue(f.eventoOrigineId),
+  }
+
+  if (includeDateSets) payload.date_sets = dateSets
+  return payload
+}
 
 const isSameFieraKey = (left, right) =>
   normalizeValue(left.nome) === normalizeValue(right.nome) &&
@@ -102,11 +173,7 @@ const findExistingFiera = async ({ id, nome, tipo, location, citta, eventoOrigin
 }
 
 const computeProssimoContatto = (ultimaData) => {
-  if (!ultimaData) return null
-
-  const d = new Date(ultimaData + 'T00:00:00')
-  d.setMonth(d.getMonth() + 6)
-  return d.toISOString().slice(0, 10)
+  return addMonths(ultimaData, 6)
 }
 
 export const getAllFiereDb = async () => {
@@ -148,26 +215,47 @@ export const createFieraDb = async (fieraData) => {
         sito_web: payload.sito_web ?? existing.sito_web,
         ultima_data: payload.ultima_data ?? existing.ultima_data,
         prossimo_contatto: payload.prossimo_contatto ?? existing.prossimo_contatto,
+        date_sets: payload.date_sets ?? existing.date_sets,
         note: payload.note ?? existing.note,
+        note_log: payload.note_log ?? existing.note_log,
         evento_origine_id: payload.evento_origine_id ?? existing.evento_origine_id,
       }
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('fiere_db')
         .update(mergedPayload)
         .eq('id', existing.id)
         .select()
         .single()
 
+      if (error && isMissingDateSetsColumn(error)) {
+        const { date_sets: _dateSets, ...legacyPayload } = mergedPayload
+        ;({ data, error } = await supabase
+          .from('fiere_db')
+          .update(legacyPayload)
+          .eq('id', existing.id)
+          .select()
+          .single())
+      }
+
       if (error) throw error
       return { data: toCamelCase(data), error: null, reused: true }
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('fiere_db')
       .insert([payload])
       .select()
       .single()
+
+    if (error && isMissingDateSetsColumn(error)) {
+      const legacyPayload = toSnakeCase(fieraData, { includeDateSets: false })
+      ;({ data, error } = await supabase
+        .from('fiere_db')
+        .insert([legacyPayload])
+        .select()
+        .single())
+    }
 
     if (error) throw error
     return { data: toCamelCase(data), error: null, reused: false }
@@ -179,8 +267,13 @@ export const createFieraDb = async (fieraData) => {
 
 export const upsertFieraFromEvento = async (evento) => {
   try {
-    const ultimaData = evento.dataFine || evento.dataInizio || null
+    const ultimaData = evento.dataInizio || null
     const prossimoContatto = computeProssimoContatto(ultimaData)
+    const dateSets = normalizeDateSets([{
+      dataInizio: evento.dataInizio || null,
+      dataFine: evento.dataFine || null,
+      prossimoContatto,
+    }])
 
     const payload = {
       nome: evento.nome,
@@ -192,6 +285,7 @@ export const upsertFieraFromEvento = async (evento) => {
       data_fine: evento.dataFine || null,
       ultima_data: ultimaData,
       prossimo_contatto: prossimoContatto,
+      date_sets: dateSets,
       evento_origine_id: evento.id,
     }
 
@@ -205,12 +299,21 @@ export const upsertFieraFromEvento = async (evento) => {
     })
 
     if (existing) {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('fiere_db')
         .update({ ...payload })
         .eq('id', existing.id)
         .select()
         .single()
+      if (error && isMissingDateSetsColumn(error)) {
+        const { date_sets: _dateSets, ...legacyPayload } = payload
+        ;({ data, error } = await supabase
+          .from('fiere_db')
+          .update(legacyPayload)
+          .eq('id', existing.id)
+          .select()
+          .single())
+      }
       if (error) throw error
       if (evento.id) {
         const { error: linkError } = await supabase
@@ -222,11 +325,19 @@ export const upsertFieraFromEvento = async (evento) => {
       }
       return { data: toCamelCase(data), error: null }
     } else {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('fiere_db')
         .insert([payload])
         .select()
         .single()
+      if (error && isMissingDateSetsColumn(error)) {
+        const { date_sets: _dateSets, ...legacyPayload } = payload
+        ;({ data, error } = await supabase
+          .from('fiere_db')
+          .insert([legacyPayload])
+          .select()
+          .single())
+      }
       if (error) throw error
       if (evento.id) {
         const { error: linkError } = await supabase
@@ -246,12 +357,21 @@ export const upsertFieraFromEvento = async (evento) => {
 
 export const updateFieraDb = async (id, fieraData) => {
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('fiere_db')
       .update(toSnakeCase(fieraData))
       .eq('id', id)
       .select()
       .single()
+
+    if (error && isMissingDateSetsColumn(error)) {
+      ;({ data, error } = await supabase
+        .from('fiere_db')
+        .update(toSnakeCase(fieraData, { includeDateSets: false }))
+        .eq('id', id)
+        .select()
+        .single())
+    }
 
     if (error) throw error
     return { data: toCamelCase(data), error: null }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Edit, ExternalLink, Plus, Trash2 } from 'lucide-react'
 import {
   getAllClientiTerzi,
@@ -9,8 +9,21 @@ import {
 import { confirm } from './ConfirmModal'
 import { toast } from './Toast'
 import Modal from './Modal'
+import NotesLogField from './NotesLogField'
 
-const emptyClienteTerzo = { nome: '', email: '', telefono: '', sitoWeb: '', note: '' }
+const emptyClienteTerzo = {
+  nome: '',
+  cognome: '',
+  email: '',
+  telefono: '',
+  sitoWeb: '',
+  codiceFiscale: '',
+  piva: '',
+  residenza: '',
+  domicilioFiscale: '',
+  note: '',
+  noteLog: [],
+}
 
 const getHref = (url) => {
   if (!url) return ''
@@ -25,14 +38,14 @@ export default function ClientiTerziTab({ onDataChanged }) {
   const [editingCliente, setEditingCliente] = useState(null)
   const [form, setForm] = useState(emptyClienteTerzo)
 
-  useEffect(() => { loadClientiTerzi() }, [])
-
-  const loadClientiTerzi = async () => {
+  const loadClientiTerzi = useCallback(async () => {
     setLoading(true)
     const { data } = await getAllClientiTerzi()
     setClientiTerzi(data || [])
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => { Promise.resolve().then(loadClientiTerzi) }, [loadClientiTerzi])
 
   const closeForm = () => {
     setShowForm(false)
@@ -70,10 +83,16 @@ export default function ClientiTerziTab({ onDataChanged }) {
     setEditingCliente(cliente)
     setForm({
       nome: cliente.nome,
+      cognome: cliente.cognome || '',
       email: cliente.email || '',
       telefono: cliente.telefono || '',
       sitoWeb: cliente.sitoWeb || '',
+      codiceFiscale: cliente.codiceFiscale || '',
+      piva: cliente.piva || '',
+      residenza: cliente.residenza || '',
+      domicilioFiscale: cliente.domicilioFiscale || '',
       note: cliente.note || '',
+      noteLog: cliente.noteLog || [],
     })
     setShowManage(true)
     setShowForm(true)
@@ -112,7 +131,7 @@ export default function ClientiTerziTab({ onDataChanged }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-gray-800">Clienti Terzi</h3>
+          <h3 className="font-bold text-gray-800">Clienti</h3>
           <p className="text-xs text-gray-400">{clientiTerzi.length} clienti censiti</p>
         </div>
         <button onClick={openNewForm}
@@ -123,15 +142,17 @@ export default function ClientiTerziTab({ onDataChanged }) {
       </div>
 
       {clientiTerzi.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">Nessun cliente terzo censito.</p>
+        <p className="text-center text-gray-400 text-sm py-8">Nessun cliente censito.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/50">
                 <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Nome</th>
+                <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Cognome</th>
                 <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Email</th>
                 <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Telefono</th>
+                <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">P.IVA / CF</th>
                 <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Sito</th>
                 <th className="py-2.5 px-3" />
               </tr>
@@ -140,8 +161,10 @@ export default function ClientiTerziTab({ onDataChanged }) {
               {clientiTerzi.map(cliente => (
                 <tr key={cliente.id} className="border-b border-gray-100 hover:bg-gray-50 group">
                   <td className="py-2.5 px-3 font-medium text-sm text-gray-900">{cliente.nome}</td>
+                  <td className="py-2.5 px-3 text-sm text-gray-500">{cliente.cognome || '-'}</td>
                   <td className="py-2.5 px-3 text-sm text-gray-500">{cliente.email || '-'}</td>
                   <td className="py-2.5 px-3 text-sm text-gray-500">{cliente.telefono || '-'}</td>
+                  <td className="py-2.5 px-3 text-sm text-gray-500">{cliente.piva || cliente.codiceFiscale || '-'}</td>
                   <td className="py-2.5 px-3 text-sm text-gray-500">
                     {cliente.sitoWeb ? (
                       <a href={getHref(cliente.sitoWeb)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700">
@@ -166,21 +189,26 @@ export default function ClientiTerziTab({ onDataChanged }) {
 
       {showManage && (
         <Modal
-          title={editingCliente ? 'Modifica Cliente Terzo' : 'Nuovo Cliente Terzo'}
-          subtitle="Anagrafica dei soggetti esterni usati nei contratti fissi."
+          title={editingCliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
+          subtitle="Anagrafica clienti usata nei contratti fissi e nei flussi amministrativi."
           onClose={closeModal}
           maxWidth="max-w-3xl"
         >
           {showForm && (
             <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
               <h3 className="font-semibold text-gray-800 mb-4">
-                {editingCliente ? 'Modifica Cliente' : 'Nuovo Cliente Terzo'}
+                {editingCliente ? 'Modifica Cliente' : 'Nuovo Cliente'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Nome / Ragione sociale *</label>
                   <input className="input" value={form.nome}
                     onChange={e => setForm(p => ({ ...p, nome: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Cognome</label>
+                  <input className="input" value={form.cognome || ''}
+                    onChange={e => setForm(p => ({ ...p, cognome: e.target.value }))} />
                 </div>
                 <div>
                   <label className="label">Email</label>
@@ -198,9 +226,31 @@ export default function ClientiTerziTab({ onDataChanged }) {
                     onChange={e => setForm(p => ({ ...p, sitoWeb: e.target.value }))} />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="label">Note</label>
-                  <input className="input" value={form.note || ''}
-                    onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+                  <label className="label">Codice Fiscale</label>
+                  <input className="input" value={form.codiceFiscale || ''}
+                    onChange={e => setForm(p => ({ ...p, codiceFiscale: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Partita IVA</label>
+                  <input className="input" value={form.piva || ''}
+                    onChange={e => setForm(p => ({ ...p, piva: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="label">Residenza</label>
+                  <input className="input" value={form.residenza || ''}
+                    onChange={e => setForm(p => ({ ...p, residenza: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="label">Domicilio Fiscale</label>
+                  <input className="input" value={form.domicilioFiscale || ''}
+                    onChange={e => setForm(p => ({ ...p, domicilioFiscale: e.target.value }))} />
+                </div>
+                <div className="md:col-span-2">
+                  <NotesLogField
+                    value={form.noteLog || []}
+                    onChange={noteLog => setForm(p => ({ ...p, noteLog }))}
+                    deprecatedNote={form.note}
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-4">

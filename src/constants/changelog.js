@@ -1,6 +1,24 @@
-export const APP_VERSION = 'v0.18.1-beta'
+export const APP_VERSION = 'v0.19.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.19.0-beta',
+    date: '2026-06-12',
+    items: [
+      'Nuovo raggruppamento sidebar "Database": contiene Brands, Creators e la nuova sezione autonoma Clienti. Trattative e Collaborazioni sono state separate nel gruppo Commerciale.',
+      'Clienti: la vecchia gestione "Clienti Terzi" e stata spostata fuori da Finance in una pagina dedicata, mantenendo l\'uso nei contratti ricorrenti ma centralizzando l\'anagrafica.',
+      'Anagrafiche Creator e Clienti estese con Nome, Cognome, Codice Fiscale, Partita IVA, Residenza e Domicilio Fiscale; i nuovi campi sono supportati da migration Supabase dedicata.',
+      'Nuovo sistema Note Log: le note principali diventano una tabella strutturata con Operatore, Topic, Contenuto e Data/Ora. Le vecchie note restano disponibili in "Note Deprecated" per migrazione manuale graduale.',
+      'Note Log applicato ai flussi principali: Brand, Creator, Clienti, Collaborazioni, DB Fiere, Trattative, Trattative Fiere e Fiere & Eventi.',
+      'Collaborazioni: aggiunto il campo Link Contratto, ereditato automaticamente dalla trattativa quando la collaborazione viene generata da un preventivo/contratto.',
+      'Collaborazioni: i contatti Brand sono mostrati in sola lettura dal database Brand, evitando duplicazione dei dati dentro la collaborazione.',
+      'Fix input numerici: disabilitata la modifica accidentale tramite rotellina mouse quando un campo numerico e in focus.',
+      'DB Fiere & Eventi rielaborato: storico date tabellare con Data inizio Evento, Data Fine Evento e Data Prossimo Contatto calcolata a +6 mesi dalla data inizio.',
+      'DB Fiere & Eventi: aggiunti ricerca, ordinamento alfabetico/data, vista raggruppata per mese di svolgimento e modal "Prossimi contatti per il mese".',
+      'Tipologia Evento resa censibile tramite nuova tabella Supabase tipologie_eventi, con fallback alle tipologie legacy finche la migration non viene applicata.',
+      'Trattative Brand: nello stato "In Trattativa" la lista mostra ancora i creator suggeriti; da Preventivo Inviato in poi mostra i creator confermati, inizializzati dai suggeriti se vuoti.',
+    ]
+  },
   {
     version: 'v0.18.1-beta',
     date: '2026-05-21',

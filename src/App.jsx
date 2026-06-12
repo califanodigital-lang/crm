@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/ConfirmModal'
@@ -17,6 +18,7 @@ import EventiPage from './pages/EventiPage'
 import ImportPage from './pages/ImportPage'
 import AgendaPage from './pages/AgendaPage'
 import FiereDbPage from './pages/FiereDbPage'
+import ClientiPage from './pages/ClientiPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -41,6 +43,15 @@ function PublicRoute({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    const stopNumberWheel = (event) => {
+      if (document.activeElement?.type === 'number') event.preventDefault()
+    }
+
+    document.addEventListener('wheel', stopNumberWheel, { passive: false })
+    return () => document.removeEventListener('wheel', stopNumberWheel)
+  }, [])
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -53,6 +64,7 @@ function App() {
                 <Route path="dashboard"      element={<Dashboard />} />
                 <Route path="brands"         element={<BrandsPage />} />
                 <Route path="creators"       element={<CreatorsPage />} />
+                <Route path="clienti"        element={<ClientiPage />} />
                 <Route path="collaborations" element={<CollaborationsPage />} />
                 <Route path="trattativa"       element={<TrattativaPage />} />
                 <Route path="trattative-fiere" element={<TrattativeFierePage />} />

@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
 import { toast } from '../components/Toast'
 import { formatDate } from '../utils/date'
+import NotesLogField from './NotesLogField'
 
 
 // Ordine del flusso — usato per mostrare sezioni progressive
@@ -116,6 +117,7 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
     importoPreventivo: '',
     linkPreventivo: '',
     noteStrategiche: '',
+    noteLog: [],
     reminderRicontatto: '',
     callFissata: false,
     dataCall: '',
@@ -200,6 +202,7 @@ useEffect(() => {
       linkPreventivo: trattativa.linkPreventivo ?? '',
       reminderRicontatto: trattativa.reminderRicontatto ?? '',
       noteStrategiche: trattativa.noteStrategiche ?? '',
+      noteLog: trattativa.noteLog ?? [],
       callFissata: trattativa.callFissata ?? false,
       dataCall: trattativa.dataCall ?? '',
       creaBrandAutomaticamente: trattativa.creaBrandAutomaticamente ?? true,
@@ -486,10 +489,11 @@ useEffect(() => {
             placeholder="Nome del creator (non nostro) dal cui contenuto è stato trovato il brand" />
         </div>
         <div className="md:col-span-2">
-          <label className="label">Note strategiche</label>
-          <input className="input" value={formData.noteStrategiche}
-            onChange={(e) => S('noteStrategiche', e.target.value)}
-            placeholder="Obiettivo, approccio, contesto..." />
+          <NotesLogField
+            value={formData.noteLog || []}
+            onChange={(noteLog) => S('noteLog', noteLog)}
+            deprecatedNote={[formData.noteStrategiche, formData.noteTrattativa].filter(Boolean).join('\n\n')}
+          />
         </div>
       </div>
 
@@ -724,10 +728,9 @@ useEffect(() => {
           />
         </div>
         <div className="md:col-span-2">
-          <label className="label">Note operative</label>
-          <textarea className="input min-h-[80px]" value={formData.noteTrattativa}
-            onChange={(e) => S('noteTrattativa', e.target.value)}
-            placeholder="WhatsApp +39..., Contatto: Mario Rossi, Richiedono contenuti su..." />
+          <p className="text-xs text-gray-400">
+            Le note operative sono ora gestite nel log note strutturato della sezione principale. Le vecchie note restano in "Note Deprecated".
+          </p>
         </div>
       </FormSection>
 

@@ -120,6 +120,7 @@ const toCamelCase = (collab) => {
     feeManagement: collab.fee_management,
     dataFirma: collab.data_firma,
     dataPubblicazione: collab.data_pubblicazione,
+    linkContratto: collab.link_contratto,
     durataContratto: collab.durata_contratto,
     adv: collab.adv,
     agente: collab.agente,
@@ -129,6 +130,11 @@ const toCamelCase = (collab) => {
     pagato_agency: collab.pagato_agency,
     contatto: collab.contatto,
     note: collab.note,
+    noteLog: collab.note_log || [],
+    brandReferente: collab.brands?.referenti || null,
+    brandContatto: collab.brands?.contatto || null,
+    brandTelefono: collab.brands?.telefono || null,
+    brandSitoWeb: collab.brands?.sito_web || null,
     createdAt: collab.created_at,
     updatedAt: collab.updated_at,
     senior: collab.senior,
@@ -157,6 +163,7 @@ const toSnakeCase = (collab) => {
     fee_management: deriveFeeManagement(collab),
     data_firma: cleanValue(collab.dataFirma),
     data_pubblicazione: cleanValue(collab.dataPubblicazione),
+    link_contratto: cleanValue(collab.linkContratto),
     durata_contratto: cleanValue(collab.durataContratto),
     adv: cleanValue(collab.adv),
     agente: cleanValue(collab.agente),
@@ -165,6 +172,7 @@ const toSnakeCase = (collab) => {
     pagato_agency: collab.pagato_agency || false,
     contatto: cleanValue(collab.contatto),
     note: cleanValue(collab.note),
+    note_log: collab.noteLog || [],
     senior: cleanValue(collab.senior),
     fee_sales_calc: collab.feeSalesCalc || 0,
     fee_agente_calc: collab.feeAgenteCalc || 0,
@@ -190,7 +198,8 @@ export const getAllCollaborations = async () => {
       .from('collaborations')
       .select(`
         *,
-        creators (nome, nome_completo)
+        creators (nome, nome_completo),
+        brands (referenti, contatto, telefono, sito_web)
       `)
       .order('created_at', { ascending: false }))
 
@@ -229,7 +238,8 @@ export const getCollaborationsByBrand = async (brandId) => {
       .from('collaborations')
       .select(`
         *,
-        creators (nome, nome_completo)
+        creators (nome, nome_completo),
+        brands (referenti, contatto, telefono, sito_web)
       `)
       .eq('brand_id', brandId)
       .order('data_firma', { ascending: false }))
@@ -252,7 +262,8 @@ export const getCollaborationById = async (id) => {
       .from('collaborations')
       .select(`
         *,
-        creators (nome, nome_completo)
+        creators (nome, nome_completo),
+        brands (referenti, contatto, telefono, sito_web)
       `)
       .eq('id', id)
       .single()

@@ -18,7 +18,6 @@ import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
 import { PagamentoRow } from '../components/PagamentoRow'
 import ContrattiRicorrentiTab from '../components/ContrattiRicorrentiTab'
-import ClientiTerziTab from '../components/ClientiTerziTab'
 import Modal from '../components/Modal'
 import { formatDate } from '../utils/date'
 import { supabase } from '../lib/supabase'
@@ -450,7 +449,7 @@ export default function FinancePage() {
 
       {/* ── Tabs ── */}
       <div className="flex border-b border-gray-200 mb-6">
-        {[{ key: 'entrate', label: 'Entrate' }, { key: 'uscite', label: 'Uscite' }, { key: 'clientiTerzi', label: 'Clienti Terzi' }].map(t => (
+        {[{ key: 'entrate', label: 'Entrate' }, { key: 'uscite', label: 'Uscite' }].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
             className={`pb-3 px-5 font-semibold text-sm border-b-2 transition-colors ${
               activeTab === t.key ? 'border-yellow-400 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -804,10 +803,6 @@ export default function FinancePage() {
             )}
           </div>
         </div>
-      )}
-
-      {activeTab === 'clientiTerzi' && (
-        <ClientiTerziTab onDataChanged={loadData} />
       )}
 
       {/* ════════════════ USCITE ════════════════ */}

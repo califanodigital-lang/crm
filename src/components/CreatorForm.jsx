@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react'
-import { getActiveAgents } from '../services/userService'
 import CreatorPiattaforme from './CreatorPiattaforme'
 import { getAllPiattaforme } from '../services/piattaformeService'
 import { TIPO_CONTRATTO, CLUSTER, REGIONI } from '../constants/constants'
 import {MultiSelectChips} from './MultiSelectChips'
+import { confirm } from './ConfirmModal'
+import NotesLogField from './NotesLogField'
 
 export default function CreatorForm({ creator = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
     nome: '',
+    cognome: '',
     nomeCompleto: '',
     emails: [],
     cellulare: '',
     residenza: '',
+    domicilioFiscale: '',
     piva: '',
     codiceFiscale: '',
     cluster: [],
@@ -30,14 +33,13 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
     obiettivo: '',
     preferenzaCollaborazioni: '',
     note: '',
+    noteLog: [],
   })
 
-  const [agenti, setAgenti] = useState([])
   const [piattaforme, setPiattaforme] = useState([])
   const [creatorPiattaforme, setCreatorPiattaforme] = useState([])
 
   useEffect(() => {
-    loadAgenti()
     loadPiattaforme()
   }, [])
 
@@ -52,7 +54,7 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
       const emails = creator.emails?.length > 0
         ? creator.emails
         : (creator.email ? [creator.email] : [])
-      setFormData({ ...creator, emails })
+      setFormData({ ...creator, emails, noteLog: creator.noteLog || [] })
     }
     if (creator?.id) {
     // Carica piattaforme esistenti del creator
@@ -70,11 +72,6 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
     })
   }
   }, [creator])
-
-  const loadAgenti = async () => {
-    const { data } = await getActiveAgents()
-    setAgenti(data || [])
-  }
 
   const loadPiattaforme = async () => {
     const { data } = await getAllPiattaforme()
@@ -127,6 +124,15 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             value={formData.nome}
             onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
             required
+          />
+        </div>
+
+        <div>
+          <label className="label">Cognome</label>
+          <input
+            className="input"
+            value={formData.cognome || ''}
+            onChange={(e) => setFormData({ ...formData, cognome: e.target.value })}
           />
         </div>
 
@@ -186,6 +192,16 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
             value={formData.residenza || ''}
             onChange={(e) => setFormData({ ...formData, residenza: e.target.value })}
             placeholder="Città, Provincia"
+          />
+        </div>
+
+        <div>
+          <label className="label">Domicilio Fiscale</label>
+          <input
+            className="input"
+            value={formData.domicilioFiscale || ''}
+            onChange={(e) => setFormData({ ...formData, domicilioFiscale: e.target.value })}
+            placeholder="Indirizzo domicilio fiscale"
           />
         </div>
 
@@ -376,11 +392,10 @@ export default function CreatorForm({ creator = null, onSave, onCancel }) {
       </div>
 
       <div className="mb-6">
-        <label className="label">Note</label>
-        <textarea
-          className="input min-h-[100px]"
-          value={formData.note}
-          onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+        <NotesLogField
+          value={formData.noteLog || []}
+          onChange={(noteLog) => setFormData({ ...formData, noteLog })}
+          deprecatedNote={formData.note}
         />
       </div>
 

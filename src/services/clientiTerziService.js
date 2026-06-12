@@ -4,19 +4,31 @@ import { fetchAllRows } from './supabasePagination'
 const toCamelCase = (c) => ({
   id: c.id,
   nome: c.nome,
+  cognome: c.cognome,
   email: c.email,
   telefono: c.telefono,
   sitoWeb: c.sito_web,
+  codiceFiscale: c.codice_fiscale,
+  piva: c.piva,
+  residenza: c.residenza,
+  domicilioFiscale: c.domicilio_fiscale,
   note: c.note,
+  noteLog: c.note_log || [],
   createdAt: c.created_at,
 })
 
 const toSnakeCase = (c) => ({
   nome: c.nome,
+  cognome: c.cognome || null,
   email: c.email || null,
   telefono: c.telefono || null,
   sito_web: c.sitoWeb || null,
+  codice_fiscale: c.codiceFiscale || null,
+  piva: c.piva || null,
+  residenza: c.residenza || null,
+  domicilio_fiscale: c.domicilioFiscale || null,
   note: c.note || null,
+  note_log: c.noteLog || [],
 })
 
 export const getAllClientiTerzi = async () => {

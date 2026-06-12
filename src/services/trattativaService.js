@@ -103,6 +103,7 @@ const toCamelCase = (t) => {
 
     // Note generali
     noteStrategiche: t.note_strategiche,
+    noteLog: t.note_log || [],
     linkVideoSorgente: t.link_video_sorgente,
     creatorSorgente: t.creator_sorgente,
 
@@ -143,6 +144,7 @@ const toSnakeCase = (t) => ({
   link_preventivo: cleanValue(t.linkPreventivo),
   fee_creator_map: t.feeCreatorMap || {},
   note_strategiche: cleanValue(t.noteStrategiche),
+  note_log: t.noteLog || [],
   link_video_sorgente: cleanValue(t.linkVideoSorgente),
   creator_sorgente: cleanValue(t.creatorSorgente),
   reminder_ricontatto: cleanValue(t.reminderRicontatto),
@@ -370,6 +372,7 @@ export const creaCollaborazioneDaTrattativa = async (trattativaId) => {
         senior: t.agente || null,
         pagamento: pagamento,
         fee_management,
+        link_contratto: t.link_preventivo || null,
         stato: 'IN_LAVORAZIONE',
         pagato: false,
         contatto: t.contatto || null,

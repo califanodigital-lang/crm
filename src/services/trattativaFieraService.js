@@ -50,6 +50,7 @@ const toCamelCase = (trattativa) => {
     dataFollowup1: trattativa.data_followup_1,
     dataFollowup2: trattativa.data_followup_2,
     note: trattativa.note,
+    noteLog: trattativa.note_log || [],
     createdAt: trattativa.created_at,
     updatedAt: trattativa.updated_at,
   }
@@ -75,6 +76,7 @@ const toSnakeCase = (trattativa) => ensureFollowups({
   data_followup_1: cleanValue(trattativa.dataFollowup1),
   data_followup_2: cleanValue(trattativa.dataFollowup2),
   note: cleanValue(trattativa.note),
+  note_log: trattativa.noteLog || [],
 })
 
 const syncEventoFromTrattativa = async (trattativa) => {

@@ -3,7 +3,8 @@ import { Lock } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
-import {formatDate} from '../utils/date'
+import { confirm } from './ConfirmModal'
+import NotesLogField from './NotesLogField'
 
 export default function CollaborationForm({ collaboration = null, creators = [], brands = [],  prefilledBrand = null, prefilledCreatorId = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     dataPubblicazione: '',
     dataPagamentoCreator: '',
     dataPagamentoAgency: '',
+    linkContratto: '',
     durataContratto: '',
     adv: '',
     agente: '',
@@ -25,6 +27,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     pagato_agency: false,
     contatto: '',
     note: '',
+    noteLog: [],
     senior: '',
     feeSalesCalc: 0,
     feeAgenteCalc: 0,
@@ -40,7 +43,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
   const puo_modificare_assegnatario = isAdmin || !collaboration || collaboration.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
-    loadAgenti()
+    getActiveAgents().then(({ data }) => setAgenti(data || []))
   }, [])
 
   useEffect(() => {
@@ -49,12 +52,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     return () => document.removeEventListener('keydown', handler)
   }, [onCancel])
 
-    const loadAgenti = async () => {
-      const { data } = await getActiveAgents()
-      setAgenti(data || [])
-    }
-
     useEffect(() => {
+      Promise.resolve().then(() => {
      if (!collaboration && userProfile?.agenteNome) {
           setFormData(prev => ({
             ...prev,
@@ -73,6 +72,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         feeManagement: collaboration.feeManagement ?? '',
         dataFirma: collaboration.dataFirma ?? '',
         dataPubblicazione: collaboration.dataPubblicazione ?? '',
+        linkContratto: collaboration.linkContratto ?? '',
         durataContratto: collaboration.durataContratto ?? '',
         adv: collaboration.adv ?? '',
         agente: collaboration.agente ?? '',
@@ -82,6 +82,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         pagato_agency: collaboration.pagato_agency ?? false,
         contatto: collaboration.contatto ?? '',
         note: collaboration.note ?? '',
+        noteLog: collaboration.noteLog ?? [],
         senior: collaboration.senior ?? '',
         feeSalesCalc: collaboration.feeSalesCalc ?? 0,
         feeAgenteCalc: collaboration.feeAgenteCalc ?? 0,
@@ -92,6 +93,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         creatoDa: collaboration.creatoDa ?? '',
         tranche: collaboration.tranche || [],
       }))
+      })
     }, [collaboration])
 
   const handleSubmit = async (e) => {
@@ -163,7 +165,13 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         }
       }
 
-  const activeCreators = creators.filter(c => c.stato === '1 Sotto contratto')
+  const selectedBrand = brands.find(b => b.id === formData.brandId || b.nome === formData.brandNome)
+  const readonlyBrandContacts = {
+    referente: selectedBrand?.referente || collaboration?.brandReferente,
+    contatto: selectedBrand?.contatto || collaboration?.brandContatto,
+    telefono: selectedBrand?.telefono || collaboration?.brandTelefono,
+    sitoWeb: selectedBrand?.sitoWeb || collaboration?.brandSitoWeb,
+  }
 
   return (
   <form onSubmit={handleSubmit} 
@@ -383,6 +391,17 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           />
         </div>
 
+        <div className="md:col-span-2">
+          <label className="label">Link contratto</label>
+          <input
+            type="url"
+            className="input"
+            value={formData.linkContratto || ''}
+            onChange={(e) => setFormData({ ...formData, linkContratto: e.target.value })}
+            placeholder="https://drive.google.com/..."
+          />
+        </div>
+
         <div>
           <label className="label">Durata Contratto</label>
           <input
@@ -556,25 +575,24 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">
-        <div className="md:col-span-2"><p className="form-section-title">Note</p></div>
-        {/* Contatto */}
-        <div>
-          <label className="label">Contatto</label>
-          <input
-            className="input"
-            value={formData.contatto}
-            onChange={(e) => setFormData({...formData, contatto: e.target.value})}
-            placeholder="Email o telefono"
-          />
-        </div>
+        <div className="md:col-span-2"><p className="form-section-title">Contatti Brand</p></div>
+        {[
+          ['Referente', readonlyBrandContacts.referente],
+          ['Email / Form contatto', readonlyBrandContacts.contatto],
+          ['Telefono', readonlyBrandContacts.telefono],
+          ['Sito web', readonlyBrandContacts.sitoWeb],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <label className="label">{label}</label>
+            <div className="input bg-gray-50 text-gray-600">{value || '-'}</div>
+          </div>
+        ))}
 
-        {/* Note */}
         <div className="md:col-span-2">
-          <label className="label">Note</label>
-          <textarea
-            className="input min-h-[100px]"
-            value={formData.note}
-            onChange={(e) => setFormData({...formData, note: e.target.value})}
+          <NotesLogField
+            value={formData.noteLog || []}
+            onChange={(noteLog) => setFormData({ ...formData, noteLog })}
+            deprecatedNote={formData.note}
           />
         </div>
       </div>

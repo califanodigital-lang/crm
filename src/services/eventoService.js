@@ -19,6 +19,7 @@ const toCamelCase = (e) => {
     descrizione: e.descrizione,
     link: e.link,
     note: e.note,
+    noteLog: e.note_log || [],
     stato: e.stato || 'APERTA',
     createdAt: e.created_at,
     updatedAt: e.updated_at,
@@ -38,6 +39,7 @@ const toSnakeCase = (e) => ({
   descrizione: cleanValue(e.descrizione),
   link: cleanValue(e.link),
   note: cleanValue(e.note),
+  note_log: e.noteLog || [],
   stato: e.stato || 'APERTA',
 })
 

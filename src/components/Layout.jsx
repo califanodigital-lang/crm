@@ -20,10 +20,16 @@ const NAV_GROUPS = [
     ]
   },
   {
-    label: 'Brand & Creators',
+    label: 'Database',
     items: [
-      { name: 'Brand',           href: '/brands',        icon: Briefcase },
-      { name: 'Creators',         href: '/creators',      icon: Users },
+      { name: 'Brands',          href: '/brands',        icon: Briefcase },
+      { name: 'Creators',        href: '/creators',      icon: Users },
+      { name: 'Clienti',         href: '/clienti',       icon: Users },
+    ]
+  },
+  {
+    label: 'Commerciale',
+    items: [
       { name: 'Trattative',        href: '/trattativa',      icon: Target },
       { name: 'Collaborazioni',  href: '/collaborations',icon: Handshake },
     ]
@@ -106,7 +112,7 @@ function SidebarContent({ onClose }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 min-h-0 overflow-y-hidden px-3 py-3 space-y-4">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.18)_transparent]">
         {NAV_GROUPS.map(group => {
           if (group.adminOnly && !isAdmin) return null
           return (
@@ -164,7 +170,6 @@ function SidebarContent({ onClose }) {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { userProfile } = useAuth()
   const location = useLocation()
 
   // Trova il nome della pagina corrente

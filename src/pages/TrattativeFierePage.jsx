@@ -21,8 +21,9 @@ import {
 } from '../constants/constants'
 import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
+import NotesLogField from '../components/NotesLogField'
 import { formatDate } from '../utils/date'
-import { doesRangeOverlap, getDefaultMonthlyRange, hasAnyDateInRange, isDateRangeDisabled } from '../utils/dateRange'
+import { doesRangeOverlap, hasAnyDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 import { useNavigate } from 'react-router-dom'
 
 const EMPTY_FORM = {
@@ -44,6 +45,7 @@ const EMPTY_FORM = {
   dataFollowup1: '',
   dataFollowup2: '',
   note: '',
+  noteLog: [],
   eventoId: '',
   creaFieraAutomaticamente: true,
 }
@@ -91,11 +93,7 @@ export default function TrattativeFierePage() {
   const [editing, setEditing] = useState(null)
   const [formData, setFormData] = useState(EMPTY_FORM)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  async function loadData() {
     setLoading(true)
     const [trattativeRes, fiereRes, circuitiRes, agentiRes] = await Promise.all([
       getAllTrattativeFiere(),
@@ -116,6 +114,10 @@ export default function TrattativeFierePage() {
     [circuiti]
   )
 
+  useEffect(() => {
+    Promise.resolve().then(loadData)
+  }, [])
+
   const openCreate = () => {
     setFormOpen(true)
     setEditing(null)
@@ -134,6 +136,7 @@ export default function TrattativeFierePage() {
     setFormData({
       ...EMPTY_FORM,
       ...trattativa,
+      noteLog: trattativa.noteLog || [],
     })
   }
 
@@ -156,6 +159,7 @@ export default function TrattativeFierePage() {
       telefono: selected.telefono || '',
       sitoWeb: selected.sitoWeb || '',
       note: prev.note || selected.note || '',
+      noteLog: prev.noteLog?.length ? prev.noteLog : (selected.noteLog || []),
     }))
   }
 
@@ -187,7 +191,7 @@ export default function TrattativeFierePage() {
       return
     }
     if (!formData.agente) {
-      toast.error("Seleziona l\'agente che ha contattato la fiera.")
+      toast.error("Seleziona l'agente che ha contattato la fiera.")
       return
     }
     if (!formData.dataContatto) {
@@ -211,6 +215,7 @@ export default function TrattativeFierePage() {
         telefono: formData.telefono || null,
         sitoWeb: formData.sitoWeb || null,
         note: formData.note || null,
+        noteLog: formData.noteLog || [],
       }
       const { data: fieraData, error: fieraError, reused } = await createFieraDb(fieraPayload)
       if (fieraError) {
@@ -657,8 +662,11 @@ export default function TrattativeFierePage() {
                 <input type="date" className="input" value={formData.dataFollowup2 || ''} onChange={(e) => setFormData(prev => ({ ...prev, dataFollowup2: e.target.value }))} />
               </div>
               <div className="md:col-span-2">
-                <label className="label">Note</label>
-                <textarea className="input min-h-[100px]" value={formData.note || ''} onChange={(e) => setFormData(prev => ({ ...prev, note: e.target.value }))} />
+                <NotesLogField
+                  value={formData.noteLog || []}
+                  onChange={(noteLog) => setFormData(prev => ({ ...prev, noteLog }))}
+                  deprecatedNote={formData.note}
+                />
               </div>
             </div>
 

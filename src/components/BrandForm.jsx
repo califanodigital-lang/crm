@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { getActiveAgents } from '../services/userService'
 import CreatorMultiSelect from './CreatorMultiSelect'
+import { confirm } from './ConfirmModal'
+import NotesLogField from './NotesLogField'
 
 export default function BrandForm({ brand = null, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -14,14 +15,10 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     telefono: '',
     sitoWeb: '',
     note: '',
+    noteLog: [],
     creatorSuggeriti: []
   })
-  const [agenti, setAgenti] = useState([])
   const [categoriaInput, setCategoriaInput] = useState('')
-
-  useEffect(() => {
-    loadAgenti()
-  }, [])
 
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onCancel?.() }
@@ -30,13 +27,8 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
   }, [onCancel])
 
   useEffect(() => {
-    if (brand) setFormData(brand)
+    if (brand) Promise.resolve().then(() => setFormData({ ...brand, noteLog: brand.noteLog || [] }))
   }, [brand])
-
-  const loadAgenti = async () => {
-    const { data } = await getActiveAgents()
-    setAgenti(data || [])
-  }
 
   const handleAddCategoria = () => {
     if (categoriaInput.trim()) {
@@ -150,10 +142,11 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
 
     {/* ── NOTE ── */}
     <div className="pt-6 border-t border-gray-100 mb-8">
-      <p className="form-section-title">Note</p>
-      <textarea className="input" value={formData.note}
-        onChange={(e) => setFormData({...formData, note: e.target.value})}
-        placeholder="Note aggiuntive sul brand..." />
+      <NotesLogField
+        value={formData.noteLog || []}
+        onChange={(noteLog) => setFormData({ ...formData, noteLog })}
+        deprecatedNote={formData.note}
+      />
     </div>
 
     <div className="flex gap-3 justify-end pt-2">
