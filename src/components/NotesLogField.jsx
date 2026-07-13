@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Edit, Plus, Trash2, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const formatDateTime = (value) => {
@@ -17,19 +17,47 @@ const formatDateTime = (value) => {
 export default function NotesLogField({ value = [], onChange, deprecatedNote = '', title = 'Note' }) {
   const { userProfile } = useAuth()
   const [deprecatedOpen, setDeprecatedOpen] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [draft, setDraft] = useState({
     topic: '',
     contenuto: '',
   })
 
   const notes = Array.isArray(value)
-    ? [...value].sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
+    ? [...value]
+      .map(note => ({
+        ...note,
+        id: note.id || `legacy-${note.timestamp || ''}-${note.topic || ''}-${note.contenuto || ''}`,
+      }))
+      .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
     : []
   const readonly = !onChange
   const operatorName = userProfile?.agenteNome || userProfile?.nomeCompleto || userProfile?.email || 'Operatore'
 
-  const addNote = () => {
+  const resetDraft = () => {
+    setEditingId(null)
+    setDraft({ topic: '', contenuto: '' })
+  }
+
+  const submitNote = () => {
     if (!draft.topic.trim() && !draft.contenuto.trim()) return
+
+    if (editingId) {
+      onChange?.(notes.map(note => (
+        note.id === editingId
+          ? {
+            ...note,
+            topic: draft.topic.trim(),
+            contenuto: draft.contenuto.trim(),
+            modificatoDa: operatorName,
+            modificatoIl: new Date().toISOString(),
+          }
+          : note
+      )))
+      resetDraft()
+      return
+    }
+
     const timestamp = new Date().toISOString()
     onChange?.([
       ...notes,
@@ -41,11 +69,19 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
         timestamp,
       },
     ])
-    setDraft({ topic: '', contenuto: '' })
+    resetDraft()
   }
 
   const removeNote = (id) => {
     onChange?.(notes.filter(note => note.id !== id))
+  }
+
+  const startEdit = (note) => {
+    setEditingId(note.id)
+    setDraft({
+      topic: note.topic || '',
+      contenuto: note.contenuto || '',
+    })
   }
 
   return (
@@ -77,9 +113,14 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(note.timestamp)}</td>
                 <td className="px-3 py-2 text-right">
                   {!readonly && (
-                    <button type="button" onClick={() => removeNote(note.id)} className="text-red-500 hover:text-red-700">
-                      <Trash2 className="w-4 h-4 inline" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button type="button" onClick={() => startEdit(note)} className="text-gray-400 hover:text-yellow-600" title="Modifica nota">
+                        <Edit className="w-4 h-4 inline" />
+                      </button>
+                      <button type="button" onClick={() => removeNote(note.id)} className="text-red-500 hover:text-red-700" title="Elimina nota">
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -103,9 +144,15 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
           <textarea className="input min-h-[80px]" value={draft.contenuto} onChange={e => setDraft(prev => ({ ...prev, contenuto: e.target.value }))} />
         </div>
         <div className="md:col-span-3 flex justify-end">
-          <button type="button" onClick={addNote} className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">
-            <Plus className="w-4 h-4" />
-            Aggiungi nota
+          {editingId && (
+            <button type="button" onClick={resetDraft} className="inline-flex items-center gap-2 px-4 py-2 mr-2 border border-gray-200 text-gray-600 rounded-lg font-semibold hover:bg-gray-50">
+              <X className="w-4 h-4" />
+              Annulla modifica
+            </button>
+          )}
+          <button type="button" onClick={submitNote} className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500">
+            {editingId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {editingId ? 'Salva modifica' : 'Aggiungi nota'}
           </button>
         </div>
       </div>}

@@ -1,6 +1,14 @@
-export const APP_VERSION = 'v0.19.0-beta'
+export const APP_VERSION = 'v0.19.1-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.19.1-beta',
+    date: '2026-07-13',
+    items: [
+      'Note Log: aggiunta la modifica delle note strutturate esistenti, con salvataggio di modificatoDa e modificatoIl senza alterare il timestamp originale.',
+      'Fix sidebar: la navbar ora e scrollabile, permettendo di raggiungere le voci sotto Finance anche su schermi piu bassi.',
+    ]
+  },
   {
     version: 'v0.19.0-beta',
     date: '2026-06-12',
