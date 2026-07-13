@@ -93,6 +93,8 @@ const syncEventoFromTrattativa = async (trattativa) => {
     stato: 'APERTA',
   }
 
+  if (trattativa.noteLog?.length) baseEventoPayload.noteLog = trattativa.noteLog
+
   // La trattativa è già collegata a un evento → aggiorna quello
   if (trattativa.eventoId) {
     const { data: currentEvento, error: currentError } = await getEventoById(trattativa.eventoId)
@@ -221,6 +223,7 @@ export const createTrattativaFieraFromFiera = async (fieraData, agenteNome) => {
       dataContatto: today,
       stato: 'CONTATTATO',
       note: fieraData.note,
+      noteLog: fieraData.noteLog || [],
     }).then(result => ({ ...result, reused: false }))
   } catch (error) {
     console.error('Error creating trattativa from fiera:', error)

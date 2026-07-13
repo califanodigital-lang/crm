@@ -5,6 +5,7 @@ import DateRangeFilter from '../components/DateRangeFilter'
 import { getAllCircuiti } from '../services/circuitiService'
 import { createFieraDb, getAllFiereDb } from '../services/fieraDbService'
 import { deleteEvento } from '../services/eventoService'
+import { getAllTipologieEvento } from '../services/tipologieEventoService'
 import { getActiveAgents } from '../services/userService'
 import {
   createTrattativaFiera,
@@ -17,7 +18,6 @@ import {
   getStatoTrattativaFiera,
   STATI_TRATTATIVA_FIERA,
   STATI_TRATTATIVA_FIERA_CHIUSI,
-  TIPOLOGIE_EVENTO,
 } from '../constants/constants'
 import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
@@ -83,6 +83,7 @@ export default function TrattativeFierePage() {
   const [trattative, setTrattative] = useState([])
   const [fiereDb, setFiereDb] = useState([])
   const [circuiti, setCircuiti] = useState([])
+  const [tipologie, setTipologie] = useState([])
   const [agenti, setAgenti] = useState([])
   const [loading, setLoading] = useState(true)
   const [showClosed, setShowClosed] = useState(false)
@@ -95,16 +96,18 @@ export default function TrattativeFierePage() {
 
   async function loadData() {
     setLoading(true)
-    const [trattativeRes, fiereRes, circuitiRes, agentiRes] = await Promise.all([
+    const [trattativeRes, fiereRes, circuitiRes, tipologieRes, agentiRes] = await Promise.all([
       getAllTrattativeFiere(),
       getAllFiereDb(),
       getAllCircuiti(),
+      getAllTipologieEvento(),
       getActiveAgents(),
     ])
 
     setTrattative(trattativeRes.data || [])
     setFiereDb(fiereRes.data || [])
     setCircuiti(circuitiRes.data || [])
+    setTipologie(tipologieRes.data || [])
     setAgenti(agentiRes.data || [])
     setLoading(false)
   }
@@ -112,6 +115,11 @@ export default function TrattativeFierePage() {
   const circuitiMap = useMemo(
     () => Object.fromEntries((circuiti || []).map(circuito => [circuito.id, circuito.nome])),
     [circuiti]
+  )
+
+  const selectedDbFiera = useMemo(
+    () => fiereDb.find(fiera => fiera.id === formData.fieraDbId),
+    [fiereDb, formData.fieraDbId]
   )
 
   useEffect(() => {
@@ -365,7 +373,7 @@ export default function TrattativeFierePage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Trattative Fiere</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Flusso intermedio tra DB Fiere e Fiere & Eventi: contatto, follow-up e passaggio in trattativa.
+            Lavorazione commerciale delle fiere: chi contattare, quando richiamare e quando passare all'evento operativo.
           </p>
         </div>
         <button
@@ -545,7 +553,7 @@ export default function TrattativeFierePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="label">
-                  Scheda DB Fiere {!editing && !formData.creaFieraAutomaticamente ? '*' : ''}
+                  Scheda DB Fiere
                 </label>
                 <select
                   className="input"
@@ -558,7 +566,18 @@ export default function TrattativeFierePage() {
                   ))}
                 </select>
               </div>
-              {!editing && (
+              {selectedDbFiera && (
+                <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-blue-700 mb-2">Dati ereditati dal DB Fiere</p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm text-blue-950">
+                    <div><span className="font-semibold">Tipologia:</span> {selectedDbFiera.tipo || '-'}</div>
+                    <div><span className="font-semibold">Circuito:</span> {circuitiMap[selectedDbFiera.circuitoId] || '-'}</div>
+                    <div><span className="font-semibold">Luogo:</span> {[selectedDbFiera.citta, selectedDbFiera.location].filter(Boolean).join(', ') || '-'}</div>
+                    <div><span className="font-semibold">Contatto:</span> {selectedDbFiera.contatto || selectedDbFiera.telefono || '-'}</div>
+                  </div>
+                </div>
+              )}
+              {!editing && !selectedDbFiera && (
                 <div className="md:col-span-2">
                   <label className="flex items-center gap-2.5 cursor-pointer select-none">
                     <input
@@ -586,8 +605,8 @@ export default function TrattativeFierePage() {
                 <label className="label">Tipologia evento</label>
                 <select className="input" value={formData.tipo || ''} onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value }))}>
                   <option value="">Seleziona tipologia...</option>
-                  {TIPOLOGIE_EVENTO.map(tipologia => (
-                    <option key={tipologia} value={tipologia}>{tipologia}</option>
+                  {tipologie.map(tipologia => (
+                    <option key={tipologia.id} value={tipologia.nome}>{tipologia.nome}</option>
                   ))}
                 </select>
               </div>

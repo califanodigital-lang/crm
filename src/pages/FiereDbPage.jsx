@@ -188,6 +188,10 @@ export default function FiereDbPage() {
     return fiere.filter(fiera => monthKey(getFieraLatestDateSet(fiera).prossimoContatto) === currentMonth)
   }, [fiere])
 
+  const readyToContact = useMemo(() => (
+    fiere.filter(fiera => canStartTrattativa(fiera)).length
+  ), [fiere])
+
   const filteredFiere = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase()
     const filtered = fiere.filter(fiera => {
@@ -445,22 +449,10 @@ export default function FiereDbPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">DB Fiere & Eventi</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Database master delle fiere: anagrafica, storico date evento e contatti utili per aprire le Trattative Fiere.
+            Archivio unico delle fiere: anagrafica, date storiche e promemoria per riaprire il contatto quando ha senso.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setTab('circuiti')}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg font-semibold hover:bg-gray-50"
-          >
-            Gestisci circuiti
-          </button>
-          <button
-            onClick={() => setTab('tipologie')}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg font-semibold hover:bg-gray-50"
-          >
-            Gestisci tipologie
-          </button>
           <button
             onClick={openCreateFieraModal}
             className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
@@ -474,24 +466,23 @@ export default function FiereDbPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="card text-center">
           <p className="text-2xl font-bold text-gray-900">{fiere.length}</p>
-          <p className="text-sm text-gray-500">Schede totali</p>
+          <p className="text-sm text-gray-500">Fiere in archivio</p>
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-yellow-600">{contactsThisMonth.length}</p>
           <p className="text-sm text-gray-500">Contatti nel mese</p>
         </div>
         <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-900">{tipologie.length}</p>
-          <p className="text-sm text-gray-500">Tipologie disponibili</p>
+          <p className="text-2xl font-bold text-emerald-600">{readyToContact}</p>
+          <p className="text-sm text-gray-500">Pronte per trattativa</p>
         </div>
       </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         {[
-          { key: 'lista', label: 'Database Fiere' },
-          { key: 'mesi-evento', label: 'Mesi evento' },
-          { key: 'tipologie', label: 'Tipologie' },
-          { key: 'circuiti', label: 'Circuiti' },
+          { key: 'lista', label: 'Archivio' },
+          { key: 'mesi-evento', label: 'Vista per mese' },
+          { key: 'impostazioni', label: 'Impostazioni' },
         ].map(currentTab => (
           <button
             key={currentTab.key}
@@ -634,87 +625,87 @@ export default function FiereDbPage() {
         </div>
       )}
 
-      {tab === 'tipologie' && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Tipologie evento censite</h3>
-              <p className="text-sm text-gray-500">Usate nelle schede DB Fiere, nelle Trattative Fiere e negli Eventi.</p>
-              {tipologieMissingTable && (
-                <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-2">
-                  Tabella tipologie_eventi non trovata: sono visibili le tipologie statiche, ma per crearne nuove serve applicare la migration.
-                </p>
-              )}
+      {tab === 'impostazioni' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Tipologie evento</h3>
+                <p className="text-sm text-gray-500">Categorie usate nelle fiere e negli eventi operativi.</p>
+                {tipologieMissingTable && (
+                  <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-2">
+                    Tabella tipologie_eventi non trovata: sono visibili le tipologie statiche, ma per crearne nuove serve applicare la migration.
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={openCreateTipologiaModal}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Nuova
+              </button>
             </div>
-            <button
-              onClick={openCreateTipologiaModal}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
-            >
-              <Plus className="w-4 h-4" />
-              Nuova tipologia
-            </button>
+
+            <div className="space-y-2">
+              {tipologie.map(tipologia => (
+                <div key={tipologia.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
+                  <div>
+                    <div className="font-medium text-gray-900">{tipologia.nome}</div>
+                    {tipologia.readonly && <div className="text-xs text-gray-400 mt-0.5">Tipologia legacy</div>}
+                    {tipologia.note && <div className="text-xs text-gray-400 mt-0.5">{tipologia.note}</div>}
+                  </div>
+                  {!tipologia.readonly && (
+                    <div className="flex gap-1">
+                      <button onClick={() => openEditTipologiaModal(tipologia)} className="text-yellow-600 hover:text-yellow-800">
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDeleteTipologia(tipologia)} className="text-red-600 hover:text-red-800">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            {tipologie.map(tipologia => (
-              <div key={tipologia.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
-                <div>
-                  <div className="font-medium text-gray-900">{tipologia.nome}</div>
-                  {tipologia.readonly && <div className="text-xs text-gray-400 mt-0.5">Tipologia legacy</div>}
-                  {tipologia.note && <div className="text-xs text-gray-400 mt-0.5">{tipologia.note}</div>}
-                </div>
-                {!tipologia.readonly && (
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Circuiti</h3>
+                <p className="text-sm text-gray-500">Raggruppamenti ricorrenti di fiere/eventi.</p>
+              </div>
+              <button
+                onClick={openCreateCircuitoModal}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Nuovo
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {circuiti.map(circuito => (
+                <div key={circuito.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
+                  <div>
+                    <div className="font-medium text-gray-900">{circuito.nome}</div>
+                    {circuito.note && <div className="text-xs text-gray-400 mt-0.5">{circuito.note}</div>}
+                  </div>
                   <div className="flex gap-1">
-                    <button onClick={() => openEditTipologiaModal(tipologia)} className="text-yellow-600 hover:text-yellow-800">
+                    <button onClick={() => openEditCircuitoModal(circuito)} className="text-yellow-600 hover:text-yellow-800">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDeleteTipologia(tipologia)} className="text-red-600 hover:text-red-800">
+                    <button onClick={() => handleDeleteCircuito(circuito.id)} className="text-red-600 hover:text-red-800">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'circuiti' && (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">Circuiti censiti</h3>
-              <p className="text-sm text-gray-500">Usati nelle schede DB Fiere, nelle Trattative Fiere e negli Eventi.</p>
+                </div>
+              ))}
+              {circuiti.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-6">Nessun circuito censito.</p>
+              )}
             </div>
-            <button
-              onClick={openCreateCircuitoModal}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold hover:bg-yellow-500"
-            >
-              <Plus className="w-4 h-4" />
-              Nuovo circuito
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {circuiti.map(circuito => (
-              <div key={circuito.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
-                <div>
-                  <div className="font-medium text-gray-900">{circuito.nome}</div>
-                  {circuito.note && <div className="text-xs text-gray-400 mt-0.5">{circuito.note}</div>}
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => openEditCircuitoModal(circuito)} className="text-yellow-600 hover:text-yellow-800">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDeleteCircuito(circuito.id)} className="text-red-600 hover:text-red-800">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {circuiti.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-6">Nessun circuito censito.</p>
-            )}
           </div>
         </div>
       )}

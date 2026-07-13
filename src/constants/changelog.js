@@ -1,6 +1,18 @@
-export const APP_VERSION = 'v0.19.1-beta'
+export const APP_VERSION = 'v0.20.0-alpha'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.20.0-alpha',
+    date: '2026-07-13',
+    items: [
+      'Alpha fiere: DB Fiere & Eventi semplificato come archivio unico, con tab ridotte ad Archivio, Vista per mese e Impostazioni.',
+      'Alpha fiere: circuiti e tipologie evento accorpati in una sola area Impostazioni, riducendo la percezione di sezioni duplicate.',
+      'Alpha fiere: Trattative Fiere rese piu chiare, con dati ereditati dal DB Fiere mostrati in evidenza e tipologie evento lette dalla tabella censibile.',
+      'Alpha fiere: Fiere & Eventi ora usa le stesse tipologie censibili del DB Fiere, evitando differenze tra le pagine del flusso.',
+      'Alpha fiere: il Note Log passa dal DB Fiere alla Trattativa Fiera e poi all evento operativo solo quando presente, senza sovrascrivere note gia inserite.',
+      'Deploy alpha: il workflow non tenta piu il deploy GitHub Pages da branch alpha, evitando il blocco delle protection rules; il deploy autorizzato resta su main.',
+    ]
+  },
   {
     version: 'v0.19.1-beta',
     date: '2026-07-13',

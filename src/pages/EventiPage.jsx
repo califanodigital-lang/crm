@@ -7,10 +7,11 @@ import { getAllCircuiti } from '../services/circuitiService'
 import { getPartecipazioniByEvento, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
 import { upsertFieraFromEvento } from '../services/fieraDbService'
+import { getAllTipologieEvento } from '../services/tipologieEventoService'
 import { Calendar, MapPin, Plus, Edit, Trash2, X, LayoutGrid, List } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
-import { ATTIVITA_EVENTO, TIPOLOGIE_EVENTO } from '../constants/constants'
+import { ATTIVITA_EVENTO } from '../constants/constants'
 import { toast } from '../components/Toast'
 import NotesLogField from '../components/NotesLogField'
 
@@ -145,6 +146,7 @@ export default function EventiPage() {
   const [eventi, setEventi] = useState([])
   const [creators, setCreators] = useState([])
   const [circuiti, setCircuiti] = useState([])
+  const [tipologie, setTipologie] = useState([])
   const [view, setView] = useState('list') // list | add | edit | detail
   const [selectedEvento, setSelectedEvento] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
@@ -169,11 +171,17 @@ export default function EventiPage() {
 
   async function loadData() {
     setLoading(true)
-    const [eventiRes, creatorsRes, circuitiRes] = await Promise.all([getAllEventi(), getAllCreators(), getAllCircuiti()])
+    const [eventiRes, creatorsRes, circuitiRes, tipologieRes] = await Promise.all([
+      getAllEventi(),
+      getAllCreators(),
+      getAllCircuiti(),
+      getAllTipologieEvento(),
+    ])
     const loadedEventi = eventiRes.data || []
     setEventi(loadedEventi)
     setCreators(creatorsRes.data || [])
     setCircuiti(circuitiRes.data || [])
+    setTipologie(tipologieRes.data || [])
     setLoading(false)
     return loadedEventi
   }
@@ -353,8 +361,8 @@ export default function EventiPage() {
                 <label className="label">Tipologia evento</label>
                 <select className="input" value={eventoForm.tipo} onChange={(e) => setEventoForm({...eventoForm, tipo: e.target.value})}>
                   <option value="">Seleziona tipologia...</option>
-                  {TIPOLOGIE_EVENTO.map(tipologia => (
-                    <option key={tipologia} value={tipologia}>{tipologia}</option>
+                  {tipologie.map(tipologia => (
+                    <option key={tipologia.id} value={tipologia.nome}>{tipologia.nome}</option>
                   ))}
                 </select>
               </div>
