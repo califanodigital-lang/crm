@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, alpha ]
   workflow_dispatch:
 
 permissions:
@@ -15,23 +15,75 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+        with:
+          ref: main
+          path: main-src
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: main-src/package-lock.json
 
-      - run: npm ci
-      - run: npm run build
+      - name: Build produzione
+        working-directory: main-src
+        run: |
+          npm ci
+          npm run build -- --base=/
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - run: cp dist/index.html dist/404.html
+      - uses: actions/checkout@v4
+        with:
+          ref: alpha
+          path: alpha-src
+
+      - name: Build alpha
+        working-directory: alpha-src
+        run: |
+          npm ci
+          npm run build -- --base=/alpha/
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Prepara artifact Pages
+        run: |
+          mkdir -p site/alpha
+          cp -R main-src/dist/. site/
+          cp -R alpha-src/dist/. site/alpha/
+          if [ -f main-src/CNAME ]; then cp main-src/CNAME site/CNAME; fi
+          cat > site/404.html <<'EOF'
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>CRM redirect</title>
+              <script>
+                (function () {
+                  var path = window.location.pathname;
+                  var search = window.location.search || '';
+                  var hash = window.location.hash || '';
+                  var isAlpha = path === '/alpha' || path.indexOf('/alpha/') === 0;
+                  var base = isAlpha ? '/alpha/' : '/';
+                  var redirect = isAlpha ? path.replace(/^\/alpha/, '') : path;
+                  if (!redirect || redirect === '/') {
+                    window.location.replace(base + search + hash);
+                    return;
+                  }
+                  var glue = search ? '&' : '?';
+                  window.location.replace(base + search + glue + 'redirect=' + encodeURIComponent(redirect) + hash);
+                })();
+              </script>
+            </head>
+            <body></body>
+          </html>
+          EOF
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./site
 
   deploy:
     needs: build
