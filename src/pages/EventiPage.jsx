@@ -4,10 +4,11 @@ import { useAuth } from '../contexts/AuthContext'
 import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../services/eventoService'
 import { createFattura } from '../services/fattureEmesseService'
 import { getAllCircuiti } from '../services/circuitiService'
-import { getPartecipazioniByEvento, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
+import { getPartecipazioniByEvento, getPartecipazioniByEventi, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
 import { upsertFieraFromEvento } from '../services/fieraDbService'
 import { getAllTipologieEvento } from '../services/tipologieEventoService'
+import { getTrattativaFieraNotesForEvento } from '../services/trattativaFieraService'
 import { Calendar, MapPin, Plus, Edit, Trash2, X, LayoutGrid, List } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
@@ -136,6 +137,57 @@ const EMPTY_EVENTO_FORM = {
   noteLog: [],
 }
 
+const noteIdentity = (note = {}) => [
+  note.id,
+  note.timestamp,
+  note.operatore,
+  note.topic,
+  note.contenuto,
+].filter(Boolean).join('|')
+
+const mergeNoteLogs = (...groups) => {
+  const seen = new Set()
+  return groups
+    .flatMap(group => Array.isArray(group) ? group : [])
+    .filter(note => {
+      const key = noteIdentity(note)
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
+}
+
+function CreatorPreview({ title, items = [], tone }) {
+  const visible = items.slice(0, 4)
+  const hidden = Math.max(items.length - visible.length, 0)
+  const colors = tone === 'green'
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+    : 'bg-amber-50 text-amber-700 border-amber-100'
+
+  return (
+    <div className="mt-3">
+      <p className="text-[11px] uppercase tracking-wide text-gray-400 font-bold mb-1">{title} ({items.length})</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-gray-400">Nessuno</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {visible.map(item => (
+            <span key={item.id} className={`text-xs px-2 py-1 rounded-full border ${colors}`}>
+              {item.creatorNome}
+            </span>
+          ))}
+          {hidden > 0 && (
+            <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+              +{hidden}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function EventiPage() {
   const { userProfile } = useAuth()
   const isAdmin = userProfile?.role === 'ADMIN'
@@ -147,6 +199,7 @@ export default function EventiPage() {
   const [creators, setCreators] = useState([])
   const [circuiti, setCircuiti] = useState([])
   const [tipologie, setTipologie] = useState([])
+  const [partecipazioniByEvento, setPartecipazioniByEvento] = useState({})
   const [view, setView] = useState('list') // list | add | edit | detail
   const [selectedEvento, setSelectedEvento] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
@@ -178,17 +231,20 @@ export default function EventiPage() {
       getAllTipologieEvento(),
     ])
     const loadedEventi = eventiRes.data || []
+    const partecipazioniRes = await getPartecipazioniByEventi(loadedEventi.map(evento => evento.id))
+    const groupedPartecipazioni = (partecipazioniRes.data || []).reduce((acc, partecipazione) => {
+      if (!acc[partecipazione.eventoId]) acc[partecipazione.eventoId] = []
+      acc[partecipazione.eventoId].push(partecipazione)
+      return acc
+    }, {})
+
     setEventi(loadedEventi)
     setCreators(creatorsRes.data || [])
     setCircuiti(circuitiRes.data || [])
     setTipologie(tipologieRes.data || [])
+    setPartecipazioniByEvento(groupedPartecipazioni)
     setLoading(false)
     return loadedEventi
-  }
-
-  const loadPartecipazioni = async (eventoId) => {
-    const { data } = await getPartecipazioniByEvento(eventoId)
-    setPartecipazioni(data || [])
   }
 
   const handleSaveEvento = async (e) => {
@@ -219,9 +275,30 @@ export default function EventiPage() {
   }
 
   async function handleViewDetail(evento) {
-    setSelectedEvento(evento)
-    await loadPartecipazioni(evento.id)
+    const [partecipazioniRes, trattativaNotesRes] = await Promise.all([
+      getPartecipazioniByEvento(evento.id),
+      getTrattativaFieraNotesForEvento(evento),
+    ])
+
+    const mergedNoteLog = mergeNoteLogs(evento.noteLog, trattativaNotesRes.data?.noteLog)
+    const mergedEvento = {
+      ...evento,
+      noteLog: mergedNoteLog,
+      note: evento.note || trattativaNotesRes.data?.note || '',
+    }
+
+    setSelectedEvento(mergedEvento)
+    setPartecipazioni(partecipazioniRes.data || [])
+    setPartecipazioniByEvento(prev => ({
+      ...prev,
+      [evento.id]: partecipazioniRes.data || [],
+    }))
     setView('detail')
+
+    if (mergedNoteLog.length > (evento.noteLog || []).length) {
+      await updateEvento(evento.id, mergedEvento)
+      setEventi(prev => prev.map(item => item.id === evento.id ? mergedEvento : item))
+    }
   }
 
   useEffect(() => {
@@ -238,14 +315,18 @@ export default function EventiPage() {
     if (!partForm.creatorId) return
     await addPartecipazione({ ...partForm, eventoId: selectedEvento.id })
     setPartForm({ ...EMPTY_PART_FORM })
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
 
   const handleDeletePartecipazione = async (id) => {
     const ok = await confirm('Questa azione è irreversibile.', { title: 'Rimuovere partecipazione?', confirmLabel: 'Elimina' })
     if (!ok) return
     await deletePartecipazione(id)
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
 
   const handleStartEditPart = (p) => setEditingPart({
@@ -258,13 +339,17 @@ export default function EventiPage() {
   const handleSaveEditPart = async () => {
     await updatePartecipazione(editingPart.id, editingPart)
     setEditingPart(null)
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
 
   const handleTogglePagamento = async (partecipazione, campo) => {
     const updated = { ...partecipazione, [campo]: !partecipazione[campo] }
     await updatePartecipazione(partecipazione.id, updated)
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
 
   const handlePagamentoAgency = (p) => setAgencyModal({ partecipazione: p })
@@ -293,13 +378,29 @@ export default function EventiPage() {
       })
     }
     setAgencyModal(null)
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
 
   const handleSwitchTipo = async (p) => {
     const newTipo = (p.tipo === 'proposto') ? 'partecipante' : 'proposto'
     await updatePartecipazione(p.id, { ...p, tipo: newTipo })
-    loadPartecipazioni(selectedEvento.id)
+    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    setPartecipazioni(data || [])
+    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
+  }
+
+  const handleEventoNotesChange = async (noteLog) => {
+    if (!selectedEvento) return
+    const updatedEvento = { ...selectedEvento, noteLog }
+    setSelectedEvento(updatedEvento)
+    setEventi(prev => prev.map(evento => evento.id === selectedEvento.id ? updatedEvento : evento))
+
+    const { error } = await updateEvento(selectedEvento.id, updatedEvento)
+    if (error) {
+      toast.error('Errore durante il salvataggio delle note evento')
+    }
   }
 
   const handleChiudiFiera = async () => {
@@ -476,9 +577,6 @@ export default function EventiPage() {
                 <a href={selectedEvento.link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline break-all">{selectedEvento.link}</a>
               </div>
             )}
-            <div className="md:col-span-2 mt-4">
-              <NotesLogField value={selectedEvento.noteLog || []} deprecatedNote={selectedEvento.note} />
-            </div>
           </div>
         </div>
 
@@ -587,10 +685,12 @@ export default function EventiPage() {
           </div>
         )}
 
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.85fr)] gap-6 mb-6">
+          <div className="space-y-4">
         {/* Creator Partecipanti */}
-        <div className="card mb-6">
+        <div className="card">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Creator Partecipanti ({partecipanti.length})</h2>
+            <h2 className="text-lg font-bold">Creator Partecipanti ({partecipanti.length})</h2>
             <div className="flex gap-1 border rounded-lg overflow-hidden">
               <button onClick={() => setViewMode('table')}
                 className={`p-1.5 transition-colors ${viewMode === 'table' ? 'bg-yellow-400 text-gray-900' : 'hover:bg-gray-100 text-gray-500'}`}
@@ -606,7 +706,7 @@ export default function EventiPage() {
           </div>
 
           {viewMode === 'table' ? (
-            <table className="w-full">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2">Creator</th>
@@ -736,9 +836,9 @@ export default function EventiPage() {
         </div>
 
         {/* Creator Proposti */}
-        <div className="card mb-6">
-          <h2 className="text-xl font-bold mb-4">Creator Proposti ({proposti.length})</h2>
-          <table className="w-full">
+        <div className="card">
+          <h2 className="text-lg font-bold mb-4">Creator Proposti ({proposti.length})</h2>
+          <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2">Creator</th>
@@ -776,6 +876,17 @@ export default function EventiPage() {
               )}
             </tbody>
           </table>
+        </div>
+          </div>
+
+          <div className="card h-fit xl:sticky xl:top-4">
+            <NotesLogField
+              title="Note evento"
+              value={selectedEvento.noteLog || []}
+              onChange={handleEventoNotesChange}
+              deprecatedNote={selectedEvento.note}
+            />
+          </div>
         </div>
 
         {/* Modal pagamento agency */}
@@ -925,7 +1036,12 @@ export default function EventiPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {eventi.map(evento => (
+        {eventi.map(evento => {
+          const eventPartecipazioni = partecipazioniByEvento[evento.id] || []
+          const eventPartecipanti = eventPartecipazioni.filter(p => (p.tipo || 'partecipante') === 'partecipante')
+          const eventProposti = eventPartecipazioni.filter(p => p.tipo === 'proposto')
+
+          return (
           <div
             key={evento.id}
             className={`card hover:shadow-lg transition-shadow cursor-pointer ${evento.stato === 'CHIUSA' ? 'opacity-60' : ''}`}
@@ -950,6 +1066,10 @@ export default function EventiPage() {
                 {evento.citta}
               </div>
             )}
+            <div className="border-t border-gray-100 pt-3 mt-3">
+              <CreatorPreview title="Partecipanti" items={eventPartecipanti} tone="green" />
+              <CreatorPreview title="Proposti" items={eventProposti} tone="amber" />
+            </div>
             <div className="flex gap-2 pt-3 border-t">
               <button
                 onClick={(e) => {
@@ -975,7 +1095,8 @@ export default function EventiPage() {
               </button>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

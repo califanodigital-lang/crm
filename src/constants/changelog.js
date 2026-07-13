@@ -1,6 +1,17 @@
-export const APP_VERSION = 'v0.20.0-alpha'
+export const APP_VERSION = 'v0.20.1-alpha'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.20.1-alpha',
+    date: '2026-07-13',
+    items: [
+      'Alpha fiere: nella lista Fiere & Eventi ogni card mostra ora i creator partecipanti e quelli proposti, con preview compatta e contatore.',
+      'Alpha fiere: nel dettaglio evento il Note Log e modificabile ed e affiancato alle sezioni creator, che sono state rese piu compatte.',
+      'Alpha fiere: all apertura di un evento vengono recuperate e fuse le note gia presenti nella Trattativa Fiera collegata o corrispondente.',
+      'Alpha fiere: creazione Trattative Fiere piu robusta per gli agenti, usando il profilo corrente come fallback quando la lista agenti non e leggibile o agente_nome e vuoto.',
+      'Supabase: aggiunta migration opzionale per policy RLS su fiere_db, trattative_fiere ed eventi, cosi gli utenti autenticati possono lavorare sul flusso fiere se RLS e attivo.',
+    ]
+  },
   {
     version: 'v0.20.0-alpha',
     date: '2026-07-13',

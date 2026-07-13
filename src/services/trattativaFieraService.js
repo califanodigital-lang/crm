@@ -169,6 +169,47 @@ export const getAllTrattativeFiere = async () => {
   }
 }
 
+export const getTrattativaFieraNotesForEvento = async (evento = {}) => {
+  try {
+    if (!evento?.id && !evento?.trattativaFieraId && !evento?.fieraDbId && !evento?.nome) {
+      return { data: { noteLog: [], note: '' }, error: null }
+    }
+
+    const fetchMatchingRows = (applyFilters) => fetchAllRows(() => {
+      let query = supabase
+        .from('trattative_fiere')
+        .select('id, note, note_log, updated_at')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+
+      return applyFilters(query)
+    })
+
+    const attempts = [
+      evento.trattativaFieraId && (query => query.eq('id', evento.trattativaFieraId)),
+      evento.id && (query => query.eq('evento_id', evento.id)),
+      evento.fieraDbId && (query => query.eq('fiera_db_id', evento.fieraDbId)),
+      evento.nome && (query => {
+        const byName = query.eq('nome', evento.nome)
+        return evento.citta ? byName.eq('citta', evento.citta) : byName
+      }),
+    ].filter(Boolean)
+
+    let data = []
+    for (const attempt of attempts) {
+      data = await fetchMatchingRows(attempt)
+      if (data.length > 0) break
+    }
+
+    const noteLog = data.flatMap(row => row.note_log || [])
+    const note = data.map(row => row.note).filter(Boolean).join('\n\n')
+
+    return { data: { noteLog, note }, error: null }
+  } catch (error) {
+    console.error('Error fetching trattativa fiera notes:', error)
+    return { data: null, error }
+  }
+}
+
 export const createTrattativaFiera = async (trattativaData) => {
   try {
     const payload = toSnakeCase(trattativaData)

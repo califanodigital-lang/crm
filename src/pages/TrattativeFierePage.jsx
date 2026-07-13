@@ -122,6 +122,19 @@ export default function TrattativeFierePage() {
     [fiereDb, formData.fieraDbId]
   )
 
+  const currentAgentName = userProfile?.agenteNome || userProfile?.nomeCompleto || userProfile?.email || ''
+  const agentOptions = useMemo(() => {
+    const options = [...(agenti || [])]
+    if (currentAgentName && !options.some(agente => agente.agenteNome === currentAgentName)) {
+      options.unshift({
+        id: userProfile?.id || 'current-user',
+        agenteNome: currentAgentName,
+        nomeCompleto: currentAgentName,
+      })
+    }
+    return options
+  }, [agenti, currentAgentName, userProfile])
+
   useEffect(() => {
     Promise.resolve().then(loadData)
   }, [])
@@ -131,7 +144,7 @@ export default function TrattativeFierePage() {
     setEditing(null)
     setFormData({
       ...EMPTY_FORM,
-      agente: userProfile?.agenteNome || '',
+      agente: currentAgentName,
       dataContatto: new Date().toISOString().slice(0, 10),
       dataFollowup1: addDays(new Date().toISOString().slice(0, 10), 4),
       dataFollowup2: addDays(addDays(new Date().toISOString().slice(0, 10), 4), 7),
@@ -190,6 +203,8 @@ export default function TrattativeFierePage() {
   }
 
   const handleSave = async () => {
+    const agenteValue = formData.agente || currentAgentName
+
     if (!formData.nome.trim()) {
       toast.error("Compila il nome della fiera.")
       return
@@ -198,7 +213,7 @@ export default function TrattativeFierePage() {
       toast.error("Seleziona una fiera dal database oppure attiva la creazione automatica.")
       return
     }
-    if (!formData.agente) {
+    if (!agenteValue) {
       toast.error("Seleziona l'agente che ha contattato la fiera.")
       return
     }
@@ -207,7 +222,7 @@ export default function TrattativeFierePage() {
       return
     }
 
-    let currentFormData = { ...formData }
+    let currentFormData = { ...formData, agente: agenteValue }
 
     if (!editing && formData.creaFieraAutomaticamente) {
       const fieraPayload = {
@@ -629,9 +644,9 @@ export default function TrattativeFierePage() {
               </div>
               <div>
                 <label className="label">Agente</label>
-                <select className="input" value={formData.agente || ''} onChange={(e) => setFormData(prev => ({ ...prev, agente: e.target.value }))}>
+                <select className="input" value={formData.agente || currentAgentName || ''} onChange={(e) => setFormData(prev => ({ ...prev, agente: e.target.value }))}>
                   <option value="">Seleziona agente...</option>
-                  {agenti.map(agente => (
+                  {agentOptions.map(agente => (
                     <option key={agente.id} value={agente.agenteNome}>{agente.nomeCompleto}</option>
                   ))}
                 </select>

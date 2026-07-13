@@ -94,6 +94,28 @@ export const getPartecipazioniByEvento = async (eventoId) => {
   }
 }
 
+export const getPartecipazioniByEventi = async (eventoIds = []) => {
+  try {
+    if (!eventoIds.length) return { data: [], error: null }
+
+    const data = await fetchAllRows(() => supabase
+      .from('partecipazioni_eventi')
+      .select(`*, creators (nome)`)
+      .in('evento_id', eventoIds))
+
+    return {
+      data: data.map(p => ({
+        ...toCamelCase(p),
+        creatorNome: p.creators?.nome || p.creator_nome || 'N/A',
+      })),
+      error: null,
+    }
+  } catch (error) {
+    console.error('Error:', error)
+    return { data: null, error }
+  }
+}
+
 // GET: Eventi per creator
 export const getEventiByCreator = async (creatorId) => {
   try {
