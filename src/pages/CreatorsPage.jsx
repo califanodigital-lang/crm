@@ -251,7 +251,9 @@ export default function CreatorsPage() {
                     <tr key={creator.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{creator.nome}</td>
                       <td className="py-3 px-4 text-gray-600">{getTipoContrattoName(creator.tipoContratto) || '-'}</td>
-                      <td className="py-3 px-4 text-gray-600">{creator.fee + "%" || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {creator.fee !== null && creator.fee !== undefined && creator.fee !== '' ? `${creator.fee}%` : '-'}
+                      </td>
                       <td className="py-3 px-4 text-gray-600 font-medium">
                         {creator.iscrittiMax ? (
                           <span className="flex items-center gap-1">

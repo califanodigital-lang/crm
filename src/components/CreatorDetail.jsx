@@ -6,7 +6,7 @@ import { getPartecipazioniByCreator } from '../services/eventoService'
 import { getPiattaformeByCreator } from '../services/piattaformeService'
 import { toast } from '../components/Toast'
 import { getTrattativeByCreator } from '../services/trattativaService'
-import { getStatoTrattativa, ATTIVITA_EVENTO } from '../constants/constants'
+import { getStatoTrattativa, ATTIVITA_EVENTO, getTipoContrattoLabel } from '../constants/constants'
 import { getImpegniByCreator, createImpegno, deleteImpegno } from '../services/creatorImpegniService'
 import NotesLogField from './NotesLogField'
 import { getAllBrands } from '../services/brandService'
@@ -355,7 +355,7 @@ const handleDeleteImpegno = async (id) => {
               Contratto
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <InfoRow label="Tipo Contratto" value={creator.tipoContratto} />
+              <InfoRow label="Tipo Contratto" value={getTipoContrattoLabel(creator.tipoContratto)} />
               <InfoRow label="Data Firma" value={creator.dataContratto} />
               <InfoRow label="Scadenza" value={creator.scadenzaContratto} />
               <InfoRow label="Fee" value={creator.fee ? `${creator.fee}%` : '-'} />

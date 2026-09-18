@@ -291,9 +291,11 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               const upd = { ...formData, feeManagement: e.target.value }
               setFormData({ ...upd, ...ricalcolaFee(upd) })
             }}
-            placeholder="Auto-calcolata come 25% del pagamento brand, modificabile se necessario"
+            placeholder="Calcolata sulla percentuale di contratto del creator, modificabile"
           />
-          <p className="text-xs text-gray-500 mt-1">Modificabile manualmente se necessario</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Se resta vuota la collaborazione viene salvata senza fee agenzia, e le provvigioni restano a zero.
+          </p>
         </div>
 
         {/* Tranches pagamento creator */}

@@ -1,6 +1,24 @@
-export const APP_VERSION = 'v0.19.1-beta'
+export const APP_VERSION = 'v0.20.0-beta'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.20.0-beta',
+    date: '2026-09-17',
+    items: [
+      'Nuova sezione "Da fare": raccoglie in una sola pagina follow-up in ritardo, trattative avanzate senza novità, pratiche da chiudere, pagamenti fermi, contratti talent in scadenza e fee fiere da fatturare. Le soglie sono raccolte in un unico file, così si cambiano in un punto solo.',
+      'Da fare filtra per assegnatario: gli agenti vedono le proprie voci, gli admin possono scegliere la persona o vedere tutto.',
+      'Chiusura guidata delle trattative senza risposta: si selezionano più voci, si indica il motivo e lo stato passa a "Nessuna risposta" con il motivo salvato nel Note Log insieme a operatore e data.',
+      'Nuovo riquadro avvisi in dashboard, per admin e agenti, con il numero di azioni in scadenza e il collegamento diretto a Da fare.',
+      'Controllo doppioni sui brand: al salvataggio la scheda avvisa se esiste già un nome simile a meno di maiuscole, spazi e punteggiatura, e la lista Brand ha il filtro "Possibili duplicati". Lo stesso confronto vale quando il brand viene creato da una trattativa.',
+      'Pipeline Proposte in dashboard rivista: "Da contattare" ora conta solo le ricerche non ancora contattate, si aggiunge "In attesa di risposta" e i vinti includono le trattative che hanno già generato la collaborazione.',
+      'Etichette dei numeri più chiare: "Valore deal pagati" al posto di "Revenue" dove si tratta dell\'importo del deal e non della fee C3, e "Trattative aperte" al posto di "Brand contattati".',
+      'Fix link diretti: aprendo o ricaricando un indirizzo interno si resta sulla pagina richiesta invece di tornare alla dashboard, anche quando serve prima il login.',
+      'Fix data di riferimento nelle trattative in stato "In Trattativa": ora usa la data della call e non più la data di creazione.',
+      'Fix visualizzazione: la fee creator non mostra più "null%" quando il campo è vuoto, e tipo di contratto e tipo ADV sono scritti per esteso invece dei codici interni.',
+      'Nuova sezione "Coda outreach" nella scheda trattativa: bundle, chi altro serve, come si entra, chi cercare, cosa chiedere e vincoli. Sono i campi che finiscono nel briefing del mattino, e stanno nel CRM invece che in un foglio a parte.',
+      'Esportazione automatica della coda di contatto: ogni mattina nei giorni feriali il CRM scrive i brand ancora da lavorare in un file su Drive, in sola lettura e senza toccare i dati.',
+    ]
+  },
   {
     version: 'v0.19.1-beta',
     date: '2026-07-13',

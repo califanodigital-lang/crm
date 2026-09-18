@@ -1,0 +1,9 @@
+{
+  "name": "c3-crm-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Script di servizio eseguiti da GitHub Actions, fuori dall'app.",
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}

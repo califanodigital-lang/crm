@@ -17,6 +17,7 @@ import SearchableSelect from './SearchableSelect'
 import { toast } from '../components/Toast'
 import { formatDate } from '../utils/date'
 import NotesLogField from './NotesLogField'
+import { confirm } from './ConfirmModal'
 
 
 // Ordine del flusso — usato per mostrare sezioni progressive
@@ -127,6 +128,12 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
     feeCreatorMap: {},
     linkVideoSorgente: '',
     creatorSorgente: '',
+    bundle: false,
+    chiAltroServe: '',
+    comeSiEntra: '',
+    chiCercare: '',
+    cosaChiedere: '',
+    vincoli: '',
   })
 
   const [agenti, setAgenti] = useState([])
@@ -211,6 +218,12 @@ useEffect(() => {
       feeCreatorMap: trattativa.feeCreatorMap ?? {},
       linkVideoSorgente: trattativa.linkVideoSorgente ?? '',
       creatorSorgente: trattativa.creatorSorgente ?? '',
+      bundle: trattativa.bundle ?? false,
+      chiAltroServe: trattativa.chiAltroServe ?? '',
+      comeSiEntra: trattativa.comeSiEntra ?? '',
+      chiCercare: trattativa.chiCercare ?? '',
+      cosaChiedere: trattativa.cosaChiedere ?? '',
+      vincoli: trattativa.vincoli ?? '',
     }))
   })
 
@@ -496,6 +509,52 @@ useEffect(() => {
           />
         </div>
       </div>
+
+      {/* ── CODA OUTREACH ── sempre visibile ── */}
+      <FormSection title="Coda outreach"
+        subtitle="Come si entra, chi cercare, cosa chiedere: sono i campi che finiscono nel briefing del mattino"
+        show={true} defaultOpen={false}>
+        <div className="md:col-span-2">
+          <label className="label flex items-center gap-2 px-1.5 py-2.5">
+            <input
+              type="checkbox"
+              checked={!!formData.bundle}
+              onChange={(e) => S('bundle', e.target.checked)}
+            />
+            Bundle — il brand può servire più creator insieme
+          </label>
+        </div>
+        <div>
+          <label className="label">Chi altro serve</label>
+          <textarea className="input min-h-[80px]" value={formData.chiAltroServe || ''}
+            onChange={(e) => S('chiAltroServe', e.target.value)}
+            placeholder="Altri creator nostri che questo brand potrebbe prendere" />
+        </div>
+        <div>
+          <label className="label">Come si entra</label>
+          <textarea className="input min-h-[80px]" value={formData.comeSiEntra || ''}
+            onChange={(e) => S('comeSiEntra', e.target.value)}
+            placeholder="Canale e appiglio: chi lo presenta, quale contenuto citare, quale evento" />
+        </div>
+        <div>
+          <label className="label">Chi cercare</label>
+          <textarea className="input min-h-[80px]" value={formData.chiCercare || ''}
+            onChange={(e) => S('chiCercare', e.target.value)}
+            placeholder="Ruolo o persona da raggiungere (marketing manager, ufficio stampa, titolare…)" />
+        </div>
+        <div>
+          <label className="label">Cosa chiedere</label>
+          <textarea className="input min-h-[80px]" value={formData.cosaChiedere || ''}
+            onChange={(e) => S('cosaChiedere', e.target.value)}
+            placeholder="L'obiettivo della chiamata: una call, il listino, un campione prodotto…" />
+        </div>
+        <div className="md:col-span-2">
+          <label className="label">Vincoli</label>
+          <textarea className="input min-h-[80px]" value={formData.vincoli || ''}
+            onChange={(e) => S('vincoli', e.target.value)}
+            placeholder="Da sapere prima di scrivere: esclusive, competitor già attivi, periodi da evitare" />
+        </div>
+      </FormSection>
 
       {/* ── RESPONSABILI ── sempre visibile ── */}
       <FormSection title="Responsabili"

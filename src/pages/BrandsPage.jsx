@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { idBrandDuplicati } from '../utils/brandNames'
 import BrandForm from '../components/BrandForm'
 import BrandDetail from '../components/BrandDetail'
 import { getAllBrands, createBrand, updateBrand, deleteBrand } from '../services/brandService'
@@ -100,6 +101,9 @@ export default function BrandsPage() {
     setSelectedBrand(null)
   }
 
+  // Brand che condividono il nome normalizzato con un altro record
+  const duplicati = useMemo(() => idBrandDuplicati(brands), [brands])
+
   const filteredBrands = brands.filter(b => {
     const matchesSearch = b.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (b.settore && b.settore.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -107,9 +111,14 @@ export default function BrandsPage() {
       filterEsito === 'ALL' ||
       (filterEsito === 'POSITIVO' && b.ultimoEsito === 'POSITIVO') ||
       (filterEsito === 'NEGATIVO' && b.ultimoEsito === 'NEGATIVO') ||
-      (filterEsito === 'MAI' && !b.ultimoEsito)
+      (filterEsito === 'MAI' && !b.ultimoEsito) ||
+      (filterEsito === 'DUPLICATI' && duplicati.has(b.id))
     return matchesSearch && matchesEsito
   })
+
+  const sortedBrands = filterEsito === 'DUPLICATI'
+    ? [...filteredBrands].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'it', { sensitivity: 'base' }))
+    : filteredBrands
 
   const getStatoBrand = (brand) => {
     if (!brand) return { label: 'N/D', style: 'bg-gray-100 text-gray-800' }
@@ -171,12 +180,22 @@ export default function BrandsPage() {
               <option value="POSITIVO">✓ Collaborazione chiusa</option>
               <option value="NEGATIVO">✗ Collaborazione persa</option>
               <option value="MAI">Nessuna collaborazione</option>
+              <option value="DUPLICATI">Possibili duplicati ({duplicati.size})</option>
             </select>
           </div>
         </div>
 
+        {filterEsito === 'DUPLICATI' && (
+          <div className="card mb-6 bg-orange-50 border-orange-100">
+            <p className="text-sm text-orange-800">
+              Brand con lo stesso nome a meno di maiuscole, spazi e punteggiatura. Conviene tenerne uno
+              e spostare le trattative sul record che resta, prima di eliminare l'altro.
+            </p>
+          </div>
+        )}
+
         <div className="card">
-          {filteredBrands.length === 0 ? (
+          {sortedBrands.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-4">
                 {searchTerm ? 'Nessun brand trovato' : 'Nessun brand presente'}
@@ -200,7 +219,7 @@ export default function BrandsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBrands.map((brand) => (
+                  {sortedBrands.map((brand) => (
                     <tr key={brand.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{brand.nome}</td>
                       <td className="py-3 px-4 text-gray-600">{brand.settore || '-'}</td>
@@ -269,6 +288,7 @@ export default function BrandsPage() {
             brand={selectedBrand}
             onSave={handleSave}
             onCancel={handleCancel}
+            existingBrands={brands}
           />
         </div>
       </div>

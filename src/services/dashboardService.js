@@ -108,12 +108,18 @@ export const getProposteStats = async () => {
       .from('proposte_brand')
       .select('stato'))
 
+    // Definizioni usate anche nella pagina Trattative, così i numeri coincidono:
+    // "da contattare" = ricerca conclusa ma primo contatto non ancora fatto
+    // "in attesa" = contattati e in attesa di risposta
+    // "vinti" = contratto firmato, anche quando la collaborazione è già stata generata
+    const conta = (stati) => data.filter(p => stati.includes(p.stato)).length
     const stats = {
       totale: data.length,
-      daContattare: data.filter(p => ['RICERCA_COMPLETATA','ONBOARDING','PRIMO_CONTATTO'].includes(p.stato)).length,
-      inTrattativa: data.filter(p => p.stato === 'IN_TRATTATIVA').length,
-      chiusoVinto: data.filter(p => p.stato === 'CONTRATTO_FIRMATO').length,
-      chiusoPerso: data.filter(p => p.stato === 'CHIUSO_PERSO').length,
+      daContattare: conta(['RICERCA_COMPLETATA', 'ONBOARDING']),
+      inAttesa: conta(['PRIMO_CONTATTO', 'FOLLOW_UP_1', 'FOLLOW_UP_2', 'RICONTATTO_FUTURO']),
+      inTrattativa: conta(['IN_TRATTATIVA', 'PREVENTIVO_INVIATO', 'CONTRATTO_INVIATO']),
+      chiusoVinto: conta(['CONTRATTO_FIRMATO', 'COLLAB_GENERATA']),
+      chiusoPerso: conta(['CHIUSO_PERSO', 'NESSUNA_RISPOSTA']),
     }
 
     return { data: stats, error: null }

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import CreatorMultiSelect from './CreatorMultiSelect'
 import { confirm } from './ConfirmModal'
 import NotesLogField from './NotesLogField'
+import { trovaBrandSimili } from '../utils/brandNames'
 
-export default function BrandForm({ brand = null, onSave, onCancel }) {
+export default function BrandForm({ brand = null, onSave, onCancel, existingBrands = [] }) {
   const [formData, setFormData] = useState({
     nome: '',
     settore: '',
@@ -41,8 +43,27 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
     setFormData({ ...formData, categorie: formData.categorie.filter((_, i) => i !== index) })
   }
 
+  // Brand già presenti con un nome molto simile: si avvisa prima di creare un doppione
+  const brandSimili = useMemo(
+    () => trovaBrandSimili(formData.nome, existingBrands, brand?.id),
+    [formData.nome, existingBrands, brand?.id]
+  )
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (brandSimili.length > 0) {
+      const nomi = brandSimili.slice(0, 3).map(b => `"${b.nome}"`).join(', ')
+      const altri = brandSimili.length > 3 ? ` e altri ${brandSimili.length - 3}` : ''
+      const okDuplicato = await confirm(
+        `In database c'è già ${nomi}${altri}. Salvare comunque un nuovo brand?`,
+        { title: 'Possibile doppione', confirmLabel: 'Salva comunque', dangerous: false }
+      )
+      if (!okDuplicato) return
+      onSave(formData)
+      return
+    }
+
     const ok = await confirm('Salvare le modifiche al brand?', {
       title: 'Conferma salvataggio', confirmLabel: 'Salva'
     })
@@ -64,6 +85,15 @@ export default function BrandForm({ brand = null, onSave, onCancel }) {
         <label className="label">Nome Brand *</label>
         <input className="input" value={formData.nome}
           onChange={(e) => setFormData({...formData, nome: e.target.value})} required />
+        {brandSimili.length > 0 && (
+          <p className="mt-1.5 text-xs text-orange-600 flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span>
+              Già in database: {brandSimili.slice(0, 3).map(b => b.nome).join(', ')}
+              {brandSimili.length > 3 ? ` e altri ${brandSimili.length - 3}` : ''}
+            </span>
+          </p>
+        )}
       </div>
       <div>
         <label className="label">Settore</label>

@@ -24,7 +24,7 @@ import { toast } from '../components/Toast'
 import NotesLogField from '../components/NotesLogField'
 import { formatDate } from '../utils/date'
 import { doesRangeOverlap, hasAnyDateInRange, isDateRangeDisabled } from '../utils/dateRange'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const EMPTY_FORM = {
   fieraDbId: '',
@@ -79,6 +79,7 @@ function StatoBadge({ value }) {
 
 export default function TrattativeFierePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { userProfile } = useAuth()
   const [trattative, setTrattative] = useState([])
   const [fiereDb, setFiereDb] = useState([])
@@ -107,16 +108,13 @@ export default function TrattativeFierePage() {
     setCircuiti(circuitiRes.data || [])
     setAgenti(agentiRes.data || [])
     setLoading(false)
+    return trattativeRes.data || []
   }
 
   const circuitiMap = useMemo(
     () => Object.fromEntries((circuiti || []).map(circuito => [circuito.id, circuito.nome])),
     [circuiti]
   )
-
-  useEffect(() => {
-    Promise.resolve().then(loadData)
-  }, [])
 
   const openCreate = () => {
     setFormOpen(true)
@@ -139,6 +137,20 @@ export default function TrattativeFierePage() {
       noteLog: trattativa.noteLog || [],
     })
   }
+
+  useEffect(() => {
+    // Apertura diretta di una trattativa fiera (per esempio dalla pagina Da fare)
+    const openId = location.state?.openTrattativaFieraId
+    Promise.resolve().then(loadData).then(caricate => {
+      if (!openId || !caricate) return
+      const trattativa = caricate.find(t => t.id === openId)
+      if (!trattativa) return
+      openEdit(trattativa)
+      navigate(location.pathname, { replace: true })
+    })
+    // Deve girare una sola volta all'apertura della pagina
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const hydrateFromFiera = (fieraId) => {
     const selected = fiereDb.find(fiera => fiera.id === fieraId)

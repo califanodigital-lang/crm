@@ -134,9 +134,17 @@ export default function FinancePage() {
   }
 
   // ── P&L ───────────────────────────────────────────────────
+  // Fee fiere: l'unica data disponibile sulla partecipazione e' quella
+  // dell'evento, quindi la fee appartiene al mese in cui si e' svolta la fiera.
+  const fieraDelMese = fieraPartecipazioni.filter(p => (p.eventoDataInizio || '').startsWith(selectedMonth))
+  const totFeeFiere  = fieraDelMese.reduce((s, p) => s + parseFloat(p.fee || 0), 0)
+  const totFeeFiereIncassate = fieraDelMese
+    .filter(p => p.pagato_agency)
+    .reduce((s, p) => s + parseFloat(p.fee || 0), 0)
+
   const totFeeCollab   = collabCompletate.reduce((s, c) => s + parseFloat(c.feeManagement || 0), 0)
   const totVersamenti  = versamenti.reduce((s, v) => s + parseFloat(v.importoVersato || 0), 0)
-  const totEntrate     = totFeeCollab + totVersamenti + contrattiAttiviTotale
+  const totEntrate     = totFeeCollab + totVersamenti + contrattiAttiviTotale + totFeeFiereIncassate
   const totFatturato   = fattureEmesse.reduce((s, f) => s + parseFloat(f.importo || 0), 0)
   const totUsciteAgenti = pagamenti.reduce((s, p) => s + parseFloat(p.importoPagato || 0), 0)
   const totUsciteVarie  = usciteVarie.reduce((s, u) => s + parseFloat(u.importo || 0), 0)
@@ -225,7 +233,7 @@ export default function FinancePage() {
   )
 
   const handleSaveFattura = async () => {
-    if (fatturaForm.tipo !== 'MANUALE' && !fatturaForm.collabId && !fatturaForm.contrattoId && !fatturaForm.versamentoId) {
+    if (fatturaForm.tipo !== 'MANUALE' && !fatturaForm.collabId && !fatturaForm.contrattoId && !fatturaForm.versamentoId && !fatturaForm.partecipazioneId) {
       toast.error('Seleziona una voce da fatturare')
       return
     }
@@ -239,31 +247,43 @@ export default function FinancePage() {
     const { error } = await createFattura({ ...fatturaForm, mese: meseDaData })
     if (error) { toast.error('Errore salvataggio fattura'); return }
 
+    // La fattura e' registrata: se il collegamento alla voce fallisce va detto,
+    // altrimenti la riga resta segnata come da fatturare e si rischia il doppione.
+    let erroreCollegamento = null
+
     if (fatturaForm.tipo === 'COLLAB' && fatturaForm.collabId) {
       const collab = collabCompletate.find(c => c.id === fatturaForm.collabId)
       if (collab) {
-        await updateCollaboration(fatturaForm.collabId, {
+        const esito = await updateCollaboration(fatturaForm.collabId, {
           ...collab,
           fatturaEmessa: true,
           numeroFattura: fatturaForm.numeroFattura || null,
           dataFattura: fatturaForm.dataFattura || null,
         })
+        erroreCollegamento = esito?.error || null
       }
     }
 
     if (fatturaForm.tipo === 'FIERA' && fatturaForm.partecipazioneId) {
       const part = fieraPartecipazioni.find(p => p.id === fatturaForm.partecipazioneId)
       if (part) {
-        await updatePartecipazione(part.id, {
+        const esito = await updatePartecipazione(part.id, {
           ...part,
           fatturaEmessa: true,
           numeroFattura: fatturaForm.numeroFattura || null,
           dataFattura: fatturaForm.dataFattura || null,
         })
+        erroreCollegamento = esito?.error || null
       }
     }
 
-    toast.success('Fattura registrata')
+    if (erroreCollegamento) {
+      toast.error('Fattura salvata, ma la voce non risulta fatturata: controllare prima di emetterne un altra')
+    } else if (meseDaData !== `${selectedMonth}-01`) {
+      toast.success(`Fattura registrata nel mese ${meseDaData.slice(0, 7)}, secondo la data indicata`)
+    } else {
+      toast.success('Fattura registrata')
+    }
     setShowFatturaForm(false)
     setFatturaForm(emptyFattura)
     loadData()
@@ -272,7 +292,8 @@ export default function FinancePage() {
   const handleDeleteFattura = async (id) => {
     const ok = await confirm('Eliminare questa fattura?', { title: 'Elimina fattura', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteFattura(id)
+    const { error } = await deleteFattura(id)
+    if (error) { toast.error('Errore durante l eliminazione'); return }
     toast.success('Fattura eliminata')
     loadData()
   }
@@ -280,7 +301,8 @@ export default function FinancePage() {
   // ── Versamenti handlers ───────────────────────────────────
   const handleSaveVersamento = async () => {
     if (!versamentoForm.creatorId) return
-    await upsertVersamento({ ...versamentoForm, mese: `${selectedMonth}-01` })
+    const { error } = await upsertVersamento({ ...versamentoForm, mese: `${selectedMonth}-01` })
+    if (error) { toast.error('Errore salvataggio versamento'); return }
     setVersamentoForm(emptyVersamento)
     toast.success('Versamento registrato')
     loadData()
@@ -294,7 +316,8 @@ export default function FinancePage() {
   const handleDeleteVersamento = async (id) => {
     const ok = await confirm('Eliminare il versamento?', { title: 'Elimina versamento', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteVersamento(id)
+    const { error } = await deleteVersamento(id)
+    if (error) { toast.error('Errore durante l eliminazione'); return }
     toast.success('Versamento eliminato')
     loadData()
   }
@@ -313,15 +336,23 @@ export default function FinancePage() {
   }
 
   const handlePagamento = async (agenteNome, importoPagato, importoFisso, importoTotale) => {
-    await upsertPagamentoAgente({ agenteNome, mese: selectedMonth, importoFisso, importoTotale, importoPagato: parseFloat(importoPagato) })
+    const { error } = await upsertPagamentoAgente({ agenteNome, mese: selectedMonth, importoFisso, importoTotale, importoPagato: parseFloat(importoPagato) })
+    if (error) { toast.error('Errore salvataggio pagamento'); return }
     await reloadAgenti()
     toast.success('Pagamento registrato')
   }
 
   const handleGeneraMese = async () => {
-    await generaPagamentiMese(selectedMonth, allUsers)
+    // Solo chi lavora davvero: utenti attivi e con un nome agente.
+    const agentiDaPagare = (allUsers || []).filter(u => u.attivo !== false && u.agenteNome)
+    if (agentiDaPagare.length === 0) {
+      toast.error('Nessun agente attivo da inserire nel riepilogo')
+      return
+    }
+    const { error } = await generaPagamentiMese(selectedMonth, agentiDaPagare)
+    if (error) { toast.error('Errore durante la generazione'); return }
     await reloadAgenti()
-    toast.success('Riepilogo generato')
+    toast.success(`Riepilogo generato per ${agentiDaPagare.length} agenti`)
   }
 
   const handleResetMese = async () => {
@@ -427,7 +458,7 @@ export default function FinancePage() {
             <DollarSign className="w-4 h-4 text-blue-400" />
           </div>
           <p className="text-2xl font-bold text-blue-800">€{totEntrate.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
-          <p className="text-xs text-blue-500 mt-1">Fee + Versamenti + Fissi</p>
+          <p className="text-xs text-blue-500 mt-1">Fee collab + Versamenti + Fissi + Fee fiere incassate</p>
         </div>
         <div className="card border border-red-100 bg-red-50">
           <div className="flex items-center justify-between mb-1">
@@ -619,20 +650,19 @@ export default function FinancePage() {
           {/* Fee Fiere */}
           {(() => {
             const fieraByEvento = {}
-            fieraPartecipazioni.forEach(p => {
+            fieraDelMese.forEach(p => {
               if (!fieraByEvento[p.eventoId]) {
                 fieraByEvento[p.eventoId] = { eventoNome: p.eventoNome, eventoDataInizio: p.eventoDataInizio, eventoCitta: p.eventoCitta, creators: [] }
               }
               fieraByEvento[p.eventoId].creators.push(p)
             })
             const fieraGroups = Object.values(fieraByEvento)
-            const totFeeFiere = fieraPartecipazioni.reduce((s, p) => s + parseFloat(p.fee || 0), 0)
-            const pendingCount = fieraPartecipazioni.filter(p => !p.fatturaEmessa).length
+            const pendingCount = fieraDelMese.filter(p => !p.fatturaEmessa).length
             return (
               <div className="card">
                 <SectionHeader
                   label="Fee Fiere"
-                  count={fieraPartecipazioni.length}
+                  count={fieraDelMese.length}
                   total={totFeeFiere}
                   sectionKey="fiere"
                   badge={pendingCount > 0 && (
@@ -641,9 +671,16 @@ export default function FinancePage() {
                 />
                 {open.fiere && (
                   fieraGroups.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-6">Nessuna fee fiera con pagamento agency registrato.</p>
+                    <p className="text-sm text-gray-400 text-center py-6">Nessuna fiera in questo mese.</p>
                   ) : (
                     <div className="space-y-4">
+                      <p className="text-xs text-gray-500">
+                        Nelle Entrate del mese entrano solo le fee con pagamento agency registrato:{' '}
+                        <span className="font-semibold text-gray-700">
+                          €{totFeeFiereIncassate.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        </span>{' '}
+                        su €{totFeeFiere.toLocaleString('it-IT', { minimumFractionDigits: 2 })}.
+                      </p>
                       {fieraGroups.map((gruppo, gi) => (
                         <div key={gi} className="border border-gray-100 rounded-xl overflow-hidden">
                           <div className="bg-gray-50 px-4 py-2 flex items-center gap-3">

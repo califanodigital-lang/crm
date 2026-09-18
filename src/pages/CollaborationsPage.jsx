@@ -17,7 +17,7 @@ import { getAllBrands } from '../services/brandService'
 import { createFattura } from '../services/fattureEmesseService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
-import { getStatoCollaborazione } from '../constants/constants'
+import { getStatoCollaborazione, getTipoAdvLabel } from '../constants/constants'
 import { useAuth } from '../contexts/AuthContext'
 
 
@@ -445,7 +445,7 @@ export default function CollaborationsPage() {
                     <tr key={collab.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4 font-medium">{collab.creatorNome}</td>
                       <td className="py-3 px-4 text-gray-600">{collab.brandNome}</td>
-                      <td className="py-3 px-4 text-gray-600">{collab.adv || '-'}</td>
+                      <td className="py-3 px-4 text-gray-600">{getTipoAdvLabel(collab.adv)}</td>
                       <td className="py-3 px-4 font-semibold text-gray-900">
                         €{collab.pagamento ? parseFloat(collab.pagamento).toLocaleString() : '0'}
                       </td>

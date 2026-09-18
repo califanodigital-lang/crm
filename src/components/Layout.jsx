@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Briefcase, Users, Handshake,
   DollarSign, Target, LogOut, Menu, X,
-  BarChart3, Calendar, ChevronRight, CalendarRange
+  BarChart3, Calendar, ChevronRight, CalendarRange, ListChecks
 } from 'lucide-react'
 import { ToastContainer } from './Toast'
 import { ConfirmContainer } from './ConfirmModal'
@@ -16,6 +16,7 @@ const NAV_GROUPS = [
     label: 'Stats & Agenda',
     items: [
       { name: 'Dashboard',       href: '/dashboard',     icon: LayoutDashboard },
+      { name: 'Da fare',         href: '/da-fare',       icon: ListChecks },
       { name: 'Agenda', href: '/agenda', icon: Calendar },
     ]
   },

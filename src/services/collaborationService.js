@@ -28,15 +28,6 @@ const cleanValue = (value) => {
   return value
 }
 
-const toNumber = (value) => parseFloat(value || 0) || 0
-
-const deriveFeeManagement = (collab) => {
-  const explicitFee = cleanValue(collab.feeManagement)
-  if (explicitFee !== null) return explicitFee
-
-  const pagamento = toNumber(collab.pagamento)
-  return pagamento > 0 ? +(pagamento * 0.25).toFixed(2) : null
-}
 
 const recalculateBrandSummary = async (brandId, fallbackBrandNome = null) => {
   if (!brandId && !fallbackBrandNome) return
@@ -160,7 +151,10 @@ const toSnakeCase = (collab) => {
     creator_id: collab.creatorId,
     brand_nome: collab.brandNome,
     pagamento: cleanValue(collab.pagamento),
-    fee_management: deriveFeeManagement(collab),
+    // La fee arriva dal form, dove e' calcolata sulla percentuale di contratto
+    // del creator. Qui non si reinventa un 25% fisso: scriverlo ignorava i
+    // contratti diversi e lasciava le provvigioni a zero, incoerenti con la fee.
+    fee_management: cleanValue(collab.feeManagement),
     data_firma: cleanValue(collab.dataFirma),
     data_pubblicazione: cleanValue(collab.dataPubblicazione),
     link_contratto: cleanValue(collab.linkContratto),
@@ -178,7 +172,9 @@ const toSnakeCase = (collab) => {
     fee_agente_calc: collab.feeAgenteCalc || 0,
     fee_senior_calc: collab.feeSeniorCalc || 0,
     data_pagamento_creator: cleanValue(collab.dataPagamentoCreator),
-    data_pagamento_agency: collab.pagato_agency ? cleanValue(collab.dataPagamentoAgency) : null,
+    // Si salva sempre: nel form la data e' un campo indipendente dalla casella,
+    // e cancellarla faceva sparire la collaborazione dal P&L e dalle provvigioni.
+    data_pagamento_agency: cleanValue(collab.dataPagamentoAgency),
     assegnatario: collab.assegnatario || [],
     creato_da: cleanValue(collab.creatoDa),
     tranche: collab.tranche?.length > 0 ? collab.tranche : null,

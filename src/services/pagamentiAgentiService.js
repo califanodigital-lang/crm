@@ -59,15 +59,19 @@ export const upsertPagamentoAgente = async (payload) => {
   } catch (e) { return { data: null, error: e } }
 }
 
-// Genera automaticamente le righe del mese per tutti gli agenti
+// Genera automaticamente le righe del mese per gli agenti attivi.
+// Senza nome agente la riga non si potrebbe deduplicare (in Postgres due NULL
+// sono valori distinti, quindi onConflict non la riconoscerebbe come doppione).
 export const generaPagamentiMese = async (mese, agenti) => {
-  const rows = agenti.map(a => ({
-    agente_nome: a.agenteNome,
-    mese,
-    importo_fisso: a.fissoMensile || 0,
-    importo_pagato: 0,
-    pagato: false,
-  }))
+  const rows = (agenti || [])
+    .filter(a => a.attivo !== false && a.agenteNome)
+    .map(a => ({
+      agente_nome: a.agenteNome,
+      mese,
+      importo_fisso: a.fissoMensile || 0,
+      importo_pagato: 0,
+      pagato: false,
+    }))
   if (rows.length === 0) return { data: [], error: null }
   try {
     const { data, error } = await supabase

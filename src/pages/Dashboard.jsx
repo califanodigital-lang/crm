@@ -6,6 +6,7 @@ import { getGlobalStats, getTopCreators, getRevenueChart, getProposteStats } fro
 import { APP_VERSION, CHANGELOG } from '../constants/changelog'
 import { getPagamentiByAgente } from '../services/pagamentiAgentiService'
 import {formatDate} from '../utils/date'
+import AvvisiCard from '../components/AvvisiCard'
 
 function ChangelogCard() {
   const latest = CHANGELOG[0]
@@ -107,6 +108,8 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-1">Benvenuto, {userProfile.nomeCompleto}</p>
         </div>
+
+        <AvvisiCard />
 
         <div className="mb-6 flex justify-end">
           <div>
@@ -244,6 +247,8 @@ export default function Dashboard() {
           <p className="text-gray-600 mt-1">Panoramica generale</p>
         </div>
 
+        <AvvisiCard />
+
       <div className="flex justify-end mb-6">
         <div>
           <label className="label">Mese di riferimento</label>
@@ -311,8 +316,9 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div className="card bg-blue-50 border-blue-100">
-              <p className="text-sm font-medium text-blue-700 mb-2">Brand Contattati (totale)</p>
+              <p className="text-sm font-medium text-blue-700 mb-2">Trattative aperte</p>
               <p className="text-3xl font-bold text-blue-900">{globalStats?.totalBrandContattati || 0}</p>
+              <p className="text-xs text-blue-500 mt-1">Escluse chiuse e senza risposta</p>
             </div>
             <div className="card bg-purple-50 border-purple-100">
               <p className="text-sm font-medium text-purple-700 mb-2">Collaborazioni Attive</p>
@@ -320,8 +326,9 @@ export default function Dashboard() {
               <p className="text-xs text-purple-500 mt-1">Firmato → Attesa Pagamento</p>
             </div>
             <div className="card bg-green-50 border-green-100">
-              <p className="text-sm font-medium text-green-700 mb-2">Revenue — {selectedMonth}</p>
+              <p className="text-sm font-medium text-green-700 mb-2">Valore deal pagati · {selectedMonth}</p>
               <p className="text-3xl font-bold text-green-900">€{(globalStats?.monthlyRevenue || 0).toLocaleString()}</p>
+              <p className="text-xs text-green-600 mt-1">Importo dei deal, non la fee C3: i ricavi sono in Finance</p>
             </div>
           </div>
 
@@ -329,7 +336,7 @@ export default function Dashboard() {
         {proposteStats && (
           <div className="card mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Pipeline Proposte</h2>
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-900">{proposteStats.totale}</p>
                 <p className="text-sm text-gray-600">Totale</p>
@@ -337,6 +344,10 @@ export default function Dashboard() {
               <div className="text-center">
                 <p className="text-2xl font-bold text-gray-600">{proposteStats.daContattare}</p>
                 <p className="text-sm text-gray-600">Da Contattare</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{proposteStats.inAttesa}</p>
+                <p className="text-sm text-gray-600">In Attesa di Risposta</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-yellow-600">{proposteStats.inTrattativa}</p>
@@ -357,7 +368,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Top 5 Creator */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Top 5 Creator per Revenue</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Top 5 creator per valore deal</h2>
             {topCreators.length === 0 ? (
               <p className="text-gray-500">Nessun dato disponibile</p>
             ) : (
@@ -379,7 +390,7 @@ export default function Dashboard() {
 
           {/* Revenue Ultimi 6 Mesi */}
           <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Revenue Ultimi 6 Mesi</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Valore deal pagati, ultimi 6 mesi</h2>
             {revenueChart.length === 0 ? (
               <p className="text-gray-500">Nessun dato disponibile</p>
             ) : (

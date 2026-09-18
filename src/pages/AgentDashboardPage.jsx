@@ -7,6 +7,7 @@ import { getStatoCollaborazione } from '../constants/constants'
 import { getPagamentiByMese, generaPagamentiMese, upsertPagamentoAgente } from '../services/pagamentiAgentiService'
 import { getAllUsers } from '../services/userService'
 import { toast } from '../components/Toast'
+import { confirm } from '../components/ConfirmModal'
 import { PagamentoRow } from '../components/PagamentoRow'
 import { supabase } from '../lib/supabase'
 import {formatDate} from '../utils/date'
@@ -159,13 +160,14 @@ export default function AgentDashboardPage() {
   }
 
   const handlePagamento = async (agenteNome, importoPagato, importoFisso, importoTotale) => {
-    await upsertPagamentoAgente({
+    const { error } = await upsertPagamentoAgente({
       agenteNome,
       mese: selectedMonth,
       importoFisso,
       importoTotale,
       importoPagato: parseFloat(importoPagato),
     })
+    if (error) { toast.error('Errore salvataggio pagamento'); return }
     // Ricarica e riarricchisci con le fee
     const [pagRes, statsRes] = await Promise.all([
       getPagamentiByMese(selectedMonth),
@@ -183,7 +185,13 @@ export default function AgentDashboardPage() {
   }
 
   const handleGeneraMese = async () => {
-    await generaPagamentiMese(selectedMonth, allUsers)
+    const agentiDaPagare = (allUsers || []).filter(u => u.attivo !== false && u.agenteNome)
+    if (agentiDaPagare.length === 0) {
+      toast.error('Nessun agente attivo da inserire nel riepilogo')
+      return
+    }
+    const { error } = await generaPagamentiMese(selectedMonth, agentiDaPagare)
+    if (error) { toast.error('Errore durante la generazione'); return }
     const [pagRes, statsRes] = await Promise.all([
       getPagamentiByMese(selectedMonth),
       getAllAgentsStats(selectedMonth)
@@ -196,7 +204,7 @@ export default function AgentDashboardPage() {
       importoTotale: p.importoFisso + (statsMap[p.agenteNome] || 0),
       differenza: (p.importoFisso + (statsMap[p.agenteNome] || 0)) - p.importoPagato,
     })))
-    toast.success('Riepilogo generato')
+    toast.success(`Riepilogo generato per ${agentiDaPagare.length} agenti`)
   }
 
   const handleResetMese = async () => {
@@ -308,7 +316,7 @@ export default function AgentDashboardPage() {
             ) : (
               allAgents.map((agent, index) => (
                 <AgentRow
-                  key={agent.agente}
+                  key={`${agent.agente}-${selectedMonth}`}
                   agent={agent}
                   index={index}
                   selectedMonth={selectedMonth}

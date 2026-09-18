@@ -124,6 +124,32 @@ export const TIPO_CONTRATTO = [
   { value: 'MANAGEMENT_NE_POSTA',      label: 'Management non esclusivo + posta' },
 ]
 
+export const getTipoContrattoLabel = (value) =>
+  TIPO_CONTRATTO.find(t => t.value === value)?.label || value || '-'
+
+// Etichette leggibili per i tipi ADV salvati come codice (import storici compresi)
+const ETICHETTE_ADV = {
+  VIDEO_YOUTUBE: 'Video YouTube',
+  STORIES: 'Stories Instagram',
+  STORY_SET: 'Story Set Instagram',
+  POST_INSTAGRAM: 'Post Instagram',
+  REEL: 'Reel Instagram',
+  TIKTOK: 'TikTok',
+  TWITCH: 'Twitch',
+  COLLABORAZIONE_LUNGA: 'Collaborazione lunga',
+  PARTNERSHIP_LUNGA: 'Partnership lunga',
+  FIERA_EVENTO: 'Fiera / Evento',
+  PACCHETTO_MULTI_PIATTAFORMA: 'Pacchetto multi piattaforma',
+}
+
+export const getTipoAdvLabel = (value) => {
+  if (!value) return '-'
+  if (ETICHETTE_ADV[value]) return ETICHETTE_ADV[value]
+  if (!/^[A-Z0-9_]+$/.test(value)) return value
+  const testo = value.toLowerCase().replace(/_/g, ' ')
+  return testo.charAt(0).toUpperCase() + testo.slice(1)
+}
+
 export const CLUSTER = [
   "Divulgazione", "Cultura pop", "Cultura nerd", "Cosplay", "Comedy", "GDR", "Giochi da tavolo", 
   "Tech", "Gaming", "Intrattenimento", "Spettacolo", "Musica", "Generico"

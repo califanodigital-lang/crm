@@ -29,6 +29,7 @@ import { getAllBrands } from '../services/brandService'
 import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/date'
 import { isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const STATI_CHIUSI = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO', 'COLLAB_GENERATA']
 const PRIORITA_ORDER = { URGENTE: 0, ALTA: 1, NORMALE: 2, BASSA: 3 }
@@ -80,7 +81,7 @@ const getTrattativaReferenceDate = (trattativa) => {
       return { label: 'Follow-up 2', value: trattativa.dataFollowup2 || trattativa.dataFollowup1 || trattativa.dataContatto || trattativa.createdAt }
     case 'RICONTATTO_FUTURO':
       return { label: 'Ricontatto', value: trattativa.dataRicontatto || trattativa.reminderRicontatto || trattativa.createdAt }
-    case 'TRATTATIVA':
+    case 'IN_TRATTATIVA':
       return { label: 'Call', value: trattativa.dataCall || trattativa.dataContatto || trattativa.createdAt }
     case 'PREVENTIVO_INVIATO':
     case 'CONTRATTO_INVIATO':
@@ -403,6 +404,8 @@ export default function TrattativaPage() {
   const [pendingStatoChange, setPendingStatoChange] = useState(null)
   const { userProfile } = useAuth()
   const isAgent = userProfile?.role === 'AGENT'
+  const location = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (isAgent && userProfile?.agenteNome) {
@@ -430,10 +433,22 @@ export default function TrattativaPage() {
     setAgenti(agentiRes.data || [])
     setCreators(creatorsRes.data || [])
     setLoading(false)
+    return trattativeRes.data || []
   }, [loadBrands])
 
   useEffect(() => {
-    Promise.resolve().then(loadData)
+    // Apertura diretta di una trattativa (per esempio dalla pagina Da fare)
+    const openId = location.state?.openTrattativaId
+    Promise.resolve().then(loadData).then(caricate => {
+      if (!openId || !caricate) return
+      const trattativa = caricate.find(t => t.id === openId)
+      if (!trattativa) return
+      setSelected(trattativa)
+      setView('form')
+      navigate(location.pathname, { replace: true })
+    })
+    // Location e navigate sono stabili: l'apertura diretta va gestita solo al primo caricamento
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadData])
 
   const handleSave = async (data) => {
@@ -518,7 +533,8 @@ export default function TrattativaPage() {
     setLoading(true)
     const { data, error } = await creaCollaborazioneDaTrattativa(trattativa.id)
     if (error) {
-      toast.error('Errore durante la creazione della collaborazione')
+      // Il messaggio del service dice quali fee mancano: va mostrato per intero.
+      toast.error(error.message || 'Errore durante la creazione della collaborazione')
     } else {
       const count = Array.isArray(data) ? data.length : 1
       toast.success(`${count} collaborazione/i create — vai su Collaborazioni per completarle`)

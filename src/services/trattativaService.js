@@ -1,6 +1,8 @@
 // src/services/trattativaService.js
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { normalizeBrandKey } from '../utils/brandNames'
+import { creatorSenzaFee, messaggioFeeMancanti, righeCollaborazione } from '../utils/conversioneCollab'
 
 const normalizeBrandName = (value) =>
   (value || '')
@@ -11,21 +13,19 @@ const ensureBrandForTrattativa = async (trattativa) => {
   if (!trattativa.creaBrandAutomaticamente) return trattativa.brandId || null
   if (trattativa.brandId) return trattativa.brandId
 
-const normalizedName = normalizeBrandName(trattativa.brandNome)
-if (!normalizedName) return null
+  const normalizedName = normalizeBrandName(trattativa.brandNome)
+  if (!normalizedName) return null
 
-const { data: existingRows, error: existingError } = await supabase
-  .from('brands')
-  .select('id, nome')
-  .ilike('nome', normalizedName)
+  // Confronto sul nome normalizzato (senza maiuscole, spazi e punteggiatura):
+  // evita di creare "CoolerMaster" quando esiste già "Cooler Master".
+  const chiave = normalizeBrandKey(normalizedName)
+  const existingRows = await fetchAllRows(() => supabase
+    .from('brands')
+    .select('id, nome'))
 
-if (existingError) throw existingError
+  const existing = (existingRows || []).find(b => normalizeBrandKey(b.nome) === chiave)
 
-const existing = (existingRows || []).find(
-  b => normalizeBrandName(b.nome).toLowerCase() === normalizedName.toLowerCase()
-)
-
-if (existing?.id) return existing.id
+  if (existing?.id) return existing.id
 
   const { data: created, error } = await supabase
     .from('brands')
@@ -101,6 +101,14 @@ const toCamelCase = (t) => {
     linkPreventivo: t.link_preventivo,
     feeCreatorMap: t.fee_creator_map || {},
 
+    // Coda outreach: come si lavora questo brand
+    bundle: t.bundle ?? false,
+    chiAltroServe: t.chi_altro_serve,
+    comeSiEntra: t.come_si_entra,
+    chiCercare: t.chi_cercare,
+    cosaChiedere: t.cosa_chiedere,
+    vincoli: t.vincoli,
+
     // Note generali
     noteStrategiche: t.note_strategiche,
     noteLog: t.note_log || [],
@@ -143,6 +151,12 @@ const toSnakeCase = (t) => ({
   importo_preventivo: cleanValue(t.importoPreventivo),
   link_preventivo: cleanValue(t.linkPreventivo),
   fee_creator_map: t.feeCreatorMap || {},
+  bundle: !!t.bundle,
+  chi_altro_serve: cleanValue(t.chiAltroServe),
+  come_si_entra: cleanValue(t.comeSiEntra),
+  chi_cercare: cleanValue(t.chiCercare),
+  cosa_chiedere: cleanValue(t.cosaChiedere),
+  vincoli: cleanValue(t.vincoli),
   note_strategiche: cleanValue(t.noteStrategiche),
   note_log: t.noteLog || [],
   link_video_sorgente: cleanValue(t.linkVideoSorgente),
@@ -355,30 +369,24 @@ export const creaCollaborazioneDaTrattativa = async (trattativaId) => {
       throw new Error('Nessun creator confermato nella trattativa')
     }
 
-    const feeCreatorMap = t.fee_creator_map || {}
+    // Nomi e percentuale di contratto dei creator coinvolti: servono sia per il
+    // messaggio di errore sia per calcolare la fee agenzia con la stessa regola
+    // usata nel form collaborazione.
+    const { data: righeCreator } = await supabase
+      .from('creators')
+      .select('id, nome, fee')
+      .in('id', creatorIds)
 
-    const payload = creatorIds.map((creatorId) => {
-      const feeCreator = feeCreatorMap[creatorId] ? parseFloat(feeCreatorMap[creatorId]) : null
-      const pagamento = feeCreator ?? (t.importo_preventivo ? parseFloat(t.importo_preventivo) : null)
-      const fee_management = pagamento ? +(pagamento * 0.25).toFixed(2) : null
+    const creatorsPerId = Object.fromEntries((righeCreator || []).map(c => [c.id, c]))
 
-      return {
-        brand_id: t.brand_id || null,
-        trattativa_id: t.id,
-        brand_nome: t.brand_nome,
-        creator_id: creatorId,
-        sales: t.sales || null,
-        agente: t.ima || null,
-        senior: t.agente || null,
-        pagamento: pagamento,
-        fee_management,
-        link_contratto: t.link_preventivo || null,
-        stato: 'IN_LAVORAZIONE',
-        pagato: false,
-        contatto: t.contatto || null,
-        note: t.note_trattativa || t.note_strategiche || null,
-      }
-    })
+    // La fee di ciascun creator deve essere scritta nella trattativa: senza,
+    // ogni collaborazione ereditava l'intero preventivo e i totali si gonfiavano.
+    const senzaFee = creatorSenzaFee(creatorIds, t.fee_creator_map)
+    if (senzaFee.length > 0) {
+      throw new Error(messaggioFeeMancanti(senzaFee, creatorsPerId))
+    }
+
+    const payload = righeCollaborazione({ trattativa: t, creatorIds, creatorsPerId })
 
     const { data: created, error: collabError } = await supabase
       .from('collaborations')
