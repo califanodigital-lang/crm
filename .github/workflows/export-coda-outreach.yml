@@ -1,0 +1,50 @@
+name: Coda outreach su Drive
+
+# Ogni mattina nei giorni feriali scrive la coda di contatto del CRM
+# in un file JSON gia' presente su Google Drive.
+#
+# 05:30 UTC = 07:30 in Italia con l'ora legale, 06:30 con l'ora solare.
+# In inverno il file e' quindi pronto un'ora prima: va bene lo stesso.
+#
+# Due avvertenze di GitHub, non aggirabili:
+#  - l'orario non e' garantito al minuto, nelle ore di punta puo' slittare;
+#  - se nessuno tocca il repository per 60 giorni, i lavori programmati
+#    vengono sospesi e GitHub manda un avviso al proprietario.
+
+on:
+  schedule:
+    - cron: '30 5 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coda-outreach
+  cancel-in-progress: false
+
+jobs:
+  esporta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Installa le dipendenze dello script
+        working-directory: scripts
+        run: npm ci
+
+      - name: Esporta la coda su Drive
+        run: node scripts/export-coda-outreach.mjs
+        env:
+          SUPABASE_DB_URL: ${{ secrets.CODA_OUTREACH_DB_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.CODA_OUTREACH_GOOGLE_SA }}
+          DRIVE_FILE_ID: ${{ secrets.CODA_OUTREACH_DRIVE_FILE_ID }}
+          # Facoltativo: se c'e', il certificato del server viene verificato.
+          SUPABASE_CA_CERT: ${{ secrets.SUPABASE_CA_CERT }}
