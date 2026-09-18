@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
@@ -19,46 +19,31 @@ import ImportPage from './pages/ImportPage'
 import AgendaPage from './pages/AgendaPage'
 import FiereDbPage from './pages/FiereDbPage'
 import ClientiPage from './pages/ClientiPage'
+import DaFarePage from './pages/DaFarePage'
+import { percorsoDaRipristinare } from './utils/redirect'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />
   return children
 }
 
 function PublicRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
     </div>
   )
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) return <Navigate to={percorsoDaRipristinare(location)} replace />
   return children
-}
-
-function PagesRedirectHandler() {
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const redirect = params.get('redirect')
-    if (!redirect) return
-
-    params.delete('redirect')
-    const query = params.toString()
-    const nextPath = `${redirect}${query ? `?${query}` : ''}${window.location.hash || ''}`
-    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '')
-    window.history.replaceState(null, '', `${basePath}${nextPath}`)
-    navigate(nextPath, { replace: true })
-  }, [navigate])
-
-  return null
 }
 
 function App() {
@@ -76,12 +61,12 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <ConfirmProvider>
-            <PagesRedirectHandler />
             <Routes>
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard"      element={<Dashboard />} />
+                <Route path="da-fare"        element={<DaFarePage />} />
                 <Route path="brands"         element={<BrandsPage />} />
                 <Route path="creators"       element={<CreatorsPage />} />
                 <Route path="clienti"        element={<ClientiPage />} />
