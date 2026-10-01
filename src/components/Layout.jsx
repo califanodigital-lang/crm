@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Briefcase, Users, Handshake,
   DollarSign, Target, LogOut, Menu, X,
-  BarChart3, Calendar, ChevronRight, CalendarRange, ShieldCheck
+  BarChart3, Calendar, ChevronRight, CalendarRange, ShieldCheck, BookOpen, CheckSquare
 } from 'lucide-react'
 import { ToastContainer } from './Toast'
 import { ConfirmContainer } from './ConfirmModal'
@@ -18,6 +18,7 @@ const NAV_GROUPS = [
     items: [
       { name: 'Dashboard',       href: '/dashboard',     icon: LayoutDashboard },
       { name: 'Agenda', href: '/agenda', icon: Calendar },
+      { name: 'Tasks', href: '/tasks', icon: CheckSquare },
     ]
   },
   {
@@ -175,6 +176,7 @@ export default function Layout() {
   const currentPage = allItems.find(i =>
     location.pathname === i.href || location.pathname.startsWith(i.href + '/')
   )
+  const docsHref = location.pathname === '/docs' ? '/docs' : `/docs?section=${encodeURIComponent(location.pathname.split('/')[1] || 'dashboard')}`
 
   return (
     <div className="crm-shell min-h-screen">
@@ -214,10 +216,18 @@ export default function Layout() {
               {currentPage?.name || 'C3 Agency'}
             </span>
           </div>
+          <Link to={docsHref} className="ml-auto flex items-center gap-1.5 px-2 py-2 text-sm font-semibold text-blue-900 rounded-lg hover:bg-blue-50" aria-label="Docs: guida del CRM">
+            <BookOpen className="w-4 h-4" /> Docs
+          </Link>
         </div>
 
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-8">
+          <div className="hidden lg:flex justify-end mb-4">
+            <Link to={docsHref} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2 text-sm font-semibold text-blue-900 hover:bg-blue-50" aria-label="Docs: guida del CRM">
+              <BookOpen className="w-4 h-4" /> Docs
+            </Link>
+          </div>
           <Outlet />
         </main>
       </div>

@@ -1,6 +1,29 @@
-export const APP_VERSION = 'v0.23.0'
+export const APP_VERSION = 'v0.24.1'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.24.1',
+    date: '2026-10-01',
+    items: ['Tasks: aggiunta eliminazione con conferma, disponibile per Admin e Agent; guida e permessi Supabase aggiornati.'],
+  },
+  {
+    version: 'v0.24.0',
+    date: '2026-10-01',
+    items: [
+      'Nuova sezione Tasks sotto Agenda: titolo, assegnatario, urgenza e spunta di completamento.',
+      'Liste personali e condivise, storico delle task completate e guida integrata in Docs.',
+      'Migrazione Supabase dedicata con accesso operativo Admin/Agent e protezione MFA esistente.',
+    ],
+  },
+  {
+    version: 'v0.23.1',
+    date: '2026-10-01',
+    items: [
+      'Docs accessibile da ogni schermata operativa: guide per tutte le sezioni, ricerca e collegamenti contestuali.',
+      'Documentazione integrata su fiere, Finance, note e sicurezza account, senza modificare i flussi di lavoro.',
+      'Migrazioni riordinate con istruzioni di applicazione e archivio dello script permessi fiere superato.',
+    ],
+  },
   {
     version: 'v0.23.0',
     date: '2026-10-01',

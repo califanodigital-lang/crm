@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './components/Toast'
 import { ConfirmProvider } from './components/ConfirmModal'
@@ -21,6 +21,9 @@ import ClientiPage from './pages/ClientiPage'
 import SecurityPage from './pages/SecurityPage'
 import MfaChallengePage from './pages/MfaChallengePage'
 import { canUseCrm, canAccessAdministration } from './utils/permissions'
+
+const DocsPage = lazy(() => import('./pages/DocsPage'))
+const TasksPage = lazy(() => import('./pages/TasksPage'))
 
 function AdministrationRoute() {
   const { userProfile } = useAuth()
@@ -118,6 +121,8 @@ function App() {
                 <Route path="eventi"         element={<EventiPage />} />
                 <Route path="db-fiere"      element={<FiereDbPage />} />
                 <Route path="agenda" element={<AgendaPage />} />
+                <Route path="tasks" element={<Suspense fallback={<p role="status">Caricamento task...</p>}><TasksPage /></Suspense>} />
+                <Route path="docs" element={<Suspense fallback={<p role="status">Caricamento guide...</p>}><DocsPage /></Suspense>} />
                 <Route element={<AdministrationRoute />}>
                   <Route path="finance" element={<FinancePage />} />
                   <Route path="agenti" element={<AgentDashboardPage />} />
