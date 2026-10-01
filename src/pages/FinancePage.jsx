@@ -1,3 +1,4 @@
+import PaymentOverview from '../components/PaymentOverview'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllCreators } from '../services/creatorService'
@@ -41,6 +42,37 @@ const emptyUscita    = { categoria: '', descrizione: '', importo: '', fornitore:
 const tipiEntrataMap    = Object.fromEntries(TIPI_ENTRATA.map(t => [t.value, t.label]))
 const categUscitaMap    = Object.fromEntries(CATEGORIE_USCITA.map(c => [c.value, c.label]))
 
+const SectionHeader = ({ label, count, total, badge, sectionKey, open, toggleSection }) => (
+    <button className="flex items-center justify-between w-full py-3" onClick={() => toggleSection(sectionKey)}>
+      <div className="flex items-center gap-2">
+        <h3 className="font-bold text-gray-800">{label}</h3>
+        {count != null && <span className="text-xs text-gray-400">({count})</span>}
+        {badge}
+      </div>
+      <div className="flex items-center gap-3">
+        {total != null && (
+          <span className="text-sm font-semibold text-gray-600">
+            €{parseFloat(total).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+          </span>
+        )}
+        {open[sectionKey] ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+      </div>
+    </button>
+  )
+
+  // ── Render helper: fattura status badge ───────────────────
+const FatturaBadge = ({ fattura, onOpen }) => fattura ? (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+      <FileText className="w-3 h-3" /> {fattura.numeroFattura || 'Emessa'}
+    </span>
+  ) : (
+    <button onClick={onOpen}
+      className="text-xs px-2 py-0.5 border border-dashed border-gray-300 text-gray-400 hover:border-yellow-400 hover:text-yellow-600 rounded-full transition-colors">
+      + Fattura
+    </button>
+  )
+
+
 export default function FinancePage() {
   const { userProfile } = useAuth()
   const [activeTab, setActiveTab] = useState('entrate')
@@ -48,6 +80,7 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true)
 
   // Entrate
+  const [allCollaborations, setAllCollaborations] = useState([])
   const [creators, setCreators]               = useState([])
   const [collabCompletate, setCollabCompletate] = useState([])
   const [versamenti, setVersamenti]           = useState([])
@@ -76,11 +109,9 @@ export default function FinancePage() {
   const [open, setOpen] = useState({ collab: true, versamenti: false, contratti: false, fiere: true, fatture: true, agenti: true, varie: true })
   const toggleSection = (k) => setOpen(p => ({ ...p, [k]: !p[k] }))
 
-  useEffect(() => {
-    if (userProfile?.role === 'ADMIN') loadData()
-  }, [userProfile, selectedMonth])
 
-  const loadData = async () => {
+
+  async function loadData() {
     setLoading(true)
     const meseFull = `${selectedMonth}-01`
 
@@ -98,6 +129,7 @@ export default function FinancePage() {
     ])
 
     setCreators(creatorsRes.data || [])
+    setAllCollaborations(collabRes.data || [])
 
     setCollabCompletate((collabRes.data || []).filter(c =>
       c.stato === 'COMPLETATA' && c.dataPagamentoAgency?.startsWith(selectedMonth)
@@ -132,6 +164,10 @@ export default function FinancePage() {
     setFieraPartecipazioni(fieraRes.data || [])
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (userProfile?.role === 'ADMIN') Promise.resolve().then(loadData)
+  }, [userProfile, selectedMonth])
 
   // ── P&L ───────────────────────────────────────────────────
   const totFeeCollab   = collabCompletate.reduce((s, c) => s + parseFloat(c.feeManagement || 0), 0)
@@ -366,35 +402,6 @@ export default function FinancePage() {
   if (loading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400" /></div>
 
   // ── Render helper: section collapsible header ─────────────
-  const SectionHeader = ({ label, count, total, badge, sectionKey }) => (
-    <button className="flex items-center justify-between w-full py-3" onClick={() => toggleSection(sectionKey)}>
-      <div className="flex items-center gap-2">
-        <h3 className="font-bold text-gray-800">{label}</h3>
-        {count != null && <span className="text-xs text-gray-400">({count})</span>}
-        {badge}
-      </div>
-      <div className="flex items-center gap-3">
-        {total != null && (
-          <span className="text-sm font-semibold text-gray-600">
-            €{parseFloat(total).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-          </span>
-        )}
-        {open[sectionKey] ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-      </div>
-    </button>
-  )
-
-  // ── Render helper: fattura status badge ───────────────────
-  const FatturaBadge = ({ fattura, onOpen }) => fattura ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
-      <FileText className="w-3 h-3" /> {fattura.numeroFattura || 'Emessa'}
-    </span>
-  ) : (
-    <button onClick={onOpen}
-      className="text-xs px-2 py-0.5 border border-dashed border-gray-300 text-gray-400 hover:border-yellow-400 hover:text-yellow-600 rounded-full transition-colors">
-      + Fattura
-    </button>
-  )
 
   // ─────────────────────────────────────────────────────────
   return (
@@ -447,6 +454,7 @@ export default function FinancePage() {
         </div>
       </div>
 
+      <PaymentOverview collaborations={allCollaborations} participations={fieraPartecipazioni} onRefresh={loadData} />
       {/* ── Tabs ── */}
       <div className="flex border-b border-gray-200 mb-6">
         {[{ key: 'entrate', label: 'Entrate' }, { key: 'uscite', label: 'Uscite' }].map(t => (
@@ -465,7 +473,7 @@ export default function FinancePage() {
 
           {/* Fee Collaborazioni */}
           <div className="card">
-            <SectionHeader label="Fee Collaborazioni" count={collabCompletate.length} total={totFeeCollab} sectionKey="collab" />
+            <SectionHeader open={open} toggleSection={toggleSection} label="Fee Collaborazioni" count={collabCompletate.length} total={totFeeCollab} sectionKey="collab" />
             {open.collab && (
               collabCompletate.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-6">Nessuna collaborazione con pagamento registrato in questo mese.</p>
@@ -512,7 +520,7 @@ export default function FinancePage() {
 
           {/* Versamenti Creator */}
           <div className="card">
-            <SectionHeader label="Versamenti Creator" count={versamenti.length} total={totVersamenti} sectionKey="versamenti" />
+            <SectionHeader open={open} toggleSection={toggleSection} label="Versamenti Creator" count={versamenti.length} total={totVersamenti} sectionKey="versamenti" />
             {open.versamenti && (
               <div className="space-y-4">
                 {/* Add form */}
@@ -704,7 +712,7 @@ export default function FinancePage() {
 
           {/* Fatture Emesse */}
           <div className="card">
-            <SectionHeader label="Registro Fatture Emesse" count={fattureEmesse.length} total={totFatturato} sectionKey="fatture" />
+            <SectionHeader open={open} toggleSection={toggleSection} label="Registro Fatture Emesse" count={fattureEmesse.length} total={totFatturato} sectionKey="fatture" />
             {open.fatture && (
               <div className="space-y-4">
                 <div className="flex justify-end">
@@ -853,7 +861,7 @@ export default function FinancePage() {
 
           {/* Uscite Varie */}
           <div className="card">
-            <SectionHeader label="Uscite Varie" count={usciteVarie.length} total={totUsciteVarie} sectionKey="varie" />
+            <SectionHeader open={open} toggleSection={toggleSection} label="Uscite Varie" count={usciteVarie.length} total={totUsciteVarie} sectionKey="varie" />
             {open.varie && (
               <div className="space-y-4">
                 <div className="flex justify-end">

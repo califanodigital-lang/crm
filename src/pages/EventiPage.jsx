@@ -1,3 +1,6 @@
+import ExpenseItems from '../components/ExpenseItems'
+import ExpenseSummary from '../components/ExpenseSummary'
+import { creatorFee } from '../utils/eventPayments'
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -9,7 +12,7 @@ import { getAllCreators } from '../services/creatorService'
 import { upsertFieraFromEvento } from '../services/fieraDbService'
 import { getAllTipologieEvento } from '../services/tipologieEventoService'
 import { getTrattativaFieraNotesForEvento } from '../services/trattativaFieraService'
-import { Calendar, MapPin, Plus, Edit, Trash2, X, LayoutGrid, List } from 'lucide-react'
+import { Plus, Edit, Trash2, X } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import { ATTIVITA_EVENTO } from '../constants/constants'
@@ -114,7 +117,7 @@ const FeeCell = ({ p, align = 'right' }) => {
 const EMPTY_PART_FORM = {
   creatorId: '',
   tipo: 'partecipante',
-  rimborsoSpese: '',
+  rimborsoSpese: '', rimborsiSpese: [],
   dataInizioPartecipazione: '',
   dataFinePartecipazione: '',
   panel: false, workshop: false, masterGdr: false, giochiTavolo: false,
@@ -159,7 +162,7 @@ const mergeNoteLogs = (...groups) => {
 }
 
 function CreatorPreview({ title, items = [], tone }) {
-  const visible = items.slice(0, 4)
+  const visible = items
   const hidden = Math.max(items.length - visible.length, 0)
   const colors = tone === 'green'
     ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -174,7 +177,7 @@ function CreatorPreview({ title, items = [], tone }) {
         <div className="flex flex-wrap gap-1.5">
           {visible.map(item => (
             <span key={item.id} className={`text-xs px-2 py-1 rounded-full border ${colors}`}>
-              {item.creatorNome}
+              {item.creatorNome} · {formatDate(item.dataInizioPartecipazione) || 'Tutto evento'} {item.dataFinePartecipazione ? `- ${formatDate(item.dataFinePartecipazione)}` : ''}
             </span>
           ))}
           {hidden > 0 && (
@@ -204,7 +207,6 @@ export default function EventiPage() {
   const [selectedEvento, setSelectedEvento] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState('table') // table | cards
   const [eventoForm, setEventoForm] = useState(EMPTY_EVENTO_FORM)
   const [partForm, setPartForm] = useState(EMPTY_PART_FORM)
   const [editingPart, setEditingPart] = useState(null)
@@ -313,7 +315,8 @@ export default function EventiPage() {
 
   const handleAddPartecipazione = async () => {
     if (!partForm.creatorId) return
-    await addPartecipazione({ ...partForm, eventoId: selectedEvento.id })
+    const { error } = await addPartecipazione({ ...partForm, eventoId: selectedEvento.id })
+    if (error) { toast.error('Impossibile aggiungere il creator'); return }
     setPartForm({ ...EMPTY_PART_FORM })
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
     setPartecipazioni(data || [])
@@ -337,7 +340,8 @@ export default function EventiPage() {
   })
   const handleCancelEditPart = () => setEditingPart(null)
   const handleSaveEditPart = async () => {
-    await updatePartecipazione(editingPart.id, editingPart)
+    const { error } = await updatePartecipazione(editingPart.id, editingPart)
+    if (error) { toast.error('Impossibile salvare la partecipazione'); return }
     setEditingPart(null)
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
     setPartecipazioni(data || [])
@@ -346,7 +350,8 @@ export default function EventiPage() {
 
   const handleTogglePagamento = async (partecipazione, campo) => {
     const updated = { ...partecipazione, [campo]: !partecipazione[campo] }
-    await updatePartecipazione(partecipazione.id, updated)
+    const { error } = await updatePartecipazione(partecipazione.id, updated)
+    if (error) { toast.error('Impossibile registrare il pagamento'); return }
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
     setPartecipazioni(data || [])
     setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
@@ -356,13 +361,14 @@ export default function EventiPage() {
 
   const handleAgencyConfirm = async ({ newPagato, fatturaData }) => {
     const p = agencyModal.partecipazione
-    await updatePartecipazione(p.id, {
+    const { error } = await updatePartecipazione(p.id, {
       ...p,
       pagato_agency: newPagato,
       fatturaEmessa: fatturaData ? true : (newPagato ? p.fatturaEmessa : false),
       numeroFattura: fatturaData?.numero || (newPagato ? p.numeroFattura : null),
       dataFattura: fatturaData?.data || (newPagato ? p.dataFattura : null),
     })
+    if (error) { toast.error('Impossibile registrare il pagamento agency'); return }
     if (fatturaData && newPagato) {
       const mese = fatturaData.data
         ? `${fatturaData.data.slice(0, 7)}-01`
@@ -611,7 +617,7 @@ export default function EventiPage() {
                   onChange={(e) => setPartForm({ ...partForm, dataFinePartecipazione: e.target.value })} />
               </div>
               <div>
-                <label className="label">Rimborso Spese</label>
+                <label className="label">Rimborsi precedenti (testo)</label>
                 <input className="input" value={partForm.rimborsoSpese}
                   onChange={(e) => setPartForm({ ...partForm, rimborsoSpese: e.target.value })}
                   placeholder="es. 150€ hotel" />
@@ -673,6 +679,7 @@ export default function EventiPage() {
                 )}
               </div>
             </div>
+            <ExpenseItems value={partForm.rimborsiSpese || []} onChange={rimborsiSpese => setPartForm({ ...partForm, rimborsiSpese })} />
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {ATTIVITA_EVENTO.map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2">
@@ -688,24 +695,13 @@ export default function EventiPage() {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.85fr)] gap-6 mb-6">
           <div className="space-y-4">
         {/* Creator Partecipanti */}
-        <div className="card">
+        <div className="card overflow-x-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold">Creator Partecipanti ({partecipanti.length})</h2>
-            <div className="flex gap-1 border rounded-lg overflow-hidden">
-              <button onClick={() => setViewMode('table')}
-                className={`p-1.5 transition-colors ${viewMode === 'table' ? 'bg-yellow-400 text-gray-900' : 'hover:bg-gray-100 text-gray-500'}`}
-                title="Vista tabella">
-                <List className="w-4 h-4" />
-              </button>
-              <button onClick={() => setViewMode('cards')}
-                className={`p-1.5 transition-colors ${viewMode === 'cards' ? 'bg-yellow-400 text-gray-900' : 'hover:bg-gray-100 text-gray-500'}`}
-                title="Vista schede">
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
+
           </div>
 
-          {viewMode === 'table' ? (
+
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
@@ -713,8 +709,8 @@ export default function EventiPage() {
                   <th className="text-left py-2">Attività</th>
                   <th className="text-left py-2">Presenza</th>
                   <th className="text-right py-2">Fee</th>
-                  <th className="text-center py-2 text-xs">Pag. Creator</th>
                   <th className="text-center py-2 text-xs">Pag. Agency</th>
+                  <th className="text-center py-2 text-xs">Pag. Creator (75%)</th>
                   <th className="text-right py-2">Azioni</th>
                 </tr>
               </thead>
@@ -730,13 +726,7 @@ export default function EventiPage() {
                         ? `${formatDate(p.dataInizioPartecipazione) || '—'} ${formatDate(p.dataFinePartecipazione) ? `→ ${formatDate(p.dataFinePartecipazione)}` : ''}`
                         : 'Tutto evento'}
                     </td>
-                    <td className="py-2 text-right"><FeeCell p={p} /></td>
-                    <td className="py-2 text-center">
-                      <button onClick={() => handleTogglePagamento(p, 'pagato')}
-                        className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${p.pagato ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                        {p.pagato ? '✓ Sì' : '✗ No'}
-                      </button>
-                    </td>
+                    <td className="py-2 text-right"><FeeCell p={p} /><ExpenseSummary items={p.rimborsiSpese} legacy={p.rimborsoSpese} /></td>
                     <td className="py-2 text-center">
                       <button onClick={() => handlePagamentoAgency(p)}
                         className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
@@ -747,6 +737,12 @@ export default function EventiPage() {
                             : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                         }`}>
                         {p.pagato_agency ? (p.fatturaEmessa ? '✓ Sì' : '⚠ Fatt.') : '✗ No'}
+                      </button>
+                    </td>
+                    <td className="py-2 text-center">
+                      <button onClick={() => handleTogglePagamento(p, 'pagato')}
+                        className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${p.pagato ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+                        EUR {creatorFee(p).toFixed(2)} (75%) · {p.pagato ? 'Pagato' : 'Da pagare'}
                       </button>
                     </td>
                     <td className="py-2 text-right">
@@ -770,69 +766,6 @@ export default function EventiPage() {
                 )}
               </tbody>
             </table>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {partecipanti.map(p => (
-                <div key={p.id} className="border rounded-xl p-4 bg-gray-50 hover:shadow-sm transition-shadow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-semibold text-gray-900">{p.creatorNome}</h4>
-                    <div className="flex gap-1">
-                      <button onClick={() => handleSwitchTipo(p)} title="Sposta a Proposti"
-                        className="text-xs px-1.5 py-0.5 rounded border border-gray-200 hover:bg-white text-gray-500">
-                        → Prop.
-                      </button>
-                      <button onClick={() => handleStartEditPart(p)} className="text-yellow-600 hover:text-yellow-800">
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDeletePartecipazione(p.id)} className="text-red-500 hover:text-red-700">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  {(() => {
-                    const attivita = ATTIVITA_EVENTO.filter(({ key }) => p[key]).map(({ label }) => label)
-                    return attivita.length > 0 ? (
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {attivita.map(a => (
-                          <span key={a} className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">{a}</span>
-                        ))}
-                      </div>
-                    ) : null
-                  })()}
-                  <div className="text-sm text-gray-600 mb-3 space-y-0.5">
-                    {(p.feesBreakdown?.some(f => parseFloat(f.importo) > 0) || p.fee) ? (
-                      <div><span className="font-medium">Fee:</span> <FeeCell p={p} align="left" /></div>
-                    ) : null}
-                    {p.rimborsoSpese ? <div><span className="font-medium">Rimborso:</span> {p.rimborsoSpese}</div> : null}
-                    {(formatDate(p.dataInizioPartecipazione) || formatDate(p.dataFinePartecipazione)) && (
-                      <div className="text-xs text-gray-400">
-                        {formatDate(p.dataInizioPartecipazione) || '—'}{formatDate(p.dataFinePartecipazione) ? ` → ${formatDate(p.dataFinePartecipazione)}` : ''}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleTogglePagamento(p, 'pagato')}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${p.pagato ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                      {p.pagato ? '✓ Creator Pagato' : '✗ Creator'}
-                    </button>
-                    <button onClick={() => handlePagamentoAgency(p)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                        p.pagato_agency && p.fatturaEmessa
-                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                          : p.pagato_agency
-                          ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
-                      }`}>
-                      {p.pagato_agency ? (p.fatturaEmessa ? '✓ Agency Pagata' : '⚠ Senza Fattura') : '✗ Agency'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {partecipanti.length === 0 && (
-                <p className="col-span-full text-gray-400 text-sm text-center py-4">Nessun creator partecipante</p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Creator Proposti */}
@@ -985,6 +918,7 @@ export default function EventiPage() {
                     placeholder="es. 150€ hotel" />
                 </div>
               </div>
+              <ExpenseItems value={editingPart.rimborsiSpese || []} onChange={rimborsiSpese => setEditingPart(p => ({ ...p, rimborsiSpese }))} />
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {ATTIVITA_EVENTO.map(({ key, label }) => (
                   <label key={key} className="flex items-center gap-2">
@@ -996,14 +930,14 @@ export default function EventiPage() {
               </div>
               <div className="flex items-center gap-4 mb-4 pt-2 border-t">
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={!!editingPart.pagato}
-                    onChange={(e) => setEditingPart(p => ({ ...p, pagato: e.target.checked }))} />
-                  Pagato Creator
-                </label>
-                <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={!!editingPart.pagato_agency}
                     onChange={(e) => setEditingPart(p => ({ ...p, pagato_agency: e.target.checked }))} />
                   Pagato Agency
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!editingPart.pagato}
+                    onChange={(e) => setEditingPart(p => ({ ...p, pagato: e.target.checked }))} />
+                  Pagato Creator
                 </label>
               </div>
               <div className="flex gap-3 justify-end">
@@ -1023,7 +957,7 @@ export default function EventiPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Fiere & Eventi</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Fiere ed Eventi chiusi</h1>
         <button
           onClick={() => {
             setSelectedEvento(null)
@@ -1035,68 +969,38 @@ export default function EventiPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {eventi.map(evento => {
-          const eventPartecipazioni = partecipazioniByEvento[evento.id] || []
-          const eventPartecipanti = eventPartecipazioni.filter(p => (p.tipo || 'partecipante') === 'partecipante')
-          const eventProposti = eventPartecipazioni.filter(p => p.tipo === 'proposto')
-
-          return (
-          <div
-            key={evento.id}
-            className={`card hover:shadow-lg transition-shadow cursor-pointer ${evento.stato === 'CHIUSA' ? 'opacity-60' : ''}`}
-            onClick={() => handleViewDetail(evento)}>
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-xl font-bold text-gray-900">{evento.nome}</h3>
-              {evento.stato === 'CHIUSA' && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">CHIUSA</span>
-              )}
-            </div>
-            {evento.tipo && <p className="text-sm text-gray-600 mb-2">{evento.tipo}</p>}
-            {evento.circuitoId && <p className="text-xs text-gray-400 mb-2">{getCircuitoName(evento.circuitoId)}</p>}
-            {evento.dataInizio && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                <Calendar className="w-4 h-4" />
-                {formatDate(evento.dataInizio)} {formatDate(evento.dataFine) && `- ${formatDate(evento.dataFine)}`}
-              </div>
-            )}
-            {evento.citta && (
-              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                <MapPin className="w-4 h-4" />
-                {evento.citta}
-              </div>
-            )}
-            <div className="border-t border-gray-100 pt-3 mt-3">
-              <CreatorPreview title="Partecipanti" items={eventPartecipanti} tone="green" />
-              <CreatorPreview title="Proposti" items={eventProposti} tone="amber" />
-            </div>
-            <div className="flex gap-2 pt-3 border-t">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="border-b text-left"><th className="p-3">Evento</th><th className="p-3">Date / Citta</th><th className="p-3">Creator e giorni di presenza</th><th className="p-3">Azioni</th></tr></thead>
+          <tbody>{eventi.map(evento => {
+            const entries = (partecipazioniByEvento[evento.id] || []).map(p => ({
+              ...p,
+              dataInizioPartecipazione: p.dataInizioPartecipazione || evento.dataInizio,
+              dataFinePartecipazione: p.dataFinePartecipazione || evento.dataFine,
+            }))
+            return <tr key={evento.id} className="border-b hover:bg-gray-50">
+              <td className="p-3"><button className="font-semibold text-left hover:underline" onClick={() => handleViewDetail(evento)}>{evento.nome}</button>
+                <p className="text-xs text-gray-500">{evento.tipo} {getCircuitoName(evento.circuitoId)}</p>
+                <span className="text-xs">{evento.stato === 'CHIUSA' ? 'Archiviato' : 'In gestione'}</span>
+              </td>
+              <td className="p-3">{formatDate(evento.dataInizio)} {evento.dataFine ? `- ${formatDate(evento.dataFine)}` : ''}<p>{evento.citta}</p></td>
+              <td className="p-3">
+                <CreatorPreview title="Partecipanti" items={entries.filter(p => (p.tipo || 'partecipante') === 'partecipante')} tone="green" />
+                <CreatorPreview title="Proposti" items={entries.filter(p => p.tipo === 'proposto')} tone="amber" />
+              </td>
+              <td className="p-3"><div className="flex gap-2">
+                <button className="btn-secondary" onClick={() => handleViewDetail(evento)}>Apri</button>
+                <button className="btn-secondary" onClick={() => {
                   setSelectedEvento(evento)
-                  setEventoForm({
-                    nome: evento.nome || '', tipo: evento.tipo || '',
-                    circuitoId: evento.circuitoId || '',
-                    dataInizio: evento.dataInizio || '', dataFine: evento.dataFine || '',
-                    location: evento.location || '', citta: evento.citta || '',
-                    descrizione: evento.descrizione || '', link: evento.link || '', note: evento.note || '',
-                    noteLog: evento.noteLog || [],
-                  })
+                  setEventoForm(Object.fromEntries(Object.keys(EMPTY_EVENTO_FORM).map(key => [key, evento[key] ?? EMPTY_EVENTO_FORM[key]])))
                   setView('edit')
-                }}
-                className="flex-1 text-sm px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">
-                <Edit className="w-3 h-3 inline mr-1" /> Modifica
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteEvento(evento.id) }}
-                className="text-sm px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded">
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-          )
-        })}
+                }}>Modifica</button>
+                <button aria-label="Elimina evento" className="text-red-600" onClick={() => handleDeleteEvento(evento.id)}><Trash2 className="w-4 h-4" /></button>
+              </div></td>
+            </tr>
+          })}</tbody>
+        </table>
+        {!eventi.length && <p className="p-4 text-gray-500">Nessun evento presente.</p>}
       </div>
     </div>
   )

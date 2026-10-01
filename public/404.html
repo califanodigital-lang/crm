@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <title>CRM</title>
+    <script>
+      var query = window.location.search;
+      window.location.replace('/' + query + (query ? '&' : '?') + 'redirect=' + encodeURIComponent(window.location.pathname) + window.location.hash);
+    </script>
+  </head>
+  <body></body>
+</html>

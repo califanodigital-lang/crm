@@ -1,6 +1,17 @@
-export const APP_VERSION = 'v0.20.1-alpha'
+export const APP_VERSION = 'v0.21.0'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.21.0',
+    date: '2026-10-01',
+    items: [
+      'Versione unica del CRM: integrate le modifiche alpha e rimossi build e deploy separati.',
+      'Fiere ed Eventi chiusi: vista a lista con creator e giorni di presenza.',
+      'Rimborsi spesa con voci multiple, gestione agenzia/creator e totale separato dalla fee creator del 75%.',
+      'Finance: riepilogo da fatturare/incassare e creator da pagare dopo incasso agency, anche per eventi chiusi.',
+      'Collaborazioni: scadenza pubblicazione visibile in lista.',
+    ],
+  },
   {
     version: 'v0.20.1-alpha',
     date: '2026-07-13',

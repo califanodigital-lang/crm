@@ -1,3 +1,4 @@
+import { creatorFee, expenseTotal } from '../utils/eventPayments'
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2, CalendarDays } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
@@ -633,8 +634,10 @@ const handleDeleteImpegno = async (id) => {
                     <th className="text-left py-3 px-4">Evento</th>
                     <th className="text-left py-3 px-4">Data</th>
                     <th className="text-left py-3 px-4">Location</th>
-                    <th className="text-left py-3 px-4">Tipo Contratto</th>
+                    <th className="text-left py-3 px-4">Rimborsi spesa</th>
                     <th className="text-right py-3 px-4">Fee</th>
+                    <th className="text-left py-3 px-4">Pagamento Agency</th>
+                    <th className="text-left py-3 px-4">Pagamento Creator (75%)</th>
                     <th className="text-left py-3 px-4">Attività</th>
                   </tr>
                 </thead>
@@ -650,10 +653,12 @@ const handleDeleteImpegno = async (id) => {
                           {p.eventoDataInizio ? new Date(p.eventoDataInizio).toLocaleDateString('it-IT') : '-'}
                         </td>
                         <td className="py-3 px-4 text-sm">{p.eventoLocation || '-'}</td>
-                        <td className="py-3 px-4 text-sm">{p.tipoContratto || '-'}</td>
+                        <td className="py-3 px-4 text-sm">{p.rimborsoSpese || '-'}<div>EUR {expenseTotal(p.rimborsiSpese).toFixed(2)}</div>{(p.rimborsiSpese || []).map((item, index) => <p key={index}>{item.descrizione}: EUR {Number(item.importo || 0).toFixed(2)} ({item.gestitoDa === 'creator' ? 'Creator' : 'Agenzia'})</p>)}</td>
                         <td className="py-3 px-4 text-right font-semibold text-green-600">
                           €{parseFloat(p.fee || 0).toLocaleString()}
                         </td>
+                        <td className="py-3 px-4">{p.pagato_agency ? 'Incassato' : 'Da incassare'}</td>
+                        <td className="py-3 px-4">EUR {creatorFee(p).toFixed(2)} · {p.pagato ? 'Pagato' : 'Da pagare'}</td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {attivita.map((a, idx) => (

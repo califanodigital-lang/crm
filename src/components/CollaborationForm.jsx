@@ -362,7 +362,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         </div>
 
         <div>
-          <label className="label">Data Pubblicazione Contenuti</label>
+          <label className="label">Scadenza pubblicazione contenuti</label>
           <input
             type="date"
             className="input"
@@ -533,6 +533,25 @@ export default function CollaborationForm({ collaboration = null, creators = [],
           </select>
         </div>
 
+        {/* Pagamento Agency */}
+        <div className="flex items-center gap-3 pt-6">
+        <input
+          type="checkbox"
+          id="pagato_agency"
+          checked={formData.pagato_agency}
+          onChange={(e) => {
+            const checked = e.target.checked
+            setFormData({
+              ...formData,
+              pagato_agency: checked,
+              dataPagamentoAgency: checked ? (formData.dataPagamentoAgency || todayLocal()) : ''
+            })
+          }}
+          className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
+        />
+          <label htmlFor="pagato_agency" className="label mb-0">Pagamento Agency</label>
+        </div>
+
         {/* Pagato creator - solo se pagamento unico */}
         {!(formData.tranche?.length > 1) && (
         <div className="flex items-center gap-3 pt-6">
@@ -554,24 +573,6 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         </div>
         )}
 
-        {/* Pagamento Agency */}
-        <div className="flex items-center gap-3 pt-6">
-        <input
-          type="checkbox"
-          id="pagato_agency"
-          checked={formData.pagato_agency}
-          onChange={(e) => {
-            const checked = e.target.checked
-            setFormData({
-              ...formData,
-              pagato_agency: checked,
-              dataPagamentoAgency: checked ? (formData.dataPagamentoAgency || todayLocal()) : ''
-            })
-          }}
-          className="w-4 h-4 text-yellow-400 border-gray-300 rounded focus:ring-yellow-400"
-        />
-          <label htmlFor="pagato" className="label mb-0">Pagamento Agency</label>
-        </div>
 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 mb-8 pt-6 border-t border-gray-100">

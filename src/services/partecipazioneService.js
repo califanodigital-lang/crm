@@ -11,6 +11,7 @@ const toCamelCase = (p) => {
     creatorId: p.creator_id,
     creatorNome: p.creator_nome,
     rimborsoSpese: p.rimborso_spese,
+    rimborsiSpese: p.rimborsi_spese || [],
     panel: p.panel,
     workshop: p.workshop,
     masterGdr: p.master_gdr,
@@ -41,6 +42,7 @@ const toSnakeCase = (p) => ({
   evento_id: p.eventoId,
   creator_id: p.creatorId,
   rimborso_spese: cleanValue(p.rimborsoSpese),
+  rimborsi_spese: p.rimborsiSpese || [],
   panel: p.panel || false,
   workshop: p.workshop || false,
   master_gdr: p.masterGdr || false,
@@ -169,7 +171,7 @@ export const updatePartecipazione = async (id, partecipazioneData) => {
   }
 }
 
-// GET: Tutte le partecipazioni per le fiere attive (per sezione Finance Fee Fiere)
+// GET: Partecipanti di tutti gli eventi, inclusi quelli archiviati.
 export const getAllPartecipazioniAgency = async () => {
   try {
     const data = await fetchAllRows(() => supabase
@@ -179,8 +181,7 @@ export const getAllPartecipazioniAgency = async () => {
         creators (nome),
         eventi!inner (id, nome, data_inizio, citta, stato)
       `)
-      .eq('tipo', 'partecipante')
-      .neq('eventi.stato', 'CHIUSA')
+      .or('tipo.eq.partecipante,tipo.is.null')
       .order('created_at', { ascending: false }))
     return {
       data: data.map(p => ({

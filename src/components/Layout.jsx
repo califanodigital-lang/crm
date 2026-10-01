@@ -39,7 +39,7 @@ const NAV_GROUPS = [
     items: [
       { name: 'DB Fiere & Eventi', href: '/db-fiere', icon: CalendarRange },
       { name: 'Trattative Fiere', href: '/trattative-fiere', icon: Target },
-      { name: 'Fiere & Eventi', href: '/eventi', icon: Calendar },
+      { name: 'Fiere ed Eventi chiusi', href: '/eventi', icon: Calendar },
     ]
   },
   {

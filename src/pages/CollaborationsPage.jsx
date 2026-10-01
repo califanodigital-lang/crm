@@ -1,8 +1,9 @@
+import { collaborationCreatorFee } from '../utils/eventPayments'
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, DollarSign, Calendar, CheckCircle, XCircle, Archive, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { formatDate } from '../utils/date'
-import { getDefaultMonthlyRange, isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
+import { isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 import CollaborationForm from '../components/CollaborationForm'
 import DateRangeFilter from '../components/DateRangeFilter'
 import { 
@@ -434,9 +435,10 @@ export default function CollaborationsPage() {
                     <SortTh field="adv">Tipo ADV</SortTh>
                     <SortTh field="pagamento">Pagamento</SortTh>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Data Firma</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Scadenza pubblicazione</th>
                     <SortTh field="stato">Stato</SortTh>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato Creator</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagata Agency</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-700">Pagato Creator</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-700">Azioni</th>
                   </tr>
                 </thead>
@@ -452,24 +454,9 @@ export default function CollaborationsPage() {
                       <td className="py-3 px-4 text-gray-600 text-sm">
                         {formatDate(collab.dataFirma) || '—'}
                       </td>
+                      <td className="py-3 px-4 text-sm">{formatDate(collab.dataPubblicazione) || 'Da definire'}</td>
                       <td className="py-3 px-4">
                         <StatusBadge status={collab.stato} />
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'creator', currentValue: collab.pagato, dataAttuale: collab.dataPagamentoCreator })}>
-                          {(() => {
-                            const tr = collab.tranche || []
-                            if (tr.length > 1) {
-                              const paid = tr.filter(t => t.pagato).length
-                              if (paid === 0) return <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
-                              if (paid < tr.length) return <CheckCircle className="w-5 h-5 text-yellow-500 mx-auto" title={`${paid}/${tr.length} tranches pagate`} />
-                              return <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                            }
-                            return collab.pagato
-                              ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
-                              : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
-                          })()}
-                        </button>
                       </td>
                     <td className="py-3 px-4 text-center">
                       <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'agency', currentValue: collab.pagato_agency, dataAttuale: collab.dataPagamentoAgency, fatturaEmessa: collab.fatturaEmessa })}>
@@ -487,6 +474,23 @@ export default function CollaborationsPage() {
                         )}
                       </button>
                     </td>
+                      <td className="py-3 px-4 text-center">
+                        <button onClick={() => setPagamentoModal({ id: collab.id, tipo: 'creator', currentValue: collab.pagato, dataAttuale: collab.dataPagamentoCreator })}>
+                          {(() => {
+                            const tr = collab.tranche || []
+                            if (tr.length > 1) {
+                              const paid = tr.filter(t => t.pagato).length
+                              if (paid === 0) return <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
+                              if (paid < tr.length) return <CheckCircle className="w-5 h-5 text-yellow-500 mx-auto" title={`${paid}/${tr.length} tranches pagate`} />
+                              return <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                            }
+                            return collab.pagato
+                              ? <CheckCircle className="w-5 h-5 text-green-600 mx-auto" />
+                              : <XCircle className="w-5 h-5 text-gray-300 mx-auto hover:text-gray-400" />
+                          })()}
+                        </button>
+                        <p className="text-xs text-gray-500">EUR {collaborationCreatorFee(collab).toFixed(2)}</p>
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
                           <button
