@@ -1,15 +1,18 @@
+import { financeSummary, invoiceSourceValid } from '../utils/financeSummary'
+import { romeToday } from '../utils/civilDate'
+import { getAllPagamentiContratti } from '../services/pagamentiContrattiService'
 import PaymentOverview from '../components/PaymentOverview'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { getAllCreators } from '../services/creatorService'
-import { getAllCollaborations, updateCollaboration } from '../services/collaborationService'
+import { getAllCollaborations } from '../services/collaborationService'
 import { getAllContrattiRicorrenti } from '../services/contrattiRicorrentiService'
 import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento } from '../services/versamentoService'
 import { getPagamentiByMese, generaPagamentiMese, upsertPagamentoAgente } from '../services/pagamentiAgentiService'
 import { getAllUsers } from '../services/userService'
-import { getFattureByMese, createFattura, deleteFattura } from '../services/fattureEmesseService'
-import { getUsciteByMese, createUscita, updateUscita, deleteUscita, togglePagataUscita } from '../services/usciteVarieService'
-import { getAllPartecipazioniAgency, updatePartecipazione } from '../services/partecipazioneService'
+import { getAllFatture, createFattura, deleteFattura, updateFattura } from '../services/fattureEmesseService'
+import { getAllUscite, createUscita, updateUscita, deleteUscita, togglePagataUscita } from '../services/usciteVarieService'
+import { getAllPartecipazioniAgency } from '../services/partecipazioneService'
 import {
   CheckCircle, XCircle, ExternalLink, DollarSign, TrendingUp, TrendingDown,
   Plus, Trash2, Edit, ChevronDown, ChevronUp, FileText,
@@ -77,6 +80,12 @@ export default function FinancePage() {
   const [activeTab, setActiveTab] = useState('entrate')
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [loading, setLoading] = useState(true)
+  const [dataError, setDataError] = useState(null)
+  const [allInvoices, setAllInvoices] = useState([])
+  const [allExpenses, setAllExpenses] = useState([])
+  const [allContracts, setAllContracts] = useState([])
+  const [contractPayments, setContractPayments] = useState([])
+  const request = useRef(0)
 
   // Entrate
   const [allCollaborations, setAllCollaborations] = useState([])
@@ -110,27 +119,38 @@ export default function FinancePage() {
 
 
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
+    const id = ++request.current
     setLoading(true)
+    setDataError(null)
+    try {
     const meseFull = `${selectedMonth}-01`
 
-    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, usciteRes, fieraRes] = await Promise.all([
+    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, usciteRes, fieraRes, contractPaymentsRes] = await Promise.all([
       getAllCreators(),
       getAllCollaborations(),
       getAllContrattiRicorrenti(),
       getVersamentByMonth(meseFull),
-      getFattureByMese(meseFull),
+      getAllFatture(),
       getPagamentiByMese(selectedMonth),
       getAllUsers(),
-      getUsciteByMese(meseFull),
+      getAllUscite(),
       getAllPartecipazioniAgency(),
+      getAllPagamentiContratti(),
     ])
 
+    const failed = [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, usciteRes, fieraRes, contractPaymentsRes].find(r => r.error)
+    if (failed) throw failed.error
+    if (id !== request.current) return
+    setAllInvoices(fattureRes.data || [])
+    setAllExpenses(usciteRes.data || [])
+    setAllContracts(contrattiRes.data || [])
+    setContractPayments(contractPaymentsRes.data || [])
     setCreators(creatorsRes.data || [])
     setAllCollaborations(collabRes.data || [])
 
     setCollabCompletate((collabRes.data || []).filter(c =>
-      c.stato === 'COMPLETATA' && c.dataPagamentoAgency?.startsWith(selectedMonth)
+      c.stato !== 'ANNULLATA' && c.pagato_agency && c.dataPagamentoAgency?.startsWith(selectedMonth)
     ))
 
     // Contratti fissi attivi — per il totale P&L
@@ -145,29 +165,32 @@ export default function FinancePage() {
     setContrattiAttiviTotale(attivi.reduce((s, c) => s + parseFloat(c.importoMensile || 0), 0))
 
     setVersamenti(versamentiRes.data || [])
-    setFattureEmesse(fattureRes.data || [])
+    setFattureEmesse((fattureRes.data || []).filter(f => f.mese?.startsWith(selectedMonth)))
 
     setAllUsers(usersRes.data || [])
     setPagamenti(pagAgentiRes.data || [])
 
-    setUsciteVarie(usciteRes.data || [])
+    setUsciteVarie((usciteRes.data || []).filter(u => u.mese?.startsWith(selectedMonth)))
     setFieraPartecipazioni(fieraRes.data || [])
-    setLoading(false)
-  }
+    } catch (error) {
+      if (id === request.current) setDataError(error?.message || 'Impossibile caricare Finance')
+    } finally { if (id === request.current) setLoading(false) }
+  }, [selectedMonth])
 
   useEffect(() => {
     if (userProfile?.role === 'ADMIN') Promise.resolve().then(loadData)
-  }, [userProfile, selectedMonth])
+  }, [userProfile?.role, loadData])
 
   // ── P&L ───────────────────────────────────────────────────
   const totFeeCollab   = collabCompletate.reduce((s, c) => s + parseFloat(c.feeManagement || 0), 0)
   const totVersamenti  = versamenti.reduce((s, v) => s + parseFloat(v.importoVersato || 0), 0)
-  const totEntrate     = totFeeCollab + totVersamenti + contrattiAttiviTotale
+  const summary = financeSummary({ month: selectedMonth, collaborations: allCollaborations, participations: fieraPartecipazioni, invoices: allInvoices, versamenti, contracts: allContracts, contractPayments, agentPayments: pagamenti, expenses: allExpenses })
+  const totEntrate = summary.incoming
   const totFatturato   = fattureEmesse.reduce((s, f) => s + parseFloat(f.importo || 0), 0)
   const totUsciteAgenti = pagamenti.reduce((s, p) => s + parseFloat(p.importoPagato || 0), 0)
   const totUsciteVarie  = usciteVarie.reduce((s, u) => s + parseFloat(u.importo || 0), 0)
-  const totUscite      = totUsciteAgenti + totUsciteVarie
-  const saldo          = totEntrate - totUscite
+  const totUscite = summary.outgoing
+  const saldo = summary.balance
 
   // ── Fatture helpers ───────────────────────────────────────
   const getFatturaForCollab      = (id) => fattureEmesse.find(f => f.collabId === id)
@@ -198,6 +221,11 @@ export default function FinancePage() {
       return
     }
 
+    if (fatturaForm.tipo === 'FIERA') {
+      const p = fieraPartecipazioni.find(p => p.id === sourceId)
+      if (p) setFatturaForm({ ...emptyFattura, mese: `${selectedMonth}-01`, tipo: 'FIERA', partecipazioneId: p.id, soggettoNome: `${p.creatorNome} - ${p.eventoNome}`, importo: p.fee })
+      return
+    }
     if (fatturaForm.tipo === 'COLLAB') {
       const c = collabFatturabili.find(item => item.id === sourceId)
       if (!c) return
@@ -216,11 +244,13 @@ export default function FinancePage() {
   const getFatturaSourceValue = () => {
     if (fatturaForm.tipo === 'COLLAB') return fatturaForm.collabId || ''
     if (fatturaForm.tipo === 'RICORRENTE') return fatturaForm.contrattoId || ''
+    if (fatturaForm.tipo === 'FIERA') return fatturaForm.partecipazioneId || ''
     if (fatturaForm.tipo === 'VERSAMENTO') return fatturaForm.versamentoId || ''
     return ''
   }
 
   const getFatturaSourceOptions = () => {
+    if (fatturaForm.tipo === 'FIERA') return fieraPartecipazioni.map(p => ({ value: p.id, label: `${p.creatorNome} - ${p.eventoNome}` }))
     if (fatturaForm.tipo === 'COLLAB') {
       return collabFatturabili.map(c => ({
         value: c.id,
@@ -243,51 +273,27 @@ export default function FinancePage() {
   }
 
   const fatturaSourceOptions = getFatturaSourceOptions()
-  const fatturaNeedsSource = !['MANUALE', 'FIERA'].includes(fatturaForm.tipo)
+  const fatturaNeedsSource = fatturaForm.tipo !== 'MANUALE'
   const canSaveFattura = Boolean(
     fatturaForm.soggettoNome &&
     fatturaForm.importo &&
-    (!fatturaNeedsSource || getFatturaSourceValue())
+    (!fatturaNeedsSource || invoiceSourceValid(fatturaForm))
   )
 
   const handleSaveFattura = async () => {
-    if (fatturaForm.tipo !== 'MANUALE' && !fatturaForm.collabId && !fatturaForm.contrattoId && !fatturaForm.versamentoId) {
+    if (!invoiceSourceValid(fatturaForm)) {
       toast.error('Seleziona una voce da fatturare')
       return
     }
-    if (!fatturaForm.soggettoNome || !fatturaForm.importo) {
+    if (!fatturaForm.soggettoNome || !(Number(fatturaForm.importo) > 0)) {
       toast.error('Soggetto e importo obbligatori')
       return
     }
     const meseDaData = fatturaForm.dataFattura
       ? `${fatturaForm.dataFattura.slice(0, 7)}-01`
-      : `${selectedMonth}-01`
+      : (fatturaForm.mese || `${selectedMonth}-01`)
     const { error } = await createFattura({ ...fatturaForm, mese: meseDaData })
     if (error) { toast.error('Errore salvataggio fattura'); return }
-
-    if (fatturaForm.tipo === 'COLLAB' && fatturaForm.collabId) {
-      const collab = collabCompletate.find(c => c.id === fatturaForm.collabId)
-      if (collab) {
-        await updateCollaboration(fatturaForm.collabId, {
-          ...collab,
-          fatturaEmessa: true,
-          numeroFattura: fatturaForm.numeroFattura || null,
-          dataFattura: fatturaForm.dataFattura || null,
-        })
-      }
-    }
-
-    if (fatturaForm.tipo === 'FIERA' && fatturaForm.partecipazioneId) {
-      const part = fieraPartecipazioni.find(p => p.id === fatturaForm.partecipazioneId)
-      if (part) {
-        await updatePartecipazione(part.id, {
-          ...part,
-          fatturaEmessa: true,
-          numeroFattura: fatturaForm.numeroFattura || null,
-          dataFattura: fatturaForm.dataFattura || null,
-        })
-      }
-    }
 
     toast.success('Fattura registrata')
     setShowFatturaForm(false)
@@ -298,7 +304,8 @@ export default function FinancePage() {
   const handleDeleteFattura = async (id) => {
     const ok = await confirm('Eliminare questa fattura?', { title: 'Elimina fattura', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteFattura(id)
+    const { error } = await deleteFattura(id)
+    if (error) { toast.error(error.message || 'Errore eliminazione fattura'); return }
     toast.success('Fattura eliminata')
     loadData()
   }
@@ -306,49 +313,49 @@ export default function FinancePage() {
   // ── Versamenti handlers ───────────────────────────────────
   const handleSaveVersamento = async () => {
     if (!versamentoForm.creatorId) return
-    await upsertVersamento({ ...versamentoForm, mese: `${selectedMonth}-01` })
+    const { error } = await upsertVersamento({ ...versamentoForm, mese: `${selectedMonth}-01` })
+    if (error) { toast.error('Errore salvataggio versamento'); return }
     setVersamentoForm(emptyVersamento)
     toast.success('Versamento registrato')
     loadData()
   }
 
   const handleToggleVerificato = async (id, current) => {
-    await toggleVerificato(id, current)
+    const { error } = await toggleVerificato(id, current)
+    if (error) { toast.error('Errore verifica versamento'); return }
     loadData()
   }
 
   const handleDeleteVersamento = async (id) => {
     const ok = await confirm('Eliminare il versamento?', { title: 'Elimina versamento', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteVersamento(id)
+    const { error } = await deleteVersamento(id)
+    if (error) { toast.error('Errore eliminazione versamento'); return }
     toast.success('Versamento eliminato')
     loadData()
   }
 
   // ── Agenti handlers ───────────────────────────────────────
-  const reloadAgenti = async () => {
-    const { data, error } = await getPagamentiByMese(selectedMonth)
-    if (error) { toast.error('Errore caricamento pagamenti'); return }
-    setPagamenti(data || [])
-  }
-
   const handlePagamento = async (agenteNome, importoPagato, importoFisso, importoTotale) => {
-    await upsertPagamentoAgente({ agenteNome, mese: selectedMonth, importoFisso, importoTotale, importoPagato: parseFloat(importoPagato) })
-    await reloadAgenti()
+    const { error } = await upsertPagamentoAgente({ agenteNome, mese: selectedMonth, importoFisso, importoTotale, importoPagato: parseFloat(importoPagato) })
+    if (error) { toast.error('Errore salvataggio pagamento'); return }
+    await loadData()
     toast.success('Pagamento registrato')
   }
 
   const handleGeneraMese = async () => {
-    await generaPagamentiMese(selectedMonth, allUsers)
-    await reloadAgenti()
+    const { error } = await generaPagamentiMese(selectedMonth, allUsers)
+    if (error) { toast.error('Errore salvataggio pagamento'); return }
+    await loadData()
     toast.success('Riepilogo generato')
   }
 
   const handleResetMese = async () => {
     const ok = await confirm(`Eliminare tutti i pagamenti agenti di ${selectedMonth}?`, { title: 'Reset mese', confirmLabel: 'Elimina' })
     if (!ok) return
-    await supabase.from('pagamenti_agenti').delete().eq('mese', selectedMonth)
-    setPagamenti([])
+    const { error } = await supabase.from('pagamenti_agenti').delete().eq('mese', selectedMonth)
+    if (error) { toast.error('Errore reset mese'); return }
+    await loadData()
     toast.success('Mese resettato')
   }
 
@@ -371,18 +378,21 @@ export default function FinancePage() {
   const handleDeleteUscita = async (id) => {
     const ok = await confirm('Eliminare questa uscita?', { title: 'Elimina uscita', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteUscita(id)
+    const { error } = await deleteUscita(id)
+    if (error) { toast.error('Errore eliminazione uscita'); return }
     toast.success('Uscita eliminata')
     loadData()
   }
 
   const handleTogglePagataUscita = async (id, current) => {
-    await togglePagataUscita(id, current)
+    const { error } = await togglePagataUscita(id, current)
+    if (error) { toast.error('Errore aggiornamento uscita'); return }
     loadData()
   }
 
   // ── Guards ────────────────────────────────────────────────
   if (userProfile?.role !== 'ADMIN') return <div className="card"><p>Accesso negato — Solo Amministratori</p></div>
+  if (dataError) return <div className="card"><p role="alert">Dati Finance non disponibili: {dataError}</p><button className="btn-secondary" onClick={loadData}>Riprova</button></div>
   if (loading) return <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400" /></div>
 
   // ── Render helper: section collapsible header ─────────────
@@ -396,7 +406,7 @@ export default function FinancePage() {
         <h1 className="text-3xl font-bold text-gray-900">Finance</h1>
         <div>
           <label className="label">Mese di riferimento</label>
-          <input type="month" className="input" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
+          <input type="month" className="input" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value || romeToday().slice(0, 7))} />
         </div>
       </div>
 
@@ -404,7 +414,7 @@ export default function FinancePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className={`card border-2 ${saldo >= 0 ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
           <div className="flex items-center justify-between mb-1">
-            <p className={`text-sm font-semibold ${saldo >= 0 ? 'text-green-700' : 'text-red-700'}`}>Saldo Netto</p>
+            <p className={`text-sm font-semibold ${saldo >= 0 ? 'text-green-700' : 'text-red-700'}`}>Saldo movimenti registrati</p>
             {saldo >= 0 ? <TrendingUp className="w-4 h-4 text-green-500" /> : <TrendingDown className="w-4 h-4 text-red-500" />}
           </div>
           <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-green-800' : 'text-red-800'}`}>
@@ -414,19 +424,19 @@ export default function FinancePage() {
         </div>
         <div className="card border border-blue-100 bg-blue-50">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-blue-700">Entrate</p>
+            <p className="text-sm font-semibold text-blue-700">Incassi registrati</p>
             <DollarSign className="w-4 h-4 text-blue-400" />
           </div>
           <p className="text-2xl font-bold text-blue-800">€{totEntrate.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
-          <p className="text-xs text-blue-500 mt-1">Fee + Versamenti + Fissi</p>
+          <p className="text-xs text-blue-500 mt-1">ADV + Fiere + Versamenti verificati + Contratti pagati + Manuali incassate</p>
         </div>
         <div className="card border border-red-100 bg-red-50">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold text-red-700">Uscite</p>
+            <p className="text-sm font-semibold text-red-700">Pagamenti registrati</p>
             <TrendingDown className="w-4 h-4 text-red-400" />
           </div>
           <p className="text-2xl font-bold text-red-800">€{totUscite.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
-          <p className="text-xs text-red-500 mt-1">Agenti + Varie</p>
+          <p className="text-xs text-red-500 mt-1">Creator + Rimborsi pagati + Fissi pagati + Uscite pagate</p>
         </div>
         <div className="card border border-yellow-200 bg-yellow-50">
           <div className="flex items-center justify-between mb-1">
@@ -438,6 +448,11 @@ export default function FinancePage() {
         </div>
       </div>
 
+      <div className="card mb-4 text-sm">
+        <p>Previsto ADV e fiere, tutti i mesi: da incassare EUR {summary.receivables.toFixed(2)}; quote creator da pagare dopo incasso EUR {summary.creatorDebt.toFixed(2)}.</p>
+        <p>I totali includono solo movimenti censiti: non sono il saldo bancario. I fissi agenti e i versamenti verificati sono attribuiti al mese registrato.</p>
+        {summary.undated > 0 && <p role="alert" className="text-orange-700">{summary.undated} movimenti pagati/incassati con data o importo incompleti esclusi dai totali mensili. Completa i dati nei record di origine.</p>}
+      </div>
       <PaymentOverview collaborations={allCollaborations} participations={fieraPartecipazioni} onRefresh={loadData} />
       {/* ── Tabs ── */}
       <div className="flex border-b border-gray-200 mb-6">
@@ -623,7 +638,9 @@ export default function FinancePage() {
             return (
               <div className="card">
                 <SectionHeader
-                  label="Fee Fiere"
+                  open={open}
+                  toggleSection={toggleSection}
+                  label="Fee Fiere (tutti i mesi)"
                   count={fieraPartecipazioni.length}
                   total={totFeeFiere}
                   sectionKey="fiere"
@@ -633,7 +650,7 @@ export default function FinancePage() {
                 />
                 {open.fiere && (
                   fieraGroups.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center py-6">Nessuna fee fiera con pagamento agency registrato.</p>
+                    <p className="text-sm text-gray-400 text-center py-6">Nessuna partecipazione confermata.</p>
                   ) : (
                     <div className="space-y-4">
                       {fieraGroups.map((gruppo, gi) => (
@@ -776,6 +793,16 @@ export default function FinancePage() {
                               {f.linkDocumento ? <a href={f.linkDocumento} target="_blank" rel="noopener noreferrer" className="text-blue-600"><ExternalLink className="w-4 h-4 inline" /></a> : '—'}
                             </td>
                             <td className="py-2.5 px-3 text-right">
+                              {!f.collabId && !f.partecipazioneId && !f.contrattoId && !f.versamentoId && <span className="inline-flex items-center gap-2 mr-2">
+                                <label><input type="checkbox" checked={f.incassata} onChange={async e => {
+                                  const { error } = await updateFattura(f.id, { ...f, incassata: e.target.checked, dataIncasso: e.target.checked ? (f.dataIncasso || romeToday()) : null })
+                                  if (error) toast.error('Errore registrazione incasso'); else loadData()
+                                }} /> Incassata</label>
+                                {f.incassata && <input type="date" aria-label="Data incasso manuale" value={f.dataIncasso || ''} onChange={async e => {
+                                  const { error } = await updateFattura(f.id, { ...f, dataIncasso: e.target.value || null })
+                                  if (error) toast.error('Errore data incasso'); else loadData()
+                                }} />}
+                              </span>}
                               <button onClick={() => handleDeleteFattura(f.id)} className="p-1 text-red-400 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button>
                             </td>
                           </tr>
@@ -886,6 +913,7 @@ export default function FinancePage() {
                           <input type="checkbox" checked={uscitaForm.pagata} onChange={e => setUscitaForm(p => ({ ...p, pagata: e.target.checked }))} />
                           Già pagata
                         </label>
+                        {uscitaForm.pagata && <input type="date" aria-label="Data pagamento uscita" className="input" value={uscitaForm.dataPagamento || romeToday()} onChange={e => setUscitaForm(p => ({ ...p, dataPagamento: e.target.value }))} />}
                       </div>
                     </div>
                     <div className="flex justify-end gap-2 mt-3">
@@ -930,7 +958,7 @@ export default function FinancePage() {
                               <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => {
                                   setEditingUscita(u)
-                                  setUscitaForm({ categoria: u.categoria, descrizione: u.descrizione || '', importo: u.importo, fornitore: u.fornitore || '', note: u.note || '', pagata: u.pagata })
+                                  setUscitaForm({ ...u })
                                   setShowUscitaForm(true)
                                 }} className="p-1 hover:bg-yellow-50 text-yellow-600 rounded"><Edit className="w-3.5 h-3.5" /></button>
                                 <button onClick={() => handleDeleteUscita(u.id)} className="p-1 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -976,7 +1004,7 @@ export default function FinancePage() {
                     ? 'Collaborazione da fatturare *'
                     : fatturaForm.tipo === 'RICORRENTE'
                     ? 'Contratto fisso da fatturare *'
-                    : 'Versamento creator da fatturare *'}
+                    : fatturaForm.tipo === 'FIERA' ? 'Partecipazione da fatturare *' : 'Versamento creator da fatturare *'}
                 </label>
                 <select
                   className="input"

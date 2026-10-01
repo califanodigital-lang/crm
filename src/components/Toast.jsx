@@ -5,6 +5,7 @@ import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 // ── Singleton globale — non usa Context ──────────────────────
 let _addToast = null
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const toast = {
   success: (msg) => _addToast?.('success', msg),
   error:   (msg) => _addToast?.('error',   msg),
@@ -64,4 +65,5 @@ export function ToastContainer() {
 
 // Alias per compatibilità — non fa nulla, i provider non servono più
 export function ToastProvider({ children }) { return children }
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() { return toast }

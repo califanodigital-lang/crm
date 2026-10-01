@@ -33,7 +33,7 @@ function AuthErrorScreen() {
 }
 
 function ProtectedRoute({ children }) {
-  const { user, userProfile, loading, mfaRequired, authError } = useAuth()
+  const { user, userProfile, loading, mfaRequired, authError, signOut } = useAuth()
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div>
@@ -42,7 +42,7 @@ function ProtectedRoute({ children }) {
   if (authError) return <AuthErrorScreen />
   if (!user) return <Navigate to="/login" replace />
   if (mfaRequired) return <Navigate to="/verify-2fa" replace />
-  if (!canUseCrm(userProfile)) return <div className="card"><p>Profilo non autorizzato. Contatta l'amministratore.</p></div>
+  if (!canUseCrm(userProfile)) return <div className="card"><p>Account inattivo o profilo non autorizzato. Contatta l'amministratore.</p><button className="btn-secondary" onClick={signOut}>Esci</button></div>
   return children
 }
 

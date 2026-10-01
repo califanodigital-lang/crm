@@ -1,5 +1,5 @@
 import { creatorFee, expenseTotal } from '../utils/eventPayments'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { ArrowLeft, Edit, Mail, Phone, Calendar, DollarSign, TrendingUp, Plus, AlertCircle, Trash2, CalendarDays } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByCreator, createCollaboration } from '../services/collaborationService'
@@ -43,18 +43,16 @@ export default function CreatorDetail({ creator, onEdit, onBack }) {
     setBrands(data || [])
   }
 
-  // Carica collaborazioni quando si apre il tab
-  useEffect(() => {
+  const refreshDetail = useEffectEvent(() => {
     loadPiattaformeCreator()
     loadImpegni()
     loadBrands()
-    if (activeTab === 'collaborazioni') {
-      loadCollaborations()
-    }
-    if (activeTab === 'eventi') {
-      loadPartecipazioni()
-    }
-  }, [activeTab, creator.id])
+    if (activeTab === 'collaborazioni') loadCollaborations()
+    if (activeTab === 'eventi') loadPartecipazioni()
+  })
+
+  // Carica collaborazioni quando si apre il tab
+  useEffect(() => { Promise.resolve().then(() => refreshDetail()) }, [activeTab, creator.id])
 
 
   const loadPiattaformeCreator = async () => {

@@ -127,4 +127,86 @@ try {
   assert.deepEqual(Object.keys(cleanedDirectory[0]).sort(), ['agente_nome', 'attivo', 'id', 'nome_completo'])
   await assert.rejects(db.query('select * from crm_archive.agent_commissions'), /permission denied/)
   console.log('OK: rimozione commissioni idempotente, archivio privato e directory operativa senza commissioni.')
+
+  await db.exec('reset role')
+  for (const table of ['creators','brands','clienti_terzi','collaborations','fiere_db','eventi','trattative_fiere','proposte_brand']) {
+    await db.exec(`alter table public.${table} add column note_log jsonb not null default '[]'`)
+  }
+  await db.exec(`
+    alter table public.collaborations add column pagato_agency boolean default false, add column numero_fattura text, add column data_fattura date,
+      add column trattativa_id uuid, add column brand_id uuid, add column sales text, add column senior text,
+      add column link_contratto text, add column contatto text, add column note text;
+    alter table public.partecipazioni_eventi add column pagato_agency boolean default false,
+      add column pagato boolean default false, add column numero_fattura text, add column data_fattura date;
+    alter table public.eventi add column tipo text, add column circuito_id uuid, add column fiera_db_id uuid,
+      add column trattativa_fiera_id uuid, add column data_inizio date, add column data_fine date,
+      add column location text, add column citta text, add column stato text, add column created_at timestamptz default now();
+    alter table public.trattative_fiere add column nome text, add column tipo text, add column circuito_id uuid,
+      add column fiera_db_id uuid, add column evento_id uuid, add column data_inizio date, add column data_fine date,
+      add column location text, add column citta text, add column stato text;
+    alter table public.proposte_brand add column stato text, add column creator_confermati jsonb,
+      add column fee_creator_map jsonb, add column importo_preventivo numeric, add column brand_id uuid,
+      add column brand_nome text, add column sales text, add column ima text, add column agente text,
+      add column link_preventivo text, add column contatto text, add column note_trattativa text, add column note_strategiche text;
+  `)
+  const auditMigration = await readFile(new URL('../supabase_migrations/20261001_audit_crm_fixes.sql', import.meta.url), 'utf8')
+  await db.exec(auditMigration)
+  await db.exec(auditMigration)
+  await asUser(admin)
+  await db.query('update public.user_profiles set attivo=false where id=$1', [agent])
+  await asUser(agent, 'aal2')
+  assert.equal((await db.query('select * from public.collaborations')).rows.length, 0)
+  await assert.rejects(db.query('select public.crm_confirm_event_receipt($1,true,$2,null)', [part,'2026-10-01']), /Accesso negato/)
+  assert.equal((await db.query('select * from public.user_profiles')).rows.length, 1)
+  await asUser(admin)
+  await db.query('update public.user_profiles set attivo=true where id=$1', [agent])
+  await asUser(agent, 'aal2')
+
+  await db.query('update public.creators set note_log=$1::jsonb where id=$2', [JSON.stringify([{id:'note-a',topic:'A',contenuto:'Uno',timestamp:'1900-01-01T00:00:00Z',_new:true}]),creator])
+  const noteA = (await db.query('select note_log from public.creators where id=$1',[creator])).rows[0].note_log[0]
+  assert.notEqual(noteA.timestamp,'1900-01-01T00:00:00Z')
+  await db.query('update public.creators set note_log=$1::jsonb where id=$2', [JSON.stringify([{id:'note-b',topic:'B',contenuto:'Due',_new:true}]),creator])
+  assert.equal((await db.query('select note_log from public.creators where id=$1',[creator])).rows[0].note_log.length,2)
+  const base = {topic:noteA.topic,contenuto:noteA.contenuto,timestamp:noteA.timestamp,modificatoIl:noteA.modificatoIl || ''}
+  const edit = {...noteA,topic:'Modificata',_base:base}
+  await db.query('update public.creators set note_log=$1::jsonb where id=$2',[JSON.stringify([edit]),creator])
+  await assert.rejects(db.query('update public.creators set note_log=$1::jsonb where id=$2',[JSON.stringify([edit]),creator]),/altro operatore/)
+  assert.equal((await db.query('select note_log from public.creators where id=$1',[creator])).rows[0].note_log.length,2)
+
+  await asUser(admin)
+  await db.query('delete from public.fatture_emesse where partecipazione_id=$1',[part])
+  assert.equal((await db.query('select fattura_emessa from public.partecipazioni_eventi where id=$1',[part])).rows[0].fattura_emessa,false)
+  const receipt = await db.query('select public.crm_confirm_event_receipt($1,true,$2,$3::jsonb)',[part,'2026-10-01',JSON.stringify({numero_fattura:'F-1',data_fattura:'2026-10-01'})])
+  assert.equal(receipt.rows[0].crm_confirm_event_receipt.fattura_emessa,true)
+  await db.query('select public.crm_confirm_event_receipt($1,true,$2,$3::jsonb)',[part,'2026-10-01',JSON.stringify({numero_fattura:'F-1',data_fattura:'2026-10-01'})])
+  assert.equal((await db.query('select * from public.fatture_emesse where partecipazione_id=$1',[part])).rows.length,1)
+  await assert.rejects(db.query('select public.crm_confirm_event_receipt($1,true,$2,$3::jsonb)',[part,'2026-10-02',JSON.stringify({collab_id:collab})]),/Sorgente fattura non valida/)
+  assert.equal((await db.query('select data_pagamento_agency::text as date from public.partecipazioni_eventi where id=$1',[part])).rows[0].date,'2026-10-01')
+  await db.query('select public.crm_confirm_collab_receipt($1,true,$2,null)',[collab,'2026-10-01'])
+
+  const deal = '00000000-0000-0000-0000-000000000020'
+  const secondCreator = '00000000-0000-0000-0000-000000000021'
+  await db.query('insert into public.creators(id,nome) values($1,$2)',[secondCreator,'Secondo'])
+  await db.query('insert into public.proposte_brand(id,stato,creator_confermati,importo_preventivo,brand_nome) values($1,$2,$3::jsonb,1000,$4)',[deal,'CONTRATTO_FIRMATO',JSON.stringify([creator,secondCreator]),'Brand'])
+  await assert.rejects(db.query('select public.crm_convert_deal($1)',[deal]),/fee individuale/)
+  await db.query('update public.proposte_brand set fee_creator_map=$1::jsonb where id=$2',[JSON.stringify({[creator]:600,[secondCreator]:400}),deal])
+  const converted = (await db.query('select public.crm_convert_deal($1) as result',[deal])).rows[0].result
+  assert.equal(converted.length,2)
+  assert.equal(converted.reduce((s,c)=>s+Number(c.pagamento),0),1000)
+  assert.equal((await db.query('select public.crm_convert_deal($1) as result',[deal])).rows[0].result.length,2)
+  assert.equal((await db.query('select stato from public.proposte_brand where id=$1',[deal])).rows[0].stato,'COLLAB_GENERATA')
+
+  const fair = '00000000-0000-0000-0000-000000000030'
+  const negotiation = '00000000-0000-0000-0000-000000000031'
+  await db.query('insert into public.fiere_db(id) values($1)',[fair])
+  await db.query('insert into public.trattative_fiere(id,nome,stato,fiera_db_id,data_inizio,note_log) values($1,$2,$3,$4,$5,$6::jsonb)',[negotiation,'Fiera','IN_TRATTATIVA',fair,'2026-06-01',JSON.stringify([{id:'source-note',topic:'Origine',timestamp:'2026-01-01T00:00:00Z'}])])
+  const edition = (await db.query('select public.crm_sync_fair_edition($1) as id',[negotiation])).rows[0].id
+  await db.query('update public.eventi set stato=$1,note_log=$2::jsonb where id=$3',['CHIUSA',JSON.stringify([{id:'event-note',topic:'Evento',_new:true}]),edition])
+  await db.query('select public.crm_sync_fair_edition($1)',[negotiation])
+  assert.equal((await db.query('select stato from public.eventi where id=$1',[edition])).rows[0].stato,'CHIUSA')
+  await db.query('update public.trattative_fiere set evento_id=null,data_inizio=$1 where id=$2',['2027-06-01',negotiation])
+  const nextEdition = (await db.query('select public.crm_sync_fair_edition($1) as id',[negotiation])).rows[0].id
+  assert.notEqual(nextEdition,edition)
+  console.log('OK: audit SQL idempotente, account inattivi bloccati, note concorrenti e timestamp server, fatture atomiche e rollback, conversione e budget, edizioni separate.')
+
 } finally { await db.close() }

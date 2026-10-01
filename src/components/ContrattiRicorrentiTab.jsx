@@ -127,6 +127,8 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
       getAllCreators(),
       getAllPagamentiContratti(),
     ])
+    const failed = [cRes, ktRes, bRes, crRes, pagRes].find(r => r.error)
+    if (failed) { toast.error('Errore caricamento contratti: riprova'); setLoading(false); return }
     setContratti(cRes.data    || [])
     setClientiTerzi(ktRes.data || [])
     setBrands(bRes.data       || [])
@@ -164,8 +166,9 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
       if (existing) return prev.map(p => p.contrattoId === contratto.id && p.mese === mese ? { ...p, pagato: !current } : p)
       return [...prev, { id: '_tmp', contrattoId: contratto.id, mese, pagato: true }]
     })
-    const { error } = await upsertPagamentoContratto(contratto.id, mese, !current)
+    const { error } = await upsertPagamentoContratto(contratto.id, mese, !current, undefined, Number(contratto.importoMensile) || 0)
     if (error) { toast.error('Errore aggiornamento pagamento'); loadAll() }
+    if (!error) onDataChanged?.()
     if (!error && !current) onOpenFattura?.(contratto, mese)
   }
 
@@ -223,7 +226,8 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
   const handleDeleteTerzo = async (id) => {
     const ok = await confirm('Questa azione è irreversibile.', { title: 'Eliminare il cliente?', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteClienteTerzo(id)
+    const { error } = await deleteClienteTerzo(id)
+    if (error) { toast.error('Errore eliminazione cliente'); return }
     toast.success('Cliente eliminato')
     await loadAll()
     onDataChanged?.()
@@ -243,7 +247,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
       {/* ── Summary ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card bg-green-50 border border-green-100">
-          <p className="text-sm font-medium text-green-700">Entrate fisse nel mese selezionato</p>
+          <p className="text-sm font-medium text-green-700">Canoni previsti nel mese selezionato</p>
           <p className="text-3xl font-bold text-green-800 mt-1">
             €{totaleAttivo.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
@@ -462,6 +466,19 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
                                   Storico completo · {allMonths.length} mesi
                                 </p>
+                                <div className="grid gap-2 mb-4">
+                                  {pagamenti.filter(p => p.contrattoId === c.id && p.pagato).map(p => <label key={p.id} className="flex gap-2 items-center text-xs">
+                                    <input type="number" min="0" step="0.01" aria-label="Importo contratto incassato" className="input w-28" defaultValue={p.importo ?? ''} onBlur={async e => {
+                                      const { error } = await upsertPagamentoContratto(c.id, p.mese, true, p.dataPagamento, e.target.value === '' ? null : Number(e.target.value))
+                                      if (error) toast.error('Errore importo incasso'); else { await loadAll(); onDataChanged?.() }
+                                    }} />
+                                    {formatMese(p.mese)}: data incasso
+                                    <input type="date" className="input w-40" value={p.dataPagamento || ''} onChange={async e => {
+                                      const { error } = await upsertPagamentoContratto(c.id, p.mese, true, e.target.value || null)
+                                      if (error) toast.error('Errore aggiornamento data'); else { await loadAll(); onDataChanged?.() }
+                                    }} />
+                                  </label>)}
+                                </div>
                                 <div className="space-y-3">
                                   {Object.entries(byYear).map(([year, months]) => (
                                     <div key={year} className="flex items-start gap-3">
@@ -590,7 +607,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => {
                             setEditingTerzo(t)
-                            setFormTerzo({ nome: t.nome, email: t.email || '', telefono: t.telefono || '', sitoWeb: t.sitoWeb || '', note: t.note || '' })
+                            setFormTerzo({ ...t })
                             setShowFormTerzo(true)
                           }} className="p-1.5 hover:bg-yellow-50 text-yellow-600 rounded-lg"><Edit className="w-4 h-4" /></button>
                           <button onClick={() => handleDeleteTerzo(t.id)}
@@ -687,7 +704,7 @@ export default function ContrattiRicorrentiTab({ selectedMonth = new Date().toIS
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => {
                             setEditingTerzo(t)
-                            setFormTerzo({ nome: t.nome, email: t.email || '', telefono: t.telefono || '', sitoWeb: t.sitoWeb || '', note: t.note || '' })
+                            setFormTerzo({ ...t })
                             setShowFormTerzo(true)
                           }} className="p-1.5 hover:bg-yellow-50 text-yellow-600 rounded-lg"><Edit className="w-4 h-4" /></button>
                           <button onClick={() => handleDeleteTerzo(t.id)}

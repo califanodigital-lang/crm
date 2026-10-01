@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { ArrowLeft, Edit, Mail, Phone, Globe, Calendar, AlertCircle, Plus } from 'lucide-react'
 import CollaborationForm from './CollaborationForm'
 import { getCollaborationsByBrand, createCollaboration } from '../services/collaborationService'
@@ -15,6 +15,8 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
   const [creators, setCreators] = useState([])
   const [loading, setLoading] = useState(false)
 
+  const refreshCollaborations = useEffectEvent(() => loadCollaborations())
+
   // Carica creators sempre (serve per info tab — creatorSuggeriti — e per form collaborazione)
   useEffect(() => {
     loadCreators()
@@ -22,7 +24,7 @@ export default function BrandDetail({ brand, onEdit, onBack }) {
 
   useEffect(() => {
     if (activeTab === 'collaborazioni') {
-      loadCollaborations()
+      Promise.resolve().then(() => refreshCollaborations())
     }
   }, [activeTab, brand.id])
 

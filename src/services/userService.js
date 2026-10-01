@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { userProfilePayload } from '../utils/profilePayload'
 
 const toCamelCase = (profile) => {
   if (!profile) return null
@@ -16,15 +17,7 @@ const toCamelCase = (profile) => {
   }
 }
 
-const toSnakeCase = (profile) => {
-  return {
-    role: profile.role,
-    nome_completo: profile.nomeCompleto,
-    agente_nome: profile.agenteNome,
-    attivo: profile.attivo,
-    fisso_mensile: profile.fissoMensile || 0,
-  }
-}
+const toSnakeCase = userProfilePayload
 
 // GET: Profilo utente corrente
 export const getCurrentUserProfile = async () => {

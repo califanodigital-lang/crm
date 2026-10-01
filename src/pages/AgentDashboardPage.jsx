@@ -107,32 +107,35 @@ export default function AgentDashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [pagamenti, setPagamenti] = useState([])
   const [allUsers, setAllUsers] = useState([])
+  const [dataError, setDataError] = useState(null)
+  const [reload, setReload] = useState(0)
 
 
   const loadData = useEffectEvent(async () => {
     setLoading(true)
-      const { data } = await getAllAgentsStats(selectedMonth)
-      setAllAgents(data || [])
-      const [pagRes, usersRes] = await Promise.all([
-        getPagamentiByMese(selectedMonth),
-        getAllUsers(),
-      ])
-      setPagamenti(pagRes.data || [])
-      setAllUsers(usersRes.data || [])
-
-    setLoading(false)
+    setDataError(null)
+    try {
+      const [stats, payments, users] = await Promise.all([getAllAgentsStats(selectedMonth), getPagamentiByMese(selectedMonth), getAllUsers()])
+      const failed = [stats, payments, users].find(r => r.error)
+      if (failed) throw failed.error
+      setAllAgents(stats.data || [])
+      setPagamenti(payments.data || [])
+      setAllUsers(users.data || [])
+    } catch (error) { setDataError(error?.message || 'Errore caricamento') }
+    finally { setLoading(false) }
   })
 
-  useEffect(() => { Promise.resolve().then(() => loadData()) }, [selectedMonth])
+  useEffect(() => { Promise.resolve().then(() => loadData()) }, [selectedMonth, reload])
 
   const handlePagamento = async (agenteNome, importoPagato, importoFisso, importoTotale) => {
-    await upsertPagamentoAgente({
+    const result = await upsertPagamentoAgente({
       agenteNome,
       mese: selectedMonth,
       importoFisso,
       importoTotale,
       importoPagato: parseFloat(importoPagato),
     })
+    if (result.error) { toast.error('Errore salvataggio pagamento'); return }
     const { data, error } = await getPagamentiByMese(selectedMonth)
     if (error) { toast.error('Errore caricamento pagamenti'); return }
     setPagamenti(data || [])
@@ -140,7 +143,8 @@ export default function AgentDashboardPage() {
   }
 
   const handleGeneraMese = async () => {
-    await generaPagamentiMese(selectedMonth, allUsers)
+    const result = await generaPagamentiMese(selectedMonth, allUsers)
+    if (result.error) { toast.error('Errore generazione riepilogo'); return }
     const { data, error } = await getPagamentiByMese(selectedMonth)
     if (error) { toast.error('Errore caricamento pagamenti'); return }
     setPagamenti(data || [])
@@ -152,12 +156,14 @@ export default function AgentDashboardPage() {
       title: 'Reset mese', confirmLabel: 'Elimina'
     })
     if (!ok) return
-    await supabase.from('pagamenti_agenti').delete().eq('mese', selectedMonth)
+    const { error } = await supabase.from('pagamenti_agenti').delete().eq('mese', selectedMonth)
+    if (error) { toast.error('Errore reset mese'); return }
     setPagamenti([])
     toast.success('Mese resettato')
   }
 
 
+  if (dataError) return <div className="card"><p role="alert">{dataError}</p><button className="btn-secondary" onClick={() => setReload(r => r + 1)}>Riprova</button></div>
   if (loading) return (
     <div className="flex justify-center py-8">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-400" />

@@ -15,7 +15,8 @@ import {
 } from '../services/collaborationService'
 import { getAllCreators } from '../services/creatorService'
 import { getAllBrands } from '../services/brandService'
-import { createFattura } from '../services/fattureEmesseService'
+import { confirmCollaborationReceipt } from '../services/collaborationService'
+import { romeToday } from '../utils/civilDate'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { getStatoCollaborazione } from '../constants/constants'
@@ -115,28 +116,13 @@ export default function CollaborationsPage() {
       payload.stato = 'ATTESA_PAGAMENTO_AGENCY'
     }
 
-    await updateCollaboration(collab.id, { ...collab, ...payload })
-
-    // Se è un pagamento agency con fattura, crea il record in fatture_emesse
-    // per collegarlo al registro Finance ed evitare doppie emissioni
-    if (tipo === 'agency' && valore && fatturaData?.emessa) {
-      const dataPagamento = data || new Date().toISOString().slice(0, 10)
-      const mese = dataPagamento.slice(0, 7) + '-01'
-      const soggettoNome = [collab.creatorNome, collab.brandNome].filter(Boolean).join(' - ')
-      const { error: fatturaError } = await createFattura({
-        tipo: 'COLLAB',
-        collabId: collab.id,
-        mese,
-        soggettoNome,
-        importo: collab.feeManagement || 0,
-        numeroFattura: fatturaData.numero || null,
-        dataFattura: fatturaData.dataFattura || dataPagamento,
-        note: null,
-      })
-      if (fatturaError) {
-        toast.error('Pagamento salvato, ma errore nel registro Finance. Vai su Finance per registrare la fattura manualmente.')
-      }
-    }
+    const result = tipo === 'agency'
+      ? await confirmCollaborationReceipt(collab.id, valore, data || collab.dataPagamentoAgency || romeToday(), valore && fatturaData?.emessa ? {
+        numero_fattura: fatturaData.numero || null,
+        data_fattura: fatturaData.dataFattura || data || romeToday(),
+      } : null)
+      : await updateCollaboration(collab.id, { ...collab, ...payload })
+    if (result.error) { toast.error(result.error.message || 'Errore salvataggio pagamento'); return }
 
     setPagamentoModal(null)
     if (payload.stato === 'COMPLETATA' && !wasCompleted) {

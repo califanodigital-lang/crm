@@ -8,14 +8,16 @@ export default function CreatorMultiSelect({ selectedIds = [], onChange }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
 
-  useEffect(() => {
-    loadCreators()
-  }, [])
 
-  const loadCreators = async () => {
+
+  async function loadCreators() {
     const { data } = await getAllCreators()
     setCreators(data || [])
   }
+
+  useEffect(() => {
+    Promise.resolve().then(loadCreators)
+  }, [])
 
   const handleAdd = (creatorId) => {
     if (!selectedIds.includes(creatorId)) {

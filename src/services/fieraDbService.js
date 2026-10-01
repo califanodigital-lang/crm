@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { addCivilMonths } from '../utils/civilDate'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const normalizeValue = (value) => (value || '').trim().toLowerCase()
@@ -11,15 +12,7 @@ const isSameOptionalValue = (left, right) => {
   return !normalizedLeft || !normalizedRight || normalizedLeft === normalizedRight
 }
 
-export const addMonths = (dateString, months) => {
-  if (!dateString) return null
-
-  const d = new Date(`${dateString}T00:00:00`)
-  if (Number.isNaN(d.getTime())) return null
-
-  d.setMonth(d.getMonth() + months)
-  return d.toISOString().slice(0, 10)
-}
+export const addMonths = addCivilMonths
 
 const normalizeDateSet = (dateSet = {}) => {
   const dataInizio = cleanValue(dateSet.dataInizio || dateSet.data_inizio)
@@ -215,7 +208,7 @@ export const createFieraDb = async (fieraData) => {
         sito_web: payload.sito_web ?? existing.sito_web,
         ultima_data: payload.ultima_data ?? existing.ultima_data,
         prossimo_contatto: payload.prossimo_contatto ?? existing.prossimo_contatto,
-        date_sets: payload.date_sets ?? existing.date_sets,
+        date_sets: [...normalizeDateSets(existing.date_sets, existing), ...normalizeDateSets(payload.date_sets)],
         note: payload.note ?? existing.note,
         note_log: payload.note_log ?? existing.note_log,
         evento_origine_id: payload.evento_origine_id ?? existing.evento_origine_id,
@@ -299,6 +292,7 @@ export const upsertFieraFromEvento = async (evento) => {
     })
 
     if (existing) {
+      payload.date_sets = [...normalizeDateSets(existing.date_sets, existing), ...dateSets].filter((set, index, rows) => rows.findIndex(r => r.dataInizio === set.dataInizio && r.dataFine === set.dataFine) === index)
       let { data, error } = await supabase
         .from('fiere_db')
         .update({ ...payload })

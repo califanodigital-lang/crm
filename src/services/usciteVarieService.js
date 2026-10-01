@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { romeToday } from '../utils/civilDate'
 
 const toCamelCase = (u) => ({
   id: u.id,
@@ -22,7 +23,7 @@ const toSnakeCase = (u) => ({
   fornitore: u.fornitore || null,
   note: u.note || null,
   pagata: u.pagata || false,
-  data_pagamento: u.pagata ? (u.dataPagamento || new Date().toISOString().split('T')[0]) : null,
+  data_pagamento: u.pagata ? (u.dataPagamento || romeToday()) : null,
 })
 
 export const getUsciteByMese = async (mese) => {
@@ -83,7 +84,7 @@ export const togglePagataUscita = async (id, current) => {
       .from('uscite_varie')
       .update({
         pagata: !current,
-        data_pagamento: !current ? new Date().toISOString().split('T')[0] : null,
+        data_pagamento: !current ? romeToday() : null,
       })
       .eq('id', id)
       .select()
@@ -94,3 +95,8 @@ export const togglePagataUscita = async (id, current) => {
     return { data: null, error }
   }
 }
+export const getAllUscite = async () => {
+  try { return { data: (await fetchAllRows(() => supabase.from('uscite_varie').select('*').order('created_at', { ascending: false }))).map(toCamelCase), error: null } }
+  catch (error) { return { data: null, error } }
+}
+

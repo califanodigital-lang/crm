@@ -338,57 +338,6 @@ export const getTrattativeStats = async () => {
 // ── CONVERSIONE → COLLABORAZIONE ─────────────────────────────
 // Chiamata quando stato diventa CONTRATTO_FIRMATO
 export const creaCollaborazioneDaTrattativa = async (trattativaId) => {
-  try {
-    const { data: t, error } = await supabase
-      .from('proposte_brand')
-      .select('*')
-      .eq('id', trattativaId)
-      .single()
-
-    if (error) throw error
-
-    const creatorIds = (t.creator_confermati && t.creator_confermati.length > 0)
-      ? t.creator_confermati
-      : []
-
-    if (creatorIds.length === 0) {
-      throw new Error('Nessun creator confermato nella trattativa')
-    }
-
-    const feeCreatorMap = t.fee_creator_map || {}
-
-    const payload = creatorIds.map((creatorId) => {
-      const feeCreator = feeCreatorMap[creatorId] ? parseFloat(feeCreatorMap[creatorId]) : null
-      const pagamento = feeCreator ?? (t.importo_preventivo ? parseFloat(t.importo_preventivo) : null)
-      const fee_management = pagamento ? +(pagamento * 0.25).toFixed(2) : null
-
-      return {
-        brand_id: t.brand_id || null,
-        trattativa_id: t.id,
-        brand_nome: t.brand_nome,
-        creator_id: creatorId,
-        sales: t.sales || null,
-        agente: t.ima || null,
-        senior: t.agente || null,
-        pagamento: pagamento,
-        fee_management,
-        link_contratto: t.link_preventivo || null,
-        stato: 'IN_LAVORAZIONE',
-        pagato: false,
-        contatto: t.contatto || null,
-        note: t.note_trattativa || t.note_strategiche || null,
-      }
-    })
-
-    const { data: created, error: collabError } = await supabase
-      .from('collaborations')
-      .insert(payload)
-      .select()
-
-    if (collabError) throw collabError
-
-    return { data: created, error: null }
-  } catch (error) {
-    return { data: null, error }
-  }
+  const { data, error } = await supabase.rpc('crm_convert_deal', { deal_id: trattativaId })
+  return { data, error }
 }

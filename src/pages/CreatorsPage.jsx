@@ -21,12 +21,11 @@ export default function CreatorsPage() {
   const [error, setError] = useState(null)
 
   // Carica creator da Supabase
-  useEffect(() => {
-    loadCreators()
-  }, [])
 
-  const loadCreators = async () => {
+
+  async function loadCreators() {
     setLoading(true)
+    setError(null)
     const { data, error } = await getAllCreators()
     if (error) {
       setError('Errore nel caricamento dei creator')
@@ -36,6 +35,10 @@ export default function CreatorsPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    Promise.resolve().then(loadCreators)
+  }, [])
 
   const handleSave = async (creatorData, piattaforme) => {
     setLoading(true)

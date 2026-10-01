@@ -389,3 +389,10 @@ export const getCollaborationStats = async () => {
     return { data: null, error }
   }
 }
+export const confirmCollaborationReceipt = async (id, paid, date, invoice = null) => {
+  const { data, error } = await supabase.rpc('crm_confirm_collab_receipt', {
+    collaboration_id: id, paid, payment_date: paid ? date : null, invoice,
+  })
+  return { data, error }
+}
+

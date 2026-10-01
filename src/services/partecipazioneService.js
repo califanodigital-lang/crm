@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { romeToday } from '../utils/civilDate'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
@@ -29,6 +30,8 @@ const toCamelCase = (p) => {
     note: p.note,
     dataInizioPartecipazione: p.data_inizio_partecipazione,
     dataFinePartecipazione: p.data_fine_partecipazione,
+    dataPagamentoAgency: p.data_pagamento_agency,
+    dataPagamentoCreator: p.data_pagamento_creator,
     pagato: p.pagato,
     pagato_agency: p.pagato_agency,
     fatturaEmessa: p.fattura_emessa ?? false,
@@ -67,6 +70,8 @@ const toSnakeCase = (p) => ({
   note: cleanValue(p.note),
   data_inizio_partecipazione: cleanValue(p.dataInizioPartecipazione),
   data_fine_partecipazione: cleanValue(p.dataFinePartecipazione),
+  data_pagamento_agency: p.pagato_agency ? cleanValue(p.dataPagamentoAgency) : null,
+  data_pagamento_creator: p.pagato ? cleanValue(p.dataPagamentoCreator) : null,
   pagato: p.pagato || false,
   pagato_agency: p.pagato_agency || false,
   fattura_emessa: p.fatturaEmessa ?? false,
@@ -215,3 +220,10 @@ export const deletePartecipazione = async (id) => {
     return { error }
   }
 }
+export const confirmAgencyPayment = async (id, paid, date, invoice = null) => {
+  const { data, error } = await supabase.rpc('crm_confirm_event_receipt', {
+    participation_id: id, paid, payment_date: paid ? (date || romeToday()) : null, invoice,
+  })
+  return { data, error }
+}
+

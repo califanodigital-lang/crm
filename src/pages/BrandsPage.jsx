@@ -16,12 +16,11 @@ export default function BrandsPage() {
   const [filterEsito, setFilterEsito] = useState('ALL')
 
   // Carica brand da Supabase
-  useEffect(() => {
-    loadBrands()
-  }, [])
 
-  const loadBrands = async () => {
+
+  async function loadBrands() {
     setLoading(true)
+    setError(null)
     const [brandsRes] = await Promise.all([
       getAllBrands(),
     ])
@@ -36,12 +35,16 @@ export default function BrandsPage() {
     setLoading(false)
   }
 
+  useEffect(() => {
+    Promise.resolve().then(loadBrands)
+  }, [])
+
   const handleSave = async (brandData) => {
     setLoading(true)
     
     if (selectedBrand) {
       // Update
-      const { data, error } = await updateBrand(selectedBrand.id, brandData)
+      const { error } = await updateBrand(selectedBrand.id, brandData)
       if (error) {
         toast.error('Errore durante l\'aggiornamento del brand')
         console.error(error)
@@ -52,7 +55,7 @@ export default function BrandsPage() {
       }
     } else {
       // Create
-      const { data, error } = await createBrand(brandData)
+      const { error } = await createBrand(brandData)
       if (error) {
         toast.error('Errore durante la creazione del brand')
         console.error(error)

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Check, ChevronDown, ChevronUp, Edit, Plus, Trash2, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { toast } from './Toast'
+import { chronologicalNotes, noteBase, noteId } from '../utils/noteLog'
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -23,14 +25,7 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
     contenuto: '',
   })
 
-  const notes = Array.isArray(value)
-    ? [...value]
-      .map(note => ({
-        ...note,
-        id: note.id || `legacy-${note.timestamp || ''}-${note.topic || ''}-${note.contenuto || ''}`,
-      }))
-      .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
-    : []
+  const notes = chronologicalNotes(value)
   const readonly = !onChange
   const operatorName = userProfile?.agenteNome || userProfile?.nomeCompleto || userProfile?.email || 'Operatore'
 
@@ -39,14 +34,16 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
     setDraft({ topic: '', contenuto: '' })
   }
 
-  const submitNote = () => {
+  const submitNote = async () => {
+    try {
     if (!draft.topic.trim() && !draft.contenuto.trim()) return
 
     if (editingId) {
-      onChange?.(notes.map(note => (
+      await onChange?.(notes.map(note => (
         note.id === editingId
           ? {
             ...note,
+            _base: note._new ? undefined : (note._base || noteBase(note)),
             topic: draft.topic.trim(),
             contenuto: draft.contenuto.trim(),
             modificatoDa: operatorName,
@@ -59,10 +56,11 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
     }
 
     const timestamp = new Date().toISOString()
-    onChange?.([
-      ...notes,
+    await onChange?.([
+      ...(Array.isArray(value) ? value : []),
       {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : timestamp,
+        _new: true,
         operatore: operatorName,
         topic: draft.topic.trim(),
         contenuto: draft.contenuto.trim(),
@@ -70,10 +68,13 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
       },
     ])
     resetDraft()
+    } catch (error) { toast.error(error?.message || 'Nota non salvata. Riprova.') }
   }
 
-  const removeNote = (id) => {
-    onChange?.(notes.filter(note => note.id !== id))
+  const removeNote = async (id) => {
+    try {
+      await onChange?.((Array.isArray(value) ? value : []).map(note => noteId(note) === id ? { ...note, id, _deleted: true, ...(note._new ? {} : { _base: note._base || noteBase(note) }) } : note))
+    } catch (error) { toast.error(error?.message || 'Nota non eliminata. Riprova.') }
   }
 
   const startEdit = (note) => {
@@ -110,7 +111,7 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
                 <td className="px-3 py-2 text-gray-700">{note.operatore || '-'}</td>
                 <td className="px-3 py-2 font-medium text-gray-900">{note.topic || '-'}</td>
                 <td className="px-3 py-2 text-gray-700 whitespace-pre-wrap min-w-[220px]">{note.contenuto || '-'}</td>
-                <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(note.timestamp)}</td>
+                <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(note.timestamp)}{note.modificatoIl && <div className="text-xs">Modificata da {note.modificatoDa || '-'}<br />{formatDateTime(note.modificatoIl)}</div>}</td>
                 <td className="px-3 py-2 text-right">
                   {!readonly && (
                     <div className="flex items-center justify-end gap-2">

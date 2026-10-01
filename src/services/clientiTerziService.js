@@ -61,7 +61,7 @@ export const updateClienteTerzo = async (id, data) => {
   try {
     const { data: row, error } = await supabase
       .from('clienti_terzi')
-      .update(toSnakeCase(data))
+      .update(Object.fromEntries(Object.entries(toSnakeCase(data)).filter(([column]) => Object.hasOwn(data, {"nome":"nome","cognome":"cognome","email":"email","telefono":"telefono","sito_web":"sitoWeb","codice_fiscale":"codiceFiscale","piva":"piva","residenza":"residenza","domicilio_fiscale":"domicilioFiscale","note":"note","note_log":"noteLog"}[column]))))
       .eq('id', id)
       .select()
       .single()

@@ -15,6 +15,8 @@ const toCamelCase = (f) => ({
   partecipazioneId: f.partecipazione_id,
   linkDocumento: f.link_documento,
   note: f.note,
+  incassata: f.incassata || false,
+  dataIncasso: f.data_incasso,
   createdAt: f.created_at,
 })
 
@@ -31,6 +33,8 @@ const toSnakeCase = (f) => ({
   partecipazione_id: f.partecipazioneId || null,
   link_documento: f.linkDocumento || null,
   note: f.note || null,
+  incassata: f.incassata || false,
+  data_incasso: f.incassata ? (f.dataIncasso || null) : null,
 })
 
 export const getFattureByMese = async (mese) => {
@@ -91,3 +95,8 @@ export const deleteFattura = async (id) => {
     return { error }
   }
 }
+export const getAllFatture = async () => {
+  try { return { data: (await fetchAllRows(() => supabase.from('fatture_emesse').select('*').order('created_at', { ascending: false }))).map(toCamelCase), error: null } }
+  catch (error) { return { data: null, error } }
+}
+

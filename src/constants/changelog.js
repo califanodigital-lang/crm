@@ -1,10 +1,21 @@
-export const APP_VERSION = 'v0.22.2'
+export const APP_VERSION = 'v0.23.0'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.23.0',
+    date: '2026-10-01',
+    items: [
+      'Correzioni audit: account inattivi bloccati, aggiornamenti anagrafici senza azzeramenti, edizioni fiere separate e date automatiche corrette.',
+      'Finance distingue movimenti registrati e previsto; include creator, fiere, rimborsi pagati e incassi manuali senza duplicare le fatture operative.',
+      'Fatture e pagamenti aggiornati in modo atomico, conversioni ADV idempotenti e note con timestamp server e controllo delle modifiche concorrenti.',
+      'Guida Finance aggiornata, migrazione server dedicata e controlli lint ripuliti.',
+    ],
+  },
   {
     version: 'v0.22.2',
     date: '2026-10-01',
     items: [
+      'Corretto un errore di visualizzazione della sezione Fee Fiere che bloccava Finance.',
       'Rimossa la sezione Import e la relativa dipendenza Excel.',
       'Rimosse le commissioni degli agenti da utenti, collaborazioni e riepiloghi. Restano fissi mensili, pagamenti registrati e responsabilita operative.',
       'Compensi creator e fee di management invariati; migrazione dedicata con archivio dei dati storici delle commissioni.',

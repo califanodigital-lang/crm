@@ -1,17 +1,12 @@
 import { supabase } from '../lib/supabase'
-import { createEvento, getEventoById, updateEvento } from './eventoService'
+import { getEventoById } from './eventoService'
 import { fetchAllRows } from './supabasePagination'
+import { addCivilDays, romeToday } from '../utils/civilDate'
 
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const CLOSED_STATUSES = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO']
 
-const addDays = (dateString, days) => {
-  if (!dateString) return null
-  const date = new Date(`${dateString}T00:00:00`)
-  if (Number.isNaN(date.getTime())) return null
-  date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
-}
+const addDays = addCivilDays
 
 const ensureFollowups = (payload) => {
   const nextPayload = { ...payload }
@@ -80,58 +75,9 @@ const toSnakeCase = (trattativa) => ensureFollowups({
 })
 
 const syncEventoFromTrattativa = async (trattativa) => {
-  const baseEventoPayload = {
-    nome: trattativa.nome,
-    tipo: trattativa.tipo,
-    circuitoId: trattativa.circuitoId,
-    fieraDbId: trattativa.fieraDbId,
-    trattativaFieraId: trattativa.id,
-    dataInizio: trattativa.dataInizio,
-    dataFine: trattativa.dataFine,
-    location: trattativa.location,
-    citta: trattativa.citta,
-    stato: 'APERTA',
-  }
-
-  if (trattativa.noteLog?.length) baseEventoPayload.noteLog = trattativa.noteLog
-
-  // La trattativa è già collegata a un evento → aggiorna quello
-  if (trattativa.eventoId) {
-    const { data: currentEvento, error: currentError } = await getEventoById(trattativa.eventoId)
-    if (currentError) return { data: null, error: currentError }
-
-    const { data, error } = await updateEvento(trattativa.eventoId, {
-      ...currentEvento,
-      ...baseEventoPayload,
-    })
-    return { data, error }
-  }
-
-  // La fiera ha già un evento in Fiere & Eventi → riusa quello invece di crearne uno nuovo
-  if (trattativa.fieraDbId) {
-    const { data: existingRaw, error: existingError } = await supabase
-      .from('eventi')
-      .select('id')
-      .eq('fiera_db_id', trattativa.fieraDbId)
-      .maybeSingle()
-
-    if (existingError) return { data: null, error: existingError }
-
-    if (existingRaw) {
-      const { data: currentEvento, error: currentError } = await getEventoById(existingRaw.id)
-      if (currentError) return { data: null, error: currentError }
-
-      const { data, error } = await updateEvento(existingRaw.id, {
-        ...currentEvento,
-        ...baseEventoPayload,
-      })
-      return { data, error }
-    }
-  }
-
-  // Nessun evento esistente → crea
-  const { data, error } = await createEvento(baseEventoPayload)
-  return { data, error }
+  const { data, error } = await supabase.rpc('crm_sync_fair_edition', { trattativa_id: trattativa.id })
+  if (error) return { data: null, error }
+  return getEventoById(data)
 }
 
 const maybeSyncEvento = async (trattativa) => {
@@ -141,7 +87,7 @@ const maybeSyncEvento = async (trattativa) => {
   if (error || !evento?.id) return { data: null, error }
 
   if (trattativa.eventoId === evento.id) {
-    return { data: evento, error: null }
+    return { data: trattativa, error: null }
   }
 
   const { data: updatedRow, error: updateError } = await supabase
@@ -187,9 +133,9 @@ export const getTrattativaFieraNotesForEvento = async (evento = {}) => {
     const attempts = [
       evento.trattativaFieraId && (query => query.eq('id', evento.trattativaFieraId)),
       evento.id && (query => query.eq('evento_id', evento.id)),
-      evento.fieraDbId && (query => query.eq('fiera_db_id', evento.fieraDbId)),
+      evento.fieraDbId && evento.dataInizio && (query => query.eq('fiera_db_id', evento.fieraDbId).eq('data_inizio', evento.dataInizio)),
       evento.nome && (query => {
-        const byName = query.eq('nome', evento.nome)
+        const byName = evento.dataInizio ? query.eq('nome', evento.nome).eq('data_inizio', evento.dataInizio) : query.eq('nome', evento.nome)
         return evento.citta ? byName.eq('citta', evento.citta) : byName
       }),
     ].filter(Boolean)
@@ -242,10 +188,10 @@ export const createTrattativaFieraFromFiera = async (fieraData, agenteNome) => {
       .order('created_at', { ascending: false })
 
     if (existingError) throw existingError
-    const existing = (rows || []).find(row => !CLOSED_STATUSES.includes(row.stato))
+    const existing = (rows || []).find(row => !CLOSED_STATUSES.includes(row.stato) && row.data_inizio === fieraData.dataInizio)
     if (existing) return { data: toCamelCase(existing), error: null, reused: true }
 
-    const today = new Date().toISOString().slice(0, 10)
+    const today = romeToday()
 
     return createTrattativaFiera({
       fieraDbId: fieraData.id,

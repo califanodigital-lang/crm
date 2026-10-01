@@ -1,10 +1,12 @@
 import ExpenseItems from '../components/ExpenseItems'
 import ExpenseSummary from '../components/ExpenseSummary'
 import { creatorFee } from '../utils/eventPayments'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../services/eventoService'
-import { createFattura } from '../services/fattureEmesseService'
+import { confirmAgencyPayment } from '../services/partecipazioneService'
+import { romeToday } from '../utils/civilDate'
+import { noteId } from '../utils/noteLog'
 import { getAllCircuiti } from '../services/circuitiService'
 import { getPartecipazioniByEvento, getPartecipazioniByEventi, addPartecipazione, updatePartecipazione, deletePartecipazione } from '../services/partecipazioneService'
 import { getAllCreators } from '../services/creatorService'
@@ -18,7 +20,8 @@ import { ATTIVITA_EVENTO } from '../constants/constants'
 import { toast } from '../components/Toast'
 import NotesLogField from '../components/NotesLogField'
 
-function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }) {
+function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm, saving }) {
+  const [paymentDate, setPaymentDate] = useState(partecipazione.dataPagamentoAgency || romeToday())
   const [emettiFattura, setEmettiFattura] = useState(false)
   const [numeroFattura, setNumeroFattura] = useState('')
   const [dataFattura, setDataFattura] = useState('')
@@ -35,7 +38,7 @@ function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }
           <p className="text-sm text-gray-500 mb-5">La fattura emessa rimarrà nel registro Finance.</p>
           <div className="flex gap-3 justify-end">
             <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Annulla</button>
-            <button onClick={() => onConfirm({ newPagato: false, fatturaData: null })}
+            <button disabled={saving} onClick={() => onConfirm({ newPagato: false, fatturaData: null })}
               className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-semibold text-sm hover:bg-red-200">Rimuovi</button>
           </div>
         </div>
@@ -55,6 +58,8 @@ function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }
             : `${partecipazione.creatorNome} — €${partecipazione.fee || 0} — ${eventoNome}`}
         </p>
 
+        <label className="label">Data incasso</label>
+        <input type="date" className="input mb-3" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
         {!isRegolarizza && (
           <label className="flex items-center gap-2 cursor-pointer text-sm mb-4">
             <input type="checkbox" checked={emettiFattura} onChange={e => setEmettiFattura(e.target.checked)} />
@@ -80,8 +85,10 @@ function PagamentoAgencyModal({ partecipazione, eventoNome, onClose, onConfirm }
         <div className="flex gap-3 justify-end">
           <button onClick={onClose} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Annulla</button>
           <button
+            disabled={saving || !paymentDate}
             onClick={() => onConfirm({
               newPagato: true,
+              paymentDate,
               fatturaData: showInvoiceForm ? { emessa: true, numero: numeroFattura, data: dataFattura } : null
             })}
             className="px-4 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-500"
@@ -139,13 +146,7 @@ const EMPTY_EVENTO_FORM = {
   noteLog: [],
 }
 
-const noteIdentity = (note = {}) => [
-  note.id,
-  note.timestamp,
-  note.operatore,
-  note.topic,
-  note.contenuto,
-].filter(Boolean).join('|')
+const noteIdentity = noteId
 
 const mergeNoteLogs = (...groups) => {
   const seen = new Set()
@@ -157,7 +158,7 @@ const mergeNoteLogs = (...groups) => {
       seen.add(key)
       return true
     })
-    .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
+    .sort((left, right) => (Date.parse(right.timestamp) || 0) - (Date.parse(left.timestamp) || 0))
 }
 
 function CreatorPreview({ title, items = [], tone }) {
@@ -203,6 +204,9 @@ export default function EventiPage() {
   const [selectedEvento, setSelectedEvento] = useState(null)
   const [partecipazioni, setPartecipazioni] = useState([])
   const [loading, setLoading] = useState(true)
+  const [dataError, setDataError] = useState(null)
+  const [savingAgency, setSavingAgency] = useState(false)
+  const [eventScope, setEventScope] = useState('all')
   const [eventoForm, setEventoForm] = useState(EMPTY_EVENTO_FORM)
   const [partForm, setPartForm] = useState(EMPTY_PART_FORM)
   const [editingPart, setEditingPart] = useState(null)
@@ -222,14 +226,19 @@ export default function EventiPage() {
 
   async function loadData() {
     setLoading(true)
+    setDataError(null)
+    try {
     const [eventiRes, creatorsRes, circuitiRes, tipologieRes] = await Promise.all([
       getAllEventi(),
       getAllCreators(),
       getAllCircuiti(),
       getAllTipologieEvento(),
     ])
+    const failed = [eventiRes, creatorsRes, circuitiRes, tipologieRes].find(r => r.error)
+    if (failed) throw failed.error
     const loadedEventi = eventiRes.data || []
     const partecipazioniRes = await getPartecipazioniByEventi(loadedEventi.map(evento => evento.id))
+    if (partecipazioniRes.error) throw partecipazioniRes.error
     const groupedPartecipazioni = (partecipazioniRes.data || []).reduce((acc, partecipazione) => {
       if (!acc[partecipazione.eventoId]) acc[partecipazione.eventoId] = []
       acc[partecipazione.eventoId].push(partecipazione)
@@ -241,23 +250,26 @@ export default function EventiPage() {
     setCircuiti(circuitiRes.data || [])
     setTipologie(tipologieRes.data || [])
     setPartecipazioniByEvento(groupedPartecipazioni)
-    setLoading(false)
     return loadedEventi
+    } catch (error) { setDataError(error?.message || 'Errore caricamento eventi'); return null }
+    finally { setLoading(false) }
   }
 
   const handleSaveEvento = async (e) => {
     e.preventDefault()
     setLoading(true)
+    let result
     if (selectedEvento) {
-      await updateEvento(selectedEvento.id, {
+      result = await updateEvento(selectedEvento.id, {
         ...eventoForm,
         stato: selectedEvento.stato,
         fieraDbId: selectedEvento.fieraDbId || null,
         trattativaFieraId: selectedEvento.trattativaFieraId || null,
       })
     } else {
-      await createEvento(eventoForm)
+      result = await createEvento(eventoForm)
     }
+    if (result.error) { toast.error(result.error.message || 'Errore salvataggio evento'); setLoading(false); return }
     setEventoForm(EMPTY_EVENTO_FORM)
     setView('list')
     setSelectedEvento(null)
@@ -268,7 +280,8 @@ export default function EventiPage() {
   const handleDeleteEvento = async (id) => {
     const ok = await confirm('Questa azione è irreversibile.', { title: 'Eliminare evento?', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deleteEvento(id)
+    const { error } = await deleteEvento(id)
+    if (error) { toast.error('Errore eliminazione evento'); return }
     loadData()
   }
 
@@ -278,6 +291,7 @@ export default function EventiPage() {
       getTrattativaFieraNotesForEvento(evento),
     ])
 
+    if (partecipazioniRes.error || trattativaNotesRes.error) { toast.error('Impossibile caricare evento e note'); return }
     const mergedNoteLog = mergeNoteLogs(evento.noteLog, trattativaNotesRes.data?.noteLog)
     const mergedEvento = {
       ...evento,
@@ -294,27 +308,33 @@ export default function EventiPage() {
     setView('detail')
 
     if (mergedNoteLog.length > (evento.noteLog || []).length) {
-      await updateEvento(evento.id, mergedEvento)
-      setEventi(prev => prev.map(item => item.id === evento.id ? mergedEvento : item))
+      const { data, error } = await updateEvento(evento.id, mergedEvento)
+      if (error) { toast.error('Errore recupero note'); return }
+      setSelectedEvento(data)
+      setEventi(prev => prev.map(item => item.id === evento.id ? data : item))
     }
   }
 
+  const loadInitial = useEffectEvent(async openId => {
+    const loadedEventi = await loadData()
+    if (openId && loadedEventi) {
+      const evento = loadedEventi.find(e => e.id === openId)
+      if (evento) await handleViewDetail(evento)
+    }
+  })
+
   useEffect(() => {
     const openId = location.state?.openEventoId
-    Promise.resolve().then(loadData).then(loadedEventi => {
-      if (openId && loadedEventi) {
-        const evento = loadedEventi.find(e => e.id === openId)
-        if (evento) handleViewDetail(evento)
-      }
-    })
-  }, [])
+    Promise.resolve().then(() => loadInitial(openId))
+  }, [location.state?.openEventoId])
 
   const handleAddPartecipazione = async () => {
     if (!partForm.creatorId) return
     const { error } = await addPartecipazione({ ...partForm, eventoId: selectedEvento.id })
     if (error) { toast.error('Impossibile aggiungere il creator'); return }
     setPartForm({ ...EMPTY_PART_FORM })
-    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
+    const { data, error: refreshError } = await getPartecipazioniByEvento(selectedEvento.id)
+    if (refreshError) { toast.error('Salvataggio completato, errore rilettura. Ricarica la pagina.'); return }
     setPartecipazioni(data || [])
     setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
   }
@@ -322,7 +342,8 @@ export default function EventiPage() {
   const handleDeletePartecipazione = async (id) => {
     const ok = await confirm('Questa azione è irreversibile.', { title: 'Rimuovere partecipazione?', confirmLabel: 'Elimina' })
     if (!ok) return
-    await deletePartecipazione(id)
+    const { error } = await deletePartecipazione(id)
+    if (error) { toast.error('Errore rimozione partecipazione'); return }
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
     setPartecipazioni(data || [])
     setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
@@ -345,7 +366,7 @@ export default function EventiPage() {
   }
 
   const handleTogglePagamento = async (partecipazione, campo) => {
-    const updated = { ...partecipazione, [campo]: !partecipazione[campo] }
+    const updated = { ...partecipazione, [campo]: !partecipazione[campo], ...(campo === 'pagato' ? { dataPagamentoCreator: !partecipazione.pagato ? romeToday() : null } : {}) }
     const { error } = await updatePartecipazione(partecipazione.id, updated)
     if (error) { toast.error('Impossibile registrare il pagamento'); return }
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
@@ -355,39 +376,27 @@ export default function EventiPage() {
 
   const handlePagamentoAgency = (p) => setAgencyModal({ partecipazione: p })
 
-  const handleAgencyConfirm = async ({ newPagato, fatturaData }) => {
-    const p = agencyModal.partecipazione
-    const { error } = await updatePartecipazione(p.id, {
-      ...p,
-      pagato_agency: newPagato,
-      fatturaEmessa: fatturaData ? true : (newPagato ? p.fatturaEmessa : false),
-      numeroFattura: fatturaData?.numero || (newPagato ? p.numeroFattura : null),
-      dataFattura: fatturaData?.data || (newPagato ? p.dataFattura : null),
-    })
-    if (error) { toast.error('Impossibile registrare il pagamento agency'); return }
-    if (fatturaData && newPagato) {
-      const mese = fatturaData.data
-        ? `${fatturaData.data.slice(0, 7)}-01`
-        : `${new Date().toISOString().slice(0, 7)}-01`
-      await createFattura({
-        mese,
-        numeroFattura: fatturaData.numero || null,
-        dataFattura: fatturaData.data || null,
-        soggettoNome: `${p.creatorNome} - ${selectedEvento?.nome || 'Fiera'}`,
-        importo: p.fee || 0,
-        tipo: 'FIERA',
-        partecipazioneId: p.id,
-      })
-    }
-    setAgencyModal(null)
-    const { data } = await getPartecipazioniByEvento(selectedEvento.id)
-    setPartecipazioni(data || [])
-    setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
+  const handleAgencyConfirm = async ({ newPagato, fatturaData, paymentDate }) => {
+    if (savingAgency) return
+    setSavingAgency(true)
+    try {
+      const p = agencyModal.partecipazione
+      const { error } = await confirmAgencyPayment(p.id, newPagato, paymentDate || p.dataPagamentoAgency, fatturaData ? {
+        numero_fattura: fatturaData.numero, data_fattura: fatturaData.data || paymentDate,
+      } : null)
+      if (error) { toast.error(error.message || 'Impossibile registrare pagamento e fattura'); return }
+      setAgencyModal(null)
+      const { data, error: refreshError } = await getPartecipazioniByEvento(selectedEvento.id)
+      if (refreshError) { toast.error('Pagamento salvato, errore rilettura'); return }
+      setPartecipazioni(data || [])
+      setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
+    } finally { setSavingAgency(false) }
   }
 
   const handleSwitchTipo = async (p) => {
     const newTipo = (p.tipo === 'proposto') ? 'partecipante' : 'proposto'
-    await updatePartecipazione(p.id, { ...p, tipo: newTipo })
+    const { error } = await updatePartecipazione(p.id, { ...p, tipo: newTipo })
+    if (error) { toast.error('Errore aggiornamento partecipazione'); return }
     const { data } = await getPartecipazioniByEvento(selectedEvento.id)
     setPartecipazioni(data || [])
     setPartecipazioniByEvento(prev => ({ ...prev, [selectedEvento.id]: data || [] }))
@@ -396,13 +405,10 @@ export default function EventiPage() {
   const handleEventoNotesChange = async (noteLog) => {
     if (!selectedEvento) return
     const updatedEvento = { ...selectedEvento, noteLog }
-    setSelectedEvento(updatedEvento)
-    setEventi(prev => prev.map(evento => evento.id === selectedEvento.id ? updatedEvento : evento))
-
-    const { error } = await updateEvento(selectedEvento.id, updatedEvento)
-    if (error) {
-      toast.error('Errore durante il salvataggio delle note evento')
-    }
+    const { data, error } = await updateEvento(selectedEvento.id, updatedEvento)
+    if (error) throw error
+    setSelectedEvento(data)
+    setEventi(prev => prev.map(evento => evento.id === data.id ? data : evento))
   }
 
   const handleChiudiFiera = async () => {
@@ -422,7 +428,8 @@ export default function EventiPage() {
     if (error) { toast.error('Errore nella chiusura'); return }
 
     const eventoToSync = updatedEvento || { ...selectedEvento, stato: 'CHIUSA' }
-    const { data: syncedFiera } = await upsertFieraFromEvento(eventoToSync)
+    const { data: syncedFiera, error: syncError } = await upsertFieraFromEvento(eventoToSync)
+    if (syncError) toast.error('Evento chiuso, ma aggiornamento DB Fiere fallito. Riprova la sincronizzazione.')
 
     setSelectedEvento(prev => prev ? { ...prev, stato: 'CHIUSA', fieraDbId: syncedFiera?.id || prev.fieraDbId } : prev)
     setEventi(prev => prev.map(e =>
@@ -430,7 +437,7 @@ export default function EventiPage() {
         ? { ...e, stato: 'CHIUSA', fieraDbId: syncedFiera?.id || e.fieraDbId }
         : e
     ))
-    toast.success('Fiera chiusa e aggiunta al DB Fiere!')
+    if (!syncError) toast.success('Fiera chiusa e aggiunta al DB Fiere!')
   }
 
   const handleCreatorSelect = (creatorId) => {
@@ -825,6 +832,7 @@ export default function EventiPage() {
             eventoNome={selectedEvento?.nome || ''}
             onClose={() => setAgencyModal(null)}
             onConfirm={handleAgencyConfirm}
+            saving={savingAgency}
           />
         )}
 
@@ -927,14 +935,16 @@ export default function EventiPage() {
               <div className="flex items-center gap-4 mb-4 pt-2 border-t">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={!!editingPart.pagato_agency}
-                    onChange={(e) => setEditingPart(p => ({ ...p, pagato_agency: e.target.checked }))} />
+                    onChange={(e) => setEditingPart(p => ({ ...p, pagato_agency: e.target.checked, dataPagamentoAgency: e.target.checked ? (p.dataPagamentoAgency || romeToday()) : null }))} />
                   Pagato Agency
                 </label>
+                {editingPart.pagato_agency && <input aria-label="Data incasso agency" type="date" className="input w-40" value={editingPart.dataPagamentoAgency || ''} onChange={e => setEditingPart(p => ({ ...p, dataPagamentoAgency: e.target.value }))} />}
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={!!editingPart.pagato}
-                    onChange={(e) => setEditingPart(p => ({ ...p, pagato: e.target.checked }))} />
+                    onChange={(e) => setEditingPart(p => ({ ...p, pagato: e.target.checked, dataPagamentoCreator: e.target.checked ? (p.dataPagamentoCreator || romeToday()) : null }))} />
                   Pagato Creator
                 </label>
+                {editingPart.pagato && <input aria-label="Data pagamento creator" type="date" className="input w-40" value={editingPart.dataPagamentoCreator || ''} onChange={e => setEditingPart(p => ({ ...p, dataPagamentoCreator: e.target.value }))} />}
               </div>
               <div className="flex gap-3 justify-end">
                 <button onClick={handleCancelEditPart}
@@ -949,6 +959,7 @@ export default function EventiPage() {
     )
   }
 
+  if (dataError) return <div className="card"><p role="alert">{dataError}</p><button className="btn-secondary" onClick={loadData}>Riprova</button></div>
   // LISTA EVENTI
   return (
     <div>
@@ -965,10 +976,12 @@ export default function EventiPage() {
         </button>
       </div>
 
+      <label className="label">Visualizza</label>
+      <select className="input max-w-xs mb-4" value={eventScope} onChange={e => setEventScope(e.target.value)}><option value="all">Tutti gli eventi</option><option value="open">In gestione</option><option value="closed">Chiusi / archiviati</option></select>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b text-left"><th className="p-3">Evento</th><th className="p-3">Date / Citta</th><th className="p-3">Creator e giorni di presenza</th><th className="p-3">Azioni</th></tr></thead>
-          <tbody>{eventi.map(evento => {
+          <tbody>{eventi.filter(e => eventScope === 'all' || (eventScope === 'closed' ? e.stato === 'CHIUSA' : e.stato !== 'CHIUSA')).map(evento => {
             const entries = (partecipazioniByEvento[evento.id] || []).map(p => ({
               ...p,
               dataInizioPartecipazione: p.dataInizioPartecipazione || evento.dataInizio,

@@ -1,3 +1,4 @@
+import { romeToday } from '../utils/civilDate'
 import { useState } from 'react'
 import { updateCollaboration } from '../services/collaborationService'
 import { updatePartecipazione } from '../services/partecipazioneService'
@@ -22,15 +23,15 @@ export default function PaymentOverview({ collaborations, participations, onRefr
     const approved = await confirm(`Registrare il saldo di ${money(row.outstanding)} per ${row.creatorNome}?`, { title: 'Pagamento creator', confirmLabel: 'Registra pagamento' })
     if (!approved) return
     setSaving(row.key)
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
-    const part = type => parts.find(p => p.type === type).value
-    const today = `${part('year')}-${part('month')}-${part('day')}`
+    const today = romeToday()
+    try {
     const result = row.kind === 'fiera'
-      ? await updatePartecipazione(row.id, { ...row.source, pagato: true })
+      ? await updatePartecipazione(row.id, { ...row.source, pagato: true, dataPagamentoCreator: today })
       : await updateCollaboration(row.id, { ...row.source, stato: row.source.stato === 'ATTESA_PAGAMENTO_CREATOR' ? 'COMPLETATA' : row.source.stato, pagato: true, dataPagamentoCreator: today, tranche: (row.tranche || []).map(t => ({ ...t, pagato: true, data: t.data || today })) })
     if (result.error) toast.error('Impossibile registrare il pagamento')
     else { toast.success('Pagamento creator registrato'); await onRefresh() }
-    setSaving(null)
+    } catch { toast.error('Impossibile completare il pagamento. Ricarica e verifica.') }
+    finally { setSaving(null) }
   }
 
   return <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">

@@ -4,6 +4,7 @@ import { AlertTriangle, Trash2, X } from 'lucide-react'
 
 let _openConfirm = null
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function confirm(message, options = {}) {
   return new Promise((resolve) => {
     if (!_openConfirm) return resolve(window.confirm(message))
@@ -67,4 +68,5 @@ export function ConfirmContainer() {
 
 // Alias per compatibilità — non fa nulla
 export function ConfirmProvider({ children }) { return children }
+// eslint-disable-next-line react-refresh/only-export-components
 export function useConfirm() { return confirm }

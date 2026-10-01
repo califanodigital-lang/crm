@@ -510,11 +510,11 @@ export default function TrattativaPage() {
     setLoading(true)
     const { data, error } = await creaCollaborazioneDaTrattativa(trattativa.id)
     if (error) {
-      toast.error('Errore durante la creazione della collaborazione')
+      toast.error(error.message || 'Errore durante la creazione della collaborazione')
     } else {
       const count = Array.isArray(data) ? data.length : 1
       toast.success(`${count} collaborazione/i create — vai su Collaborazioni per completarle`)
-      await handleStatoChange(trattativa.id, 'COLLAB_GENERATA')
+      await loadData()
     }
     setLoading(false)
   }

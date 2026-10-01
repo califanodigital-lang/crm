@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
+import { romeToday } from '../utils/civilDate'
 
 const toCamelCase = (p) => ({
   id: p.id,
@@ -8,6 +9,7 @@ const toCamelCase = (p) => ({
   pagato: p.pagato,
   dataPagamento: p.data_pagamento,
   note: p.note,
+  importo: p.importo,
 })
 
 export const getAllPagamentiContratti = async () => {
@@ -21,7 +23,7 @@ export const getAllPagamentiContratti = async () => {
   }
 }
 
-export const upsertPagamentoContratto = async (contrattoId, mese, pagato) => {
+export const upsertPagamentoContratto = async (contrattoId, mese, pagato, date = romeToday(), amount = undefined) => {
   try {
     const { data, error } = await supabase
       .from('pagamenti_contratti')
@@ -30,7 +32,8 @@ export const upsertPagamentoContratto = async (contrattoId, mese, pagato) => {
           contratto_id: contrattoId,
           mese,
           pagato,
-          data_pagamento: pagato ? new Date().toISOString().split('T')[0] : null,
+          ...(amount === undefined ? {} : { importo: amount }),
+          data_pagamento: pagato ? date : null,
         },
         { onConflict: 'contratto_id,mese' }
       )
