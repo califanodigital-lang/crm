@@ -4,7 +4,7 @@ export function PagamentoRow({ pagamento, onSave }) {
   const [editing, setEditing] = useState(false)
   const [importo, setImporto] = useState('')
 
-  const totale = pagamento.importoTotale || pagamento.importoFisso || 0
+  const totale = pagamento.importoFisso || 0
   const diff = totale - pagamento.importoPagato
 
   return (
@@ -13,11 +13,6 @@ export function PagamentoRow({ pagamento, onSave }) {
       <td className="py-3 px-4 text-right text-sm">
         {pagamento.importoFisso > 0
           ? `€${pagamento.importoFisso.toLocaleString()}`
-          : <span className="text-gray-300">—</span>}
-      </td>
-      <td className="py-3 px-4 text-right text-sm">
-        {(pagamento.importoFee || 0) > 0
-          ? `€${pagamento.importoFee.toLocaleString()}`
           : <span className="text-gray-300">—</span>}
       </td>
       <td className="py-3 px-4 text-right text-sm font-bold text-gray-900">

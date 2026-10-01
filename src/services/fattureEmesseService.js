@@ -48,6 +48,13 @@ export const getFattureByMese = async (mese) => {
 
 export const createFattura = async (fattura) => {
   try {
+    if (fattura.collabId || fattura.partecipazioneId) {
+      const { data, error } = await supabase.rpc('crm_register_operational_invoice', {
+        payload: toSnakeCase(fattura),
+      })
+      if (error) throw error
+      return { data: toCamelCase(data), error: null }
+    }
     const { data, error } = await supabase
       .from('fatture_emesse')
       .insert([toSnakeCase(fattura)])

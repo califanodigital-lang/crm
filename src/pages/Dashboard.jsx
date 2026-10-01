@@ -1,84 +1,20 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { getAgentStats, getAgentCollaborations } from '../services/agentService'
-import { TrendingUp, Award, Target, DollarSign, Briefcase, Users, Handshake } from 'lucide-react'
+import { useState, useEffect, useEffectEvent } from 'react'
+import { DollarSign, Briefcase, Users, Handshake } from 'lucide-react'
 import { getGlobalStats, getTopCreators, getRevenueChart, getProposteStats } from '../services/dashboardService'
-import { APP_VERSION, CHANGELOG } from '../constants/changelog'
-import { getPagamentiByAgente } from '../services/pagamentiAgentiService'
+import ChangelogCard from '../components/ChangelogCard'
 import {formatDate} from '../utils/date'
 
-function ChangelogCard() {
-  const latest = CHANGELOG[0]
-
-  return (
-    <div className="card mt-6">
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Changelog</h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Versione attuale: <span className="font-semibold text-gray-700">{APP_VERSION}</span>
-          </p>
-        </div>
-        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-semibold">
-          {formatDate(latest.date)}
-        </span>
-      </div>
-
-      <div className="space-y-4">
-        {CHANGELOG.map((entry) => (
-          <div key={entry.version} className="border border-gray-100 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-bold text-gray-900">{entry.version}</p>
-              <p className="text-xs text-gray-400">{formatDate(entry.date)}</p>
-            </div>
-
-            <ul className="space-y-1">
-              {entry.items.map((item, idx) => (
-                <li key={idx} className="text-sm text-gray-600 flex gap-2">
-                  <span className="text-yellow-500 font-bold">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function Dashboard() {
-  const { userProfile } = useAuth()
-  const [agentStats, setAgentStats] = useState(null)
-  const [agentCollabs, setAgentCollabs] = useState([])
   const [loading, setLoading] = useState(true)
   const [globalStats, setGlobalStats] = useState(null)
   const [topCreators, setTopCreators] = useState([])
   const [revenueChart, setRevenueChart] = useState([])
   const [proposteStats, setProposteStats] = useState(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
-  const [pagamentoMese, setPagamentoMese] = useState(null)
 
-  useEffect(() => {
-    loadData()
-  }, [userProfile, selectedMonth])
-
-  const loadData = async () => {
+  const loadData = useEffectEvent(async () => {
     setLoading(true)
     
-    if (userProfile?.role === 'AGENT') {
-      // Agent: carica sue stats
-      const [statsRes, collabsRes] = await Promise.all([
-        getAgentStats(userProfile.agenteNome, selectedMonth),
-        getAgentCollaborations(userProfile.agenteNome, selectedMonth)
-      ])
-      setAgentStats(statsRes.data)
-      setAgentCollabs(collabsRes.data || [])
-      const { data: pags } = await getPagamentiByAgente(userProfile.agenteNome)
-      const meseCorrente = new Date().toISOString().slice(0, 7)
-      setPagamentoMese(pags?.find(p => p.mese === meseCorrente) || null)
-    } else if (userProfile?.role === 'ADMIN') {
-      // Admin: carica stats globali
       const [global, top, chart, proposte] = await Promise.all([
         getGlobalStats(selectedMonth),
         getTopCreators(),
@@ -90,157 +26,20 @@ export default function Dashboard() {
       setTopCreators(top.data || [])
       setRevenueChart(chart.data || [])
       setProposteStats(proposte.data)
-    }
     
     setLoading(false)
-}
+  })
+
+  useEffect(() => { Promise.resolve().then(() => loadData()) }, [selectedMonth])
 
   if (loading) {
     return <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div></div>
   }
 
-  // VISTA AGENT
-  if (userProfile?.role === 'AGENT' && agentStats) {
     return (
       <div>
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Benvenuto, {userProfile.nomeCompleto}</p>
-        </div>
-
-        <div className="mb-6 flex justify-end">
-          <div>
-            <label className="label">Mese di riferimento</label>
-            <input
-              type="month"
-              className="input"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Stats Cards Agent */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">I Tuoi Deal</p>
-                <p className="text-2xl font-bold text-gray-900">{agentStats.totaleDeal}</p>
-              </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Target className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Completati</p>
-                <p className="text-2xl font-bold text-gray-900">{agentStats.completati}</p>
-              </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <Award className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between">
-              <div>
-                  <p className="text-sm text-gray-600">Valore Deal Pagati</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    €{(agentStats.totalDealValue || 0).toLocaleString()}
-                  </p>
-              </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {pagamentoMese && (
-          <div className="card bg-gradient-to-r from-gray-50 to-gray-100 mb-6">
-            <p className="text-sm font-bold text-gray-700 mb-3">Stipendio Fisso — {pagamentoMese.mese}</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">€{pagamentoMese.importoFisso.toLocaleString()}</p>
-                <p className="text-xs text-gray-400">Fisso mese</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-green-600">€{pagamentoMese.importoPagato.toLocaleString()}</p>
-                <p className="text-xs text-gray-400">Ricevuto</p>
-              </div>
-              <div className="text-center">
-                {pagamentoMese.differenza > 0
-                  ? <><p className="text-lg font-bold text-red-500">-€{pagamentoMese.differenza.toLocaleString()}</p>
-                      <p className="text-xs text-gray-400">Da ricevere</p></>
-                  : <><p className="text-lg font-bold text-green-600">✓ Saldato</p>
-                      <p className="text-xs text-gray-400">Mese completo</p></>
-                }
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Commissioni Card Grande */}
-        <div className="card mb-6 bg-gradient-to-r from-yellow-50 to-yellow-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 font-semibold">Le Tue Commissioni del Mese</p>
-              <p className="text-4xl font-bold text-gray-900 mt-2">€{agentStats.totalCommissioni.toLocaleString()}</p>
-              <p className="text-sm text-gray-600 mt-1">Da deal completati e pagati</p>
-            </div>
-            <div className="bg-yellow-400 p-4 rounded-lg">
-              <DollarSign className="w-10 h-10 text-gray-900" />
-            </div>
-          </div>
-        </div>
-
-        {/* Tabella Ultime Collaborazioni */}
-        <div className="card">
-          <h2 className="text-xl font-bold mb-4">Le Tue Ultime Collaborazioni</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4">Brand</th>
-                    <th className="text-left py-3 px-4">Ruoli</th>
-                    <th className="text-left py-3 px-4">Stato</th>
-                    <th className="text-right py-3 px-4">Pagamento</th>
-                    <th className="text-right py-3 px-4">Tua Commissione</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentCollabs.slice(0, 10).map((c) => (
-                  <tr key={c.id} className="border-b border-gray-100">
-                    <td className="py-3 px-4">{c.brandNome}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{c.rolesLabel || '-'}</td>
-                    <td className="py-3 px-4">{c.stato}</td>
-                    <td className="py-3 px-4 text-right">€{parseFloat(c.pagamento || 0).toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-green-600">
-                      €{parseFloat(c.personalCommission || 0).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <ChangelogCard />
-      </div>
-    )
-  }
-
-  // VISTA ADMIN (stats globali - da implementare)
-  if (userProfile?.role === 'ADMIN') {
-    return (
-      <div>
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
           <p className="text-gray-600 mt-1">Panoramica generale</p>
         </div>
 
@@ -401,7 +200,4 @@ export default function Dashboard() {
         </div>
       </div>
     )
-  }
-
-  return null
 }

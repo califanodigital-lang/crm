@@ -7,7 +7,6 @@ import { getAllContrattiRicorrenti } from '../services/contrattiRicorrentiServic
 import { getVersamentByMonth, upsertVersamento, toggleVerificato, deleteVersamento } from '../services/versamentoService'
 import { getPagamentiByMese, generaPagamentiMese, upsertPagamentoAgente } from '../services/pagamentiAgentiService'
 import { getAllUsers } from '../services/userService'
-import { getAllAgentsStats } from '../services/agentService'
 import { getFattureByMese, createFattura, deleteFattura } from '../services/fattureEmesseService'
 import { getUsciteByMese, createUscita, updateUscita, deleteUscita, togglePagataUscita } from '../services/usciteVarieService'
 import { getAllPartecipazioniAgency, updatePartecipazione } from '../services/partecipazioneService'
@@ -115,7 +114,7 @@ export default function FinancePage() {
     setLoading(true)
     const meseFull = `${selectedMonth}-01`
 
-    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, agentsStatsRes, usciteRes, fieraRes] = await Promise.all([
+    const [creatorsRes, collabRes, contrattiRes, versamentiRes, fattureRes, pagAgentiRes, usersRes, usciteRes, fieraRes] = await Promise.all([
       getAllCreators(),
       getAllCollaborations(),
       getAllContrattiRicorrenti(),
@@ -123,7 +122,6 @@ export default function FinancePage() {
       getFattureByMese(meseFull),
       getPagamentiByMese(selectedMonth),
       getAllUsers(),
-      getAllAgentsStats(selectedMonth),
       getUsciteByMese(meseFull),
       getAllPartecipazioniAgency(),
     ])
@@ -149,16 +147,8 @@ export default function FinancePage() {
     setVersamenti(versamentiRes.data || [])
     setFattureEmesse(fattureRes.data || [])
 
-    // Agenti — arricchiti con statistiche fee
-    const statsMap = {}
-    ;(agentsStatsRes.data || []).forEach(s => { statsMap[s.agente] = s.totalCommissioni || 0 })
     setAllUsers(usersRes.data || [])
-    setPagamenti((pagAgentiRes.data || []).map(p => ({
-      ...p,
-      importoFee: statsMap[p.agenteNome] || 0,
-      importoTotale: p.importoFisso + (statsMap[p.agenteNome] || 0),
-      differenza: (p.importoFisso + (statsMap[p.agenteNome] || 0)) - p.importoPagato,
-    })))
+    setPagamenti(pagAgentiRes.data || [])
 
     setUsciteVarie(usciteRes.data || [])
     setFieraPartecipazioni(fieraRes.data || [])
@@ -337,15 +327,9 @@ export default function FinancePage() {
 
   // ── Agenti handlers ───────────────────────────────────────
   const reloadAgenti = async () => {
-    const [pagRes, statsRes] = await Promise.all([getPagamentiByMese(selectedMonth), getAllAgentsStats(selectedMonth)])
-    const statsMap = {}
-    ;(statsRes.data || []).forEach(s => { statsMap[s.agente] = s.totalCommissioni || 0 })
-    setPagamenti((pagRes.data || []).map(p => ({
-      ...p,
-      importoFee: statsMap[p.agenteNome] || 0,
-      importoTotale: p.importoFisso + (statsMap[p.agenteNome] || 0),
-      differenza: (p.importoFisso + (statsMap[p.agenteNome] || 0)) - p.importoPagato,
-    })))
+    const { data, error } = await getPagamentiByMese(selectedMonth)
+    if (error) { toast.error('Errore caricamento pagamenti'); return }
+    setPagamenti(data || [])
   }
 
   const handlePagamento = async (agenteNome, importoPagato, importoFisso, importoTotale) => {
@@ -840,7 +824,6 @@ export default function FinancePage() {
                   <tr className="border-b border-gray-100 bg-gray-50/50">
                     <th className="text-left py-3 px-4 text-xs font-bold text-gray-500 uppercase">Agente</th>
                     <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Fisso</th>
-                    <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Fee Mese</th>
                     <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Totale</th>
                     <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Pagato</th>
                     <th className="text-right py-3 px-4 text-xs font-bold text-gray-500 uppercase">Differenza</th>
@@ -850,7 +833,7 @@ export default function FinancePage() {
                 </thead>
                 <tbody>
                   {pagamenti.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-8 text-gray-400 text-sm">
+                    <tr><td colSpan={7} className="text-center py-8 text-gray-400 text-sm">
                       Nessun pagamento. Clicca "Genera mese" per creare le righe.
                     </td></tr>
                   ) : pagamenti.map(p => <PagamentoRow key={p.id} pagamento={p} onSave={handlePagamento} />)}

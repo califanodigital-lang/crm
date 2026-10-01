@@ -1,6 +1,6 @@
 // src/components/TrattativaForm.jsx
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Info, Lock } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
 import { getAllCreators } from '../services/creatorService'
 import CreatorMultiSelect from './CreatorMultiSelect'
@@ -132,8 +132,6 @@ export default function TrattativaForm({ trattativa = null, onSave, onCancel, br
   const [agenti, setAgenti] = useState([])
   const [creators, setCreators] = useState([])
   const { userProfile } = useAuth()
-  const isAdmin = userProfile?.role === 'ADMIN'
-  const puo_modificare_assegnatario = isAdmin || !trattativa || trattativa.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
     let cancelled = false
@@ -348,31 +346,24 @@ useEffect(() => {
             {(formData.assegnatario || []).map(nome => (
               <span key={nome} className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                 {nome}
-                {puo_modificare_assegnatario && (
-                  <button type="button" onClick={() => S('assegnatario', formData.assegnatario.filter(a => a !== nome))}
+                <button type="button" onClick={() => S('assegnatario', formData.assegnatario.filter(a => a !== nome))}
                     className="ml-0.5 text-yellow-600 hover:text-yellow-900">✕</button>
-                )}
               </span>
             ))}
           </div>
-          {puo_modificare_assegnatario && (
-            <select className="input"
+          <select className="input"
               value=""
               onChange={(e) => {
                 if (e.target.value && !formData.assegnatario.includes(e.target.value))
                   S('assegnatario', [...formData.assegnatario, e.target.value])
               }}
-              disabled={!puo_modificare_assegnatario}
             >
               <option value="">+ Aggiungi assegnatario...</option>
               {agenti.filter(a => !formData.assegnatario.includes(a.agenteNome)).map(a => (
                 <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
               ))}
             </select>
-          )}
-          {!puo_modificare_assegnatario && (
-            <p className="text-xs text-gray-400 mt-1">Solo il creatore o un admin può modificarlo</p>
-          )}
+          
           {formData.creatoDa && (
             <p className="text-xs text-gray-400 mt-1">Creata da: <strong>{formData.creatoDa}</strong></p>
           )}
@@ -499,20 +490,11 @@ useEffect(() => {
 
       {/* ── RESPONSABILI ── sempre visibile ── */}
       <FormSection title="Responsabili"
-        subtitle="Sales = ricerca (5%)  ·  IMA = contatto (10%)  ·  Senior = chiusura (15%)"
+        subtitle="Sales = ricerca  ·  IMA = contatto  ·  Senior = chiusura"
         show={true} defaultOpen={true}>
         <div>
           <label className="label">Sales — Ricerca brand *</label>
-          {!isAdmin && trattativa?.sales ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.sales)?.nomeCompleto || formData.sales || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">5% fee · solo admin può modificare</p>
-            </>
-          ) : (
-            <>
+          <>
               <select className="input" value={formData.sales}
                 onChange={(e) => S('sales', e.target.value)}>
                 <option value="">Nessuno</option>
@@ -520,22 +502,11 @@ useEffect(() => {
                   <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">5% fee se riceve_fee attivo</p>
             </>
-          )}
         </div>
         <div>
           <label className="label">IMA — Primo contatto *</label>
-          {!isAdmin && trattativa?.ima ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.ima)?.nomeCompleto || formData.ima || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">10% fee · solo admin può modificare</p>
-            </>
-          ) : (
-            <>
+          <>
               <select className="input" value={formData.ima}
                 onChange={(e) => S('ima', e.target.value)}>
                 <option value="">Nessuno</option>
@@ -543,22 +514,11 @@ useEffect(() => {
                   <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">10% fee</p>
             </>
-          )}
         </div>
         <div>
           <label className="label">Senior — Chiusura *</label>
-          {!isAdmin && trattativa?.senior ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.senior)?.nomeCompleto || formData.senior || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">15% fee · solo admin può modificare</p>
-            </>
-          ) : (
-            <>
+          <>
               <select className="input" value={formData.senior}
                 onChange={(e) => S('senior', e.target.value)}>
                 <option value="">Nessuno</option>
@@ -566,9 +526,7 @@ useEffect(() => {
                   <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">15% fee</p>
             </>
-          )}
         </div>
       </FormSection>
 

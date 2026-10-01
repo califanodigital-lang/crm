@@ -1,6 +1,40 @@
-export const APP_VERSION = 'v0.21.0'
+export const APP_VERSION = 'v0.22.2'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.22.2',
+    date: '2026-10-01',
+    items: [
+      'Rimossa la sezione Import e la relativa dipendenza Excel.',
+      'Rimosse le commissioni degli agenti da utenti, collaborazioni e riepiloghi. Restano fissi mensili, pagamenti registrati e responsabilita operative.',
+      'Compensi creator e fee di management invariati; migrazione dedicata con archivio dei dati storici delle commissioni.',
+    ],
+  },
+  {
+    version: 'v0.22.1',
+    date: '2026-10-01',
+    items: [
+      'Permessi uniformati: Admin ha accesso completo; Agent puo gestire tutte le sezioni operative, con Amministrazione protetta anche dagli accessi tramite URL.',
+      'Rimossi blocchi per proprietario e responsabili, filtri automatici personali e limite Admin alla chiusura delle fiere. Dashboard comune per entrambi i profili.',
+      'Policy Supabase coerenti con i ruoli, directory operativa separata dai profili amministrativi e sincronizzazioni Finance mantenute senza aprire la sezione agli Agent.',
+    ],
+  },
+  {
+    version: 'v0.22.0',
+    date: '2026-10-01',
+    items: [
+      'Autenticazione a due fattori facoltativa: attivazione con app e QR nella pagina Sicurezza account, codice richiesto al login per gli account protetti.',
+      'Gestione dei dispositivi e migrazione Supabase per richiedere la verifica anche nelle query alle tabelle CRM con RLS attivo.',
+    ],
+  },
+  {
+    version: 'v0.21.1',
+    date: '2026-10-01',
+    items: [
+      'Brand identity aggiornata con logo e icona C3 Agency, colori blu/giallo e ritocchi mirati a navigazione, accesso e card.',
+      'Changelog compatto: visibile solo l\'ultimo aggiornamento, con storico espandibile su richiesta.',
+    ],
+  },
   {
     version: 'v0.21.0',
     date: '2026-10-01',

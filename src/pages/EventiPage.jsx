@@ -3,7 +3,6 @@ import ExpenseSummary from '../components/ExpenseSummary'
 import { creatorFee } from '../utils/eventPayments'
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
 import { getAllEventi, createEvento, updateEvento, deleteEvento } from '../services/eventoService'
 import { createFattura } from '../services/fattureEmesseService'
 import { getAllCircuiti } from '../services/circuitiService'
@@ -192,9 +191,6 @@ function CreatorPreview({ title, items = [], tone }) {
 }
 
 export default function EventiPage() {
-  const { userProfile } = useAuth()
-  const isAdmin = userProfile?.role === 'ADMIN'
-  const isAgent = userProfile?.role === 'AGENT'
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -552,7 +548,7 @@ export default function EventiPage() {
                 ← Trattativa Fiera
               </button>
             )}
-            {isAdmin && !isClosed && (
+            {!isClosed && (
               <button onClick={handleChiudiFiera} className="px-4 py-2 bg-gray-800 text-white rounded-lg font-semibold hover:bg-gray-900 text-sm">
                 Chiudi Fiera
               </button>
@@ -587,7 +583,7 @@ export default function EventiPage() {
         </div>
 
         {/* Aggiungi Creator */}
-        {(isAdmin || isAgent) && (
+        {(
           <div className="card mb-6">
             <h2 className="text-xl font-bold mb-4">Aggiungi Creator</h2>
             <div className="flex gap-6 mb-4">

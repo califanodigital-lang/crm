@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+  --color-brand-blue: #24549a;
+  --color-brand-navy: #132b4d;
+  --color-brand-yellow: #f9bf12;
   --color-primary-50: #f0f9ff;
   --color-primary-100: #e0f2fe;
   --color-primary-200: #bae6fd;
@@ -15,6 +18,37 @@
 
 body {
   @apply bg-gray-50 text-gray-900;
+  -webkit-font-smoothing: antialiased;
+}
+
+.crm-shell {
+  background: linear-gradient(135deg, #f4f7fb 0%, #f9fafb 65%, #f5f7fa 100%);
+}
+
+.brand-sidebar {
+  background: linear-gradient(175deg, #132b4d, #0e1f36);
+}
+
+.brand-login {
+  background: radial-gradient(ellipse at 85% 15%, #346ab0 0%, transparent 55%),
+    linear-gradient(140deg, #132b4d, #24549a);
+}
+
+.brand-login-button {
+  background-color: var(--color-brand-blue);
+}
+
+.brand-login-button:hover:not(:disabled) {
+  background-color: var(--color-brand-navy);
+}
+
+:where(button, a, summary):focus-visible {
+  outline: 2px solid var(--color-brand-blue);
+  outline-offset: 3px;
+}
+
+.brand-sidebar :where(button, a):focus-visible {
+  outline-color: var(--color-brand-yellow);
 }
 
 .btn-primary {
@@ -27,6 +61,8 @@ body {
 
 .card {
   @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-6;
+  border-color: #e6ebf2;
+  box-shadow: 0 2px 8px rgb(19 43 77 / 3%);
 }
 
 .label {

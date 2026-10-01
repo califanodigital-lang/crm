@@ -26,7 +26,6 @@ import {
   PRIORITA_OPTIONS,
 } from '../constants/constants'
 import { getAllBrands } from '../services/brandService'
-import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/date'
 import { isDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 
@@ -401,14 +400,7 @@ export default function TrattativaPage() {
   const [sortField, setSortField] = useState('priorita')
   const [sortDir, setSortDir] = useState('asc')
   const [pendingStatoChange, setPendingStatoChange] = useState(null)
-  const { userProfile } = useAuth()
-  const isAgent = userProfile?.role === 'AGENT'
 
-  useEffect(() => {
-    if (isAgent && userProfile?.agenteNome) {
-      Promise.resolve().then(() => setFilterAssegnatario(userProfile.agenteNome))
-    }
-  }, [isAgent, userProfile])
 
   const loadBrands = useCallback(async () => {
     const { data } = await getAllBrands()

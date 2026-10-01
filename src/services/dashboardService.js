@@ -12,7 +12,7 @@ export const getGlobalStats = async (mese) => {
       supabase.from('brands').select('id', { count: 'exact' }),
       supabase.from('creators').select('id', { count: 'exact' }),
       fetchAllRows(() => supabase.from('collaborations').select('id, stato, pagamento, pagato')),
-      fetchAllRows(() => supabase.from('revenue_mensile').select('importo, mese')),
+      fetchAllRows(() => supabase.from('crm_revenue_summary').select('importo, mese')),
       supabase.from('proposte_brand').select('id', { count: 'exact' }).not('stato', 'in', '("NESSUNA_RISPOSTA","CHIUSO_PERSO")')
     ])
 
@@ -75,7 +75,7 @@ export const getTopCreators = async () => {
   export const getRevenueChart = async () => {
     try {
       const data = await fetchAllRows(() => supabase
-        .from('revenue_mensile')
+        .from('crm_revenue_summary')
         .select('mese, importo')
         .order('mese', { ascending: true }))
 

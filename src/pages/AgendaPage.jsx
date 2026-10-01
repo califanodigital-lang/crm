@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { canAccessAdministration } from '../utils/permissions'
+import { toast } from '../components/Toast'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Calendar, Plus } from 'lucide-react'
 import {
   getAgendaItems,
@@ -34,25 +36,20 @@ export default function AgendaPage() {
     const { userProfile } = useAuth()
 
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      const data = await getAgendaItems()
+  const includeAdministration = canAccessAdministration(userProfile)
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await getAgendaItems({ includeAdministration })
       setItems(data)
+      const eventItems = data.filter(item => item.tipo === 'EVENTO')
+      const results = await Promise.all(eventItems.map(async event => [event.id, await getCreatorAvailabilityForEventDay(event.eventoId, event.date)]))
+      setAvailability(Object.fromEntries(results))
+    } catch { toast.error('Impossibile caricare l\'agenda') }
+    finally { setLoading(false) }
+  }, [includeAdministration])
 
-      const eventItems = data.filter(i => i.tipo === 'EVENTO')
-      const map = {}
-
-      for (const ev of eventItems) {
-        map[ev.id] = await getCreatorAvailabilityForEventDay(ev.eventoId, ev.date)
-      }
-
-      setAvailability(map)
-      setLoading(false)
-    }
-
-    load()
-  }, [])
+  useEffect(() => { Promise.resolve().then(loadData) }, [loadData])
 
   const handleAddPromemoria = async () => {
     if (!promoForm.titolo || !promoForm.data) return

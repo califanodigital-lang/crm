@@ -5,11 +5,12 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Briefcase, Users, Handshake,
   DollarSign, Target, LogOut, Menu, X,
-  BarChart3, Calendar, ChevronRight, CalendarRange
+  BarChart3, Calendar, ChevronRight, CalendarRange, ShieldCheck
 } from 'lucide-react'
 import { ToastContainer } from './Toast'
 import { ConfirmContainer } from './ConfirmModal'
 import { APP_VERSION } from '../constants/changelog'
+import { canAccessAdministration } from '../utils/permissions'
 
 const NAV_GROUPS = [
   {
@@ -49,8 +50,11 @@ const NAV_GROUPS = [
       { name: 'Finance',          href: '/finance',  icon: DollarSign },
       { name: 'Dashboard Agenti', href: '/agenti',   icon: BarChart3 },
       { name: 'Utenti',           href: '/users',    icon: Users },
-      //{ name: 'Import',           href: '/import',   icon: Import },
     ]
+  },
+  {
+    label: 'Account',
+    items: [{ name: 'Sicurezza account', href: '/sicurezza', icon: ShieldCheck }],
   }
 ]
 
@@ -86,23 +90,17 @@ function SidebarContent({ onClose }) {
     navigate('/login')
   }
 
-  const isAdmin = userProfile?.role === 'ADMIN'
+  const isAdmin = canAccessAdministration(userProfile)
 
   return (
-    <div className="flex flex-col h-full bg-gray-950 border-r border-white/5">
+    <div className="brand-sidebar flex flex-col h-full border-r border-white/5">
       {/* Logo */}
-      <div className="flex items-center justify-between h-[72px] px-4 py-3 border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg shadow-yellow-400/20">
-            <img src="/icon.svg" alt="C3 logo" className="w-8 h-8" />
+      <div className="flex items-center justify-between h-[96px] px-4 py-3 border-b border-white/5 flex-shrink-0">
+        <div className="min-w-0 flex-1 mr-3">
+          <div className="bg-white rounded-lg px-3 py-2">
+            <img src="/c3-agency-logo.png" alt="C3 Agency" width="2000" height="367" className="w-full h-8 object-contain" />
           </div>
-          <div>
-            <p className="text-sm font-bold text-white leading-none">C3 Agency</p>
-            <p className="text-xs text-gray-500 mt-0.5">CRM</p>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-semibold">
-              {APP_VERSION}
-            </span>
-          </div>
+          <p className="text-[10px] text-blue-100/70 tracking-wide mt-1.5">CRM <span className="ml-2">{APP_VERSION}</span></p>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-gray-500 hover:text-white lg:hidden">
@@ -117,7 +115,7 @@ function SidebarContent({ onClose }) {
           if (group.adminOnly && !isAdmin) return null
           return (
             <div key={group.label}>
-              <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-widest mb-1.5 px-3">
+              <p className="text-[11px] font-semibold text-blue-100/60 uppercase tracking-widest mb-1.5 px-3">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -179,7 +177,7 @@ export default function Layout() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="crm-shell min-h-screen">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -211,9 +209,7 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 ml-3">
-            <div className="bg-yellow-400 w-6 h-6 rounded flex items-center justify-center">
-              <span className="text-xs font-black text-gray-900">C3</span>
-            </div>
+            <img src="/icon.png" alt="C3 Agency" width="32" height="32" className="w-7 h-7 object-contain" />
             <span className="font-bold text-gray-900 text-sm">
               {currentPage?.name || 'C3 Agency'}
             </span>

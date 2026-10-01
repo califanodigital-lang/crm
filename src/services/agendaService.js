@@ -48,7 +48,7 @@ const pushRange = (items, startDate, endDate, base) => {
   }
 }
 
-export const getAgendaItems = async () => {
+export const getAgendaItems = async ({ includeAdministration = false } = {}) => {
   const [
     creatorsRes,
     brandsRes,
@@ -71,7 +71,7 @@ export const getAgendaItems = async () => {
         creators (nome),
         eventi:evento_id (nome)
       `)),
-    fetchAllRows(() => supabase.from('versamenti').select('*')),
+    includeAdministration ? fetchAllRows(() => supabase.from('versamenti').select('*')) : Promise.resolve([]),
     fetchAllRows(() => supabase
       .from('creator_impegni')
       .select(`

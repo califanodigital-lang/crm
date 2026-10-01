@@ -8,14 +8,10 @@ const toCamelCase = (profile) => {
     email: profile.email,
     role: profile.role,
     nomeCompleto: profile.nome_completo,
-    agenteNome: profile.agente_nome,
+    agenteNome: profile.agente_nome || profile.nome_completo || profile.email || '',
     attivo: profile.attivo,
-    feeRicerca: profile.fee_ricerca ?? 5,
-    feeContatto: profile.fee_contatto ?? 10,
-    feeChiusura: profile.fee_chiusura ?? 15,
     createdAt: profile.created_at,
     updatedAt: profile.updated_at,
-    riceveFee: profile.riceve_fee ?? true,
     fissoMensile: parseFloat(profile.fisso_mensile || 0),
   }
 }
@@ -26,10 +22,6 @@ const toSnakeCase = (profile) => {
     nome_completo: profile.nomeCompleto,
     agente_nome: profile.agenteNome,
     attivo: profile.attivo,
-    fee_ricerca: profile.feeRicerca ?? 5,
-    fee_contatto: profile.feeContatto ?? 10,
-    fee_chiusura: profile.feeChiusura ?? 15,
-    riceve_fee: profile.riceveFee ?? true,
     fisso_mensile: profile.fissoMensile || 0,
   }
 }
@@ -73,7 +65,7 @@ export const getAllUsers = async () => {
 export const getActiveAgents = async () => {
   try {
     const data = await fetchAllRows(() => supabase
-      .from('user_profiles')
+      .from('crm_operator_directory')
       .select('*')
       .eq('attivo', true)
       .order('agente_nome'))

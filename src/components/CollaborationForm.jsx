@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Lock } from 'lucide-react'
 import { getActiveAgents } from '../services/userService'
 import { useAuth } from '../contexts/AuthContext'
 import SearchableSelect from './SearchableSelect'
@@ -29,9 +28,6 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     note: '',
     noteLog: [],
     senior: '',
-    feeSalesCalc: 0,
-    feeAgenteCalc: 0,
-    feeSeniorCalc: 0,
     assegnatario: [],
     creatoDa: '',
     tranche: [],
@@ -39,8 +35,6 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
   const [agenti, setAgenti] = useState([])
   const { userProfile } = useAuth()
-  const isAdmin = userProfile?.role === 'ADMIN'
-  const puo_modificare_assegnatario = isAdmin || !collaboration || collaboration.creatoDa === userProfile?.agenteNome
 
   useEffect(() => {
     getActiveAgents().then(({ data }) => setAgenti(data || []))
@@ -54,11 +48,11 @@ export default function CollaborationForm({ collaboration = null, creators = [],
 
     useEffect(() => {
       Promise.resolve().then(() => {
-     if (!collaboration && userProfile?.agenteNome) {
+     if (!collaboration) {
           setFormData(prev => ({
             ...prev,
-            creatoDa: userProfile.agenteNome,
-            assegnatario: userProfile.agenteNome ? [userProfile.agenteNome] : [],
+            creatoDa: userProfile?.agenteNome || userProfile?.nomeCompleto || '',
+            assegnatario: userProfile?.agenteNome ? [userProfile.agenteNome] : [],
           }))
 
           return
@@ -84,9 +78,6 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         note: collaboration.note ?? '',
         noteLog: collaboration.noteLog ?? [],
         senior: collaboration.senior ?? '',
-        feeSalesCalc: collaboration.feeSalesCalc ?? 0,
-        feeAgenteCalc: collaboration.feeAgenteCalc ?? 0,
-        feeSeniorCalc: collaboration.feeSeniorCalc ?? 0,
         dataPagamentoCreator: collaboration.dataPagamentoCreator ?? '',
         dataPagamentoAgency: collaboration.dataPagamentoAgency ?? '',
         assegnatario: collaboration.assegnatario || [],
@@ -94,7 +85,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
         tranche: collaboration.tranche || [],
       }))
       })
-    }, [collaboration])
+    }, [collaboration, userProfile?.agenteNome, userProfile?.nomeCompleto])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -122,10 +113,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
       brandNome,
     }
 
-    setFormData({
-      ...upd,
-      ...ricalcolaFee(upd)
-    })
+    setFormData(upd)
   }
 
   const handleCreatorSelect = (creatorId) => {
@@ -134,37 +122,8 @@ export default function CollaborationForm({ collaboration = null, creators = [],
     const percFee = parseFloat(creator?.fee || 25) / 100
     const feeManagement = pag ? +(pag * percFee).toFixed(2) : formData.feeManagement
     const upd = { ...formData, creatorId, feeManagement }
-    setFormData({ ...upd, ...ricalcolaFee(upd) })
+    setFormData(upd)
   }
-  const toNumber = (value) => parseFloat(value || 0) || 0
-
-    const calcolaFeeAgente = (feeMan, agentiList, nomeAgente, tipo) => {
-      const ag = Array.isArray(agentiList)
-        ? agentiList.find(a => a.agenteNome === nomeAgente)
-        : null
-
-      if (!ag || !feeMan) return 0
-      if (ag.riceveFee === false) return 0
-
-      const n = parseFloat(feeMan) || 0
-
-      if (tipo === 'ricerca')  return +(n * (ag.feeRicerca  ?? 5)  / 100).toFixed(2)
-      if (tipo === 'contatto') return +(n * (ag.feeContatto ?? 10) / 100).toFixed(2)
-      if (tipo === 'chiusura') return +(n * (ag.feeChiusura ?? 15) / 100).toFixed(2)
-
-      return 0
-    }
-
-      const ricalcolaFee = (data) => {
-        const feeBase = toNumber(data.feeManagement)
-
-        return {
-          feeSalesCalc: data.sales ? calcolaFeeAgente(feeBase, agenti, data.sales, 'ricerca') : 0,
-          feeAgenteCalc: data.agente ? calcolaFeeAgente(feeBase, agenti, data.agente, 'contatto') : 0,
-          feeSeniorCalc: data.senior ? calcolaFeeAgente(feeBase, agenti, data.senior, 'chiusura') : 0,
-        }
-      }
-
   const selectedBrand = brands.find(b => b.id === formData.brandId || b.nome === formData.brandNome)
   const readonlyBrandContacts = {
     referente: selectedBrand?.referente || collaboration?.brandReferente,
@@ -188,32 +147,25 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               {(formData.assegnatario || []).map(nome => (
                 <span key={nome} className="flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                   {nome}
-                  {puo_modificare_assegnatario && (
-                    <button type="button" onClick={() => setFormData('assegnatario', formData.assegnatario.filter(a => a !== nome))}
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, assegnatario: prev.assegnatario.filter(a => a !== nome) }))}
                       className="ml-0.5 text-yellow-600 hover:text-yellow-900">✕</button>
-                  )}
                 </span>
               ))}
             </div>
-            {puo_modificare_assegnatario && (
-              <select className="input"
+            <select className="input"
                 value=""
                 onChange={(e) => {
                   const curr = formData.assegnatario || []
                   if (e.target.value && !curr.includes(e.target.value))
                     setFormData(prev => ({...prev, assegnatario: [...(prev.assegnatario || []), e.target.value]}))
                 }}
-                disabled={!puo_modificare_assegnatario}
               >
                 <option value="">+ Aggiungi assegnatario...</option>
                 {agenti.filter(a => !(formData.assegnatario || []).includes(a.agenteNome)).map(a => (
                   <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>
                 ))}
               </select>
-            )}
-            {!puo_modificare_assegnatario && (
-              <p className="text-xs text-gray-400 mt-1">Solo il creatore o un admin può modificarlo</p>
-            )}
+            
             {formData.creatoDa && (
               <p className="text-xs text-gray-400 mt-1">Creata da: <strong>{formData.creatoDa}</strong></p>
             )}
@@ -274,7 +226,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
               const percFee = parseFloat(creator?.fee || 25) / 100
               const feeManagement = +(pag * percFee).toFixed(2)
               const upd = { ...formData, pagamento: e.target.value, feeManagement }
-              setFormData({ ...upd, ...ricalcolaFee(upd) })
+              setFormData(upd)
             }}
           />
         </div>
@@ -289,7 +241,7 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             value={formData.feeManagement}
             onChange={(e) => {
               const upd = { ...formData, feeManagement: e.target.value }
-              setFormData({ ...upd, ...ricalcolaFee(upd) })
+              setFormData(upd)
             }}
             placeholder="Auto-calcolata come 25% del pagamento brand, modificabile se necessario"
           />
@@ -438,82 +390,49 @@ export default function CollaborationForm({ collaboration = null, creators = [],
             </div>
           )}
         <div className="md:col-span-3"><p className="form-section-title">Responsabili</p></div>
-        {/* Sales — Ricerca brand (5%) */}
+        {/* Sales — Ricerca brand */}
         <div>
-          <label className="label">Ricerca <span className="text-xs text-gray-400 font-normal">(5% fee)</span></label>
-          {!isAdmin && collaboration?.sales ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.sales)?.nomeCompleto || formData.sales || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeSalesCalc > 0 ? ` · Fee: €${formData.feeSalesCalc}` : ''}</p>
-            </>
-          ) : (
-            <>
+          <label className="label">Ricerca</label>
+          <>
               <select className="input" value={formData.sales}
                 onChange={(e) => {
                   const upd = {...formData, sales: e.target.value}
-                  setFormData({...upd, ...ricalcolaFee(upd)})
+                  setFormData(upd)
                 }}>
                 <option value="">Nessuno</option>
                 {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
               </select>
-              {formData.feeSalesCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSalesCalc}</p>}
             </>
-          )}
         </div>
 
-        {/* Agente IMA — Contatto brand (10%) */}
+        {/* Agente IMA — Contatto brand */}
         <div>
-          <label className="label">Agente / Contatto <span className="text-xs text-gray-400 font-normal">(10% fee)</span></label>
-          {!isAdmin && collaboration?.agente ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.agente)?.nomeCompleto || formData.agente || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeAgenteCalc > 0 ? ` · Fee: €${formData.feeAgenteCalc}` : ''}</p>
-            </>
-          ) : (
-            <>
+          <label className="label">Agente / Contatto</label>
+          <>
               <select className="input bg-gray-50" value={formData.agente}
                 onChange={(e) => {
                   const upd = {...formData, agente: e.target.value}
-                  setFormData({...upd, ...ricalcolaFee(upd)})
+                  setFormData(upd)
                 }}>
                 <option value="">Nessuno</option>
                 {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
               </select>
-              {formData.feeAgenteCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeAgenteCalc}</p>}
             </>
-          )}
         </div>
 
-        {/* Senior — Chiusura trattativa (15%) */}
+        {/* Senior — Chiusura */}
         <div>
-          <label className="label">Senior / Chiusura <span className="text-xs text-gray-400 font-normal">(15% fee)</span></label>
-          {!isAdmin && collaboration?.senior ? (
-            <>
-              <div className="input bg-gray-50 text-gray-600 flex items-center justify-between cursor-not-allowed">
-                <span>{agenti.find(a => a.agenteNome === formData.senior)?.nomeCompleto || formData.senior || '—'}</span>
-                <Lock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">solo admin può modificare{formData.feeSeniorCalc > 0 ? ` · Fee: €${formData.feeSeniorCalc}` : ''}</p>
-            </>
-          ) : (
-            <>
+          <label className="label">Senior / Chiusura</label>
+          <>
               <select className="input" value={formData.senior}
                 onChange={(e) => {
                   const upd = {...formData, senior: e.target.value}
-                  setFormData({...upd, ...ricalcolaFee(upd)})
+                  setFormData(upd)
                 }}>
                 <option value="">Nessuno</option>
                 {agenti.map(a => <option key={a.id} value={a.agenteNome}>{a.nomeCompleto}</option>)}
               </select>
-              {formData.feeSeniorCalc > 0 && <p className="text-xs text-green-600 mt-1">Fee: €{formData.feeSeniorCalc}</p>}
             </>
-          )}
         </div>
 
         {/* Stato */}

@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase'
-import { syncRevenueFromCollaboration, unsyncRevenueFromCollaboration } from './revenueService'
 import { fetchAllRows } from './supabasePagination'
 
 
@@ -138,9 +137,6 @@ const toCamelCase = (collab) => {
     createdAt: collab.created_at,
     updatedAt: collab.updated_at,
     senior: collab.senior,
-    feeSalesCalc: collab.fee_sales_calc,
-    feeAgenteCalc: collab.fee_agente_calc,
-    feeSeniorCalc: collab.fee_senior_calc,
     dataPagamentoCreator: collab.data_pagamento_creator,
     dataPagamentoAgency: collab.data_pagamento_agency,
     assegnatario: collab.assegnatario || [],
@@ -174,9 +170,6 @@ const toSnakeCase = (collab) => {
     note: cleanValue(collab.note),
     note_log: collab.noteLog || [],
     senior: cleanValue(collab.senior),
-    fee_sales_calc: collab.feeSalesCalc || 0,
-    fee_agente_calc: collab.feeAgenteCalc || 0,
-    fee_senior_calc: collab.feeSeniorCalc || 0,
     data_pagamento_creator: cleanValue(collab.dataPagamentoCreator),
     data_pagamento_agency: collab.pagato_agency ? cleanValue(collab.dataPagamentoAgency) : null,
     assegnatario: collab.assegnatario || [],
@@ -297,9 +290,6 @@ export const createCollaboration = async (collabData) => {
 
     await syncTrattativaFromCollaboration(collaboration)
 
-    if (collaboration.stato === 'COMPLETATA' && collaboration.pagato) {
-      await syncRevenueFromCollaboration(collaboration)
-    }
 
     await recalculateBrandSummary(collaboration.brandId, collaboration.brandNome)
     return { data: collaboration, error: null }
@@ -325,11 +315,6 @@ export const updateCollaboration = async (id, collaborationData) => {
 
     await syncTrattativaFromCollaboration(collaboration)
 
-    if (collaboration.stato === 'COMPLETATA' && collaboration.pagato) {
-      await syncRevenueFromCollaboration(collaboration)
-    } else {
-      await unsyncRevenueFromCollaboration(id)
-    }
 
     await recalculateBrandSummary(collaboration.brandId, collaboration.brandNome)
 
@@ -351,7 +336,6 @@ export const deleteCollaboration = async (id) => {
 
     if (readError) throw readError
 
-    await unsyncRevenueFromCollaboration(id)
 
     const { error } = await supabase
       .from('collaborations')

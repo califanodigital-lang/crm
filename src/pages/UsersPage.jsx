@@ -11,10 +11,6 @@ const DEFAULT_FORM = {
   nomeCompleto: '',
   agenteNome: '',
   role: 'AGENT',
-  feeRicerca: 5,
-  feeContatto: 10,
-  feeChiusura: 15,
-  riceveFee: true,
   fissoMensile: 0,
 }
 
@@ -68,10 +64,6 @@ export default function UsersPage() {
       nomeCompleto: user.nomeCompleto || '',
       agenteNome: user.agenteNome || '',
       role: user.role || 'AGENT',
-      feeRicerca: user.feeRicerca ?? 5,
-      feeContatto: user.feeContatto ?? 10,
-      feeChiusura: user.feeChiusura ?? 15,
-      riceveFee: user.riceveFee !== false,
       fissoMensile: user.fissoMensile || 0,
     })
     setEditingUser(user)
@@ -110,10 +102,6 @@ export default function UsersPage() {
         nomeCompleto: formData.nomeCompleto,
         agenteNome: formData.agenteNome,
         role: formData.role,
-        feeRicerca: formData.feeRicerca,
-        feeContatto: formData.feeContatto,
-        feeChiusura: formData.feeChiusura,
-        riceveFee: formData.riceveFee,
         fissoMensile: formData.fissoMensile,
       }
     })
@@ -143,10 +131,6 @@ export default function UsersPage() {
             nome_completo: formData.nomeCompleto,
             agente_nome: formData.agenteNome,
             role: formData.role,
-            fee_ricerca: formData.feeRicerca,
-            fee_contatto: formData.feeContatto,
-            fee_chiusura: formData.feeChiusura,
-            riceve_fee: formData.riceveFee,
             fisso_mensile: formData.fissoMensile,
             updated_at: new Date().toISOString()
           })
@@ -313,90 +297,12 @@ export default function UsersPage() {
               </div>
             </div>
 
-        <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-gray-700">Commissioni</p>
-            <div className="mb-4 pb-4 border-b border-gray-200">
+            <div className="mt-4">
               <label className="label">Fisso Mensile (€)</label>
-              <input
-                type="number"
-                step="50"
-                min="0"
-                className="input"
+              <input type="number" step="50" min="0" className="input"
                 value={formData.fissoMensile}
-                onChange={(e) => setFormData({...formData, fissoMensile: parseFloat(e.target.value || 0)})}
-                placeholder="0 = nessun fisso"
-              />
-              <p className="text-xs text-gray-400 mt-1">Importo fisso mensile indipendente dalle fee</p>
-            </div>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-sm text-gray-600">Riceve fee</span>
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={formData.riceveFee}
-                  onChange={(e) => setFormData({ ...formData, riceveFee: e.target.checked })}
-                />
-                <div className={`w-10 h-5 rounded-full transition-colors ${formData.riceveFee ? 'bg-yellow-400' : 'bg-gray-300'}`}>
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${formData.riceveFee ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </div>
-              </div>
-            </label>
-          </div>
-          {formData.riceveFee && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="label">% Ricerca Brand</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="100"
-                      className="input"
-                      value={formData.feeRicerca}
-                      onChange={(e) => setFormData({ ...formData, feeRicerca: parseFloat(e.target.value || 0) })}
-                    />
-                    <span className="text-gray-500 text-sm">%</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">% Contatto</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="100"
-                      className="input"
-                      value={formData.feeContatto}
-                      onChange={(e) => setFormData({ ...formData, feeContatto: parseFloat(e.target.value || 0) })}
-                    />
-                    <span className="text-gray-500 text-sm">%</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="label">% Chiusura</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      max="100"
-                      className="input"
-                      value={formData.feeChiusura}
-                      onChange={(e) => setFormData({ ...formData, feeChiusura: parseFloat(e.target.value || 0) })}
-                    />
-                    <span className="text-gray-500 text-sm">%</span>
-                  </div>
-                </div>
-              </div>
-              </div>
-             )}
+                onChange={(e) => setFormData({ ...formData, fissoMensile: parseFloat(e.target.value || 0) })}
+                placeholder="0 = nessun fisso" />
             </div>
 
             {editingUser && (
@@ -434,7 +340,6 @@ export default function UsersPage() {
               <th className="text-left py-3 px-4">Nome Agente</th>
               <th className="text-left py-3 px-4">Ruolo</th>
               <th className="text-left py-3 px-4">Stato</th>
-              <th className="text-left py-3 px-4">Fee</th>
               <th className="text-left py-3 px-4">Fisso</th>
               <th className="text-right py-3 px-4">Azioni</th>
             </tr>
@@ -467,15 +372,6 @@ export default function UsersPage() {
                 </td>
                 <td className="py-3 px-4 text-sm">
                   {u.fissoMensile > 0 ? `€${u.fissoMensile.toLocaleString()}` : <span className="text-gray-300">—</span>}
-                </td>
-                <td className="py-3 px-4">
-                  {u.riceveFee !== false ? (
-                    <span className="text-xs text-gray-600">
-                      {u.feeRicerca ?? 5}% / {u.feeContatto ?? 10}% / {u.feeChiusura ?? 15}%
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">Nessuna fee</span>
-                  )}
                 </td>
                 <td className="py-3 px-4 text-right">
                   <button

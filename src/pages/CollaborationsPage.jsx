@@ -19,7 +19,6 @@ import { createFattura } from '../services/fattureEmesseService'
 import { toast } from '../components/Toast'
 import { confirm } from '../components/ConfirmModal'
 import { getStatoCollaborazione } from '../constants/constants'
-import { useAuth } from '../contexts/AuthContext'
 
 
 export default function CollaborationsPage() {
@@ -36,8 +35,6 @@ export default function CollaborationsPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ total: 0, inCorso: 0, completate: 0, totalRevenue: 0 })
   const [prefilledData, setPrefilledData] = useState(null)
-  const { userProfile } = useAuth()
-  const isAgent = userProfile?.role === 'AGENT'
   const [pagamentoModal, setPagamentoModal] = useState(null)
   const [mostraArchivio, setMostraArchivio] = useState(false)
   const [sortField, setSortField] = useState('stato')
@@ -47,11 +44,6 @@ export default function CollaborationsPage() {
 
   // Gestisci pre-riempimento da altre pagine
 
-  useEffect(() => {
-    if (isAgent && userProfile?.agenteNome) {
-      setFilterAssegnatario(userProfile.agenteNome)
-    }
-  }, [isAgent, userProfile])
 
   useEffect(() => {
     if (location.state?.preselectedCreator) {

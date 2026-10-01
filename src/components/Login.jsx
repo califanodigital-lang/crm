@@ -26,13 +26,12 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-400 to-yellow-500">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+    <div className="brand-login min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-white/60">
         <div className="flex flex-col items-center justify-center mb-8">
-          <div className="bg-yellow-400 p-4 rounded-xl mb-4">
-            <span className="text-4xl font-bold text-gray-900">C3</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">C3 Agency</h1>
+          <img src="/c3-agency-logo.png" alt="C3 Agency" width="2000" height="367" className="w-64 max-w-full h-auto mb-6" />
+          <h1 className="text-xl font-bold text-gray-900">Accedi al CRM</h1>
+          <p className="text-sm text-gray-500 mt-2">Il tuo spazio di lavoro C3 Agency.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -40,6 +39,7 @@ export default function Login() {
             <label className="label">Email</label>
             <input
               type="email"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input"
@@ -52,6 +52,7 @@ export default function Login() {
             <label className="label">Password</label>
             <input
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input"
@@ -69,7 +70,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gray-900 text-white py-3 text-lg rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="brand-login-button w-full text-white py-3 rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Accesso in corso...' : 'Accedi'}
           </button>

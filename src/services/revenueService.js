@@ -32,13 +32,6 @@ const toSnakeCase = (rev) => ({
   agente: cleanValue(rev.agente),
 })
 
-const getMonthStartFromDate = (dateString) => {
-  if (!dateString) return null
-  const d = new Date(dateString)
-  if (Number.isNaN(d.getTime())) return null
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
-
 // GET: Revenue per mese (con nomi creator)
 export const getRevenueByMonth = async (mese) => {
   try {
@@ -95,11 +88,9 @@ export const getAllRevenue = async () => {
 // POST/PUT: Upsert revenue (insert o update)
 export const upsertRevenue = async (revenueData) => {
   try {
-    const { data, error } = await supabase
-      .from('revenue_mensile')
-      .upsert(toSnakeCase(revenueData), { onConflict: 'creator_id,mese' })
-      .select()
-      .single()
+    const { data, error } = await supabase.rpc('crm_upsert_manual_revenue', {
+      payload: toSnakeCase(revenueData),
+    })
 
     if (error) throw error
     return { data: toCamelCase(data), error: null }
@@ -143,99 +134,6 @@ export const getMonthlyTotals = async () => {
   } catch (error) {
     console.error('Error:', error)
     return { data: null, error }
-  }
-}
-
-// revenueService.js - AGGIUNGI FUNZIONE SYNC
-
-/**
- * Crea o aggiorna la revenue auto legata a una collaborazione.
- * Regola attuale: COMPLETATA + pagato = true
- * Mese derivato da dataFirma finché non esiste data_pagamento
- */
-export const syncRevenueFromCollaboration = async (collaboration) => {
-  try {
-    if (!collaboration?.id) {
-      return { data: null, error: new Error('Collaborazione senza id') }
-    }
-
-    if (collaboration.stato !== 'COMPLETATA' || !collaboration.pagato) {
-      return { data: null, error: null }
-    }
-
-    if (!collaboration.creatorId) {
-      return { data: null, error: new Error('Collaborazione senza creatorId') }
-    }
-
-    if (!collaboration.dataPagamentoAgency) {
-      return { data: null, error: new Error('Data pagamento mancante') }
-    }
-
-    const mese = getMonthStartFromDate(collaboration.dataPagamentoAgency)
-    if (!mese) {
-      return { data: null, error: new Error('Data pagamento non valida') }
-    }
-
-    const revenuePayload = {
-      creator_id: collaboration.creatorId,
-      mese,
-      importo: parseFloat(collaboration.pagamento) || 0,
-      fatturato: false,
-      collaborazione_id: collaboration.id,
-      brand_nome: collaboration.brandNome || null,
-      agente: collaboration.agente || null,
-      note: null,
-    }
-
-    const { data: existing, error: checkError } = await supabase
-      .from('revenue_mensile')
-      .select('id')
-      .eq('collaborazione_id', collaboration.id)
-      .maybeSingle()
-
-    if (checkError) throw checkError
-
-    if (existing) {
-      const { data, error } = await supabase
-        .from('revenue_mensile')
-        .update(revenuePayload)
-        .eq('id', existing.id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return { data: toCamelCase(data), error: null }
-    }
-
-    const { data, error } = await supabase
-      .from('revenue_mensile')
-      .insert([revenuePayload])
-      .select()
-      .single()
-
-    if (error) throw error
-    return { data: toCamelCase(data), error: null }
-  } catch (error) {
-    console.error('Error syncing revenue from collaboration:', error)
-    return { data: null, error }
-  }
-}
-
-/**
- * Rimuove solo la revenue auto legata alla collaborazione
- */
-export const unsyncRevenueFromCollaboration = async (collaborationId) => {
-  try {
-    const { error } = await supabase
-      .from('revenue_mensile')
-      .delete()
-      .eq('collaborazione_id', collaborationId)
-
-    if (error) throw error
-    return { error: null }
-  } catch (error) {
-    console.error('Error unsyncing revenue:', error)
-    return { error }
   }
 }
 
