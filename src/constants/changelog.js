@@ -1,6 +1,24 @@
-export const APP_VERSION = 'v0.26.0'
+export const APP_VERSION = 'v0.28.0'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.28.0',
+    date: '2026-10-06',
+    items: [
+      'Tasks: assegnatari multipli, con utente corrente come principale iniziale e task condivisa visibile nelle liste personali di tutti gli assegnatari.',
+      'Google Calendar aziendale: scadenze come eventi giornalieri con inviti email agli assegnatari, aggiornamento delle modifiche e cancellazione quando si elimina la task o si rimuove la scadenza.',
+      'Coda server con tentativi automatici, protezione dai duplicati e stato di sincronizzazione nella lista. Calendar richiede migrazioni, autorizzazione Google, Edge Function e pianificazione prima di essere attivato.',
+    ],
+  },
+  {
+    version: 'v0.27.0',
+    date: '2026-10-06',
+    items: [
+      'Tasks: descrizione facoltativa e data di scadenza, visibili nella lista con indicazione delle task scadute.',
+      'Pulsante Modifica per aggiornare titolo, descrizione, scadenza, assegnatario e urgenza senza cambiare lo stato di completamento.',
+      'Docs Tasks aggiornate; applicare la migrazione Supabase 20261006_tasks_details.sql prima del rilascio.',
+    ],
+  },
   {
     version: 'v0.26.0',
     date: '2026-10-06',
