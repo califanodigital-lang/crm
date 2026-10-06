@@ -13,7 +13,7 @@ import { getAllCreators } from '../services/creatorService'
 import { upsertFieraFromEvento } from '../services/fieraDbService'
 import { getAllTipologieEvento } from '../services/tipologieEventoService'
 import { getTrattativaFieraNotesForEvento } from '../services/trattativaFieraService'
-import { Plus, Edit, Trash2, X } from 'lucide-react'
+import { Plus, Edit, Trash2, X, Search } from 'lucide-react'
 import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import { ATTIVITA_EVENTO } from '../constants/constants'
@@ -206,6 +206,7 @@ export default function EventiPage() {
   const [loading, setLoading] = useState(true)
   const [dataError, setDataError] = useState(null)
   const [savingAgency, setSavingAgency] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
   const [eventScope, setEventScope] = useState('all')
   const [eventoForm, setEventoForm] = useState(EMPTY_EVENTO_FORM)
   const [partForm, setPartForm] = useState(EMPTY_PART_FORM)
@@ -960,6 +961,17 @@ export default function EventiPage() {
   }
 
   if (dataError) return <div className="card"><p role="alert">{dataError}</p><button className="btn-secondary" onClick={loadData}>Riprova</button></div>
+  const needle = searchTerm.trim().toLowerCase()
+  const filteredEventi = eventi.filter(evento => {
+    const matchesScope = eventScope === 'all' || (eventScope === 'closed' ? evento.stato === 'CHIUSA' : evento.stato !== 'CHIUSA')
+    const matchesSearch = !needle || [
+      evento.nome, evento.tipo, evento.citta, evento.location,
+      circuiti.find(circuito => circuito.id === evento.circuitoId)?.nome,
+      ...(partecipazioniByEvento[evento.id] || []).map(partecipazione => partecipazione.creatorNome),
+    ].some(value => String(value || '').toLowerCase().includes(needle))
+    return matchesScope && matchesSearch
+  })
+
   // LISTA EVENTI
   return (
     <div>
@@ -976,12 +988,23 @@ export default function EventiPage() {
         </button>
       </div>
 
-      <label className="label">Visualizza</label>
-      <select className="input max-w-xs mb-4" value={eventScope} onChange={e => setEventScope(e.target.value)}><option value="all">Tutti gli eventi</option><option value="open">In gestione</option><option value="closed">Chiusi / archiviati</option></select>
+      <div className="card mb-4 flex flex-col sm:flex-row sm:items-end gap-4">
+        <div className="flex-1">
+          <label htmlFor="event-search" className="label">Cerca eventi</label>
+          <div className="relative">
+            <input id="event-search" type="search" className="input w-full pr-11" placeholder="Cerca evento, città, luogo, circuito, tipologia o creator..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="event-scope" className="label">Visualizza</label>
+          <select id="event-scope" className="input sm:w-56" value={eventScope} onChange={e => setEventScope(e.target.value)}><option value="all">Tutti gli eventi</option><option value="open">In gestione</option><option value="closed">Chiusi / archiviati</option></select>
+        </div>
+      </div>
       <div className="card overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b text-left"><th className="p-3">Evento</th><th className="p-3">Date / Citta</th><th className="p-3">Creator e giorni di presenza</th><th className="p-3">Azioni</th></tr></thead>
-          <tbody>{eventi.filter(e => eventScope === 'all' || (eventScope === 'closed' ? e.stato === 'CHIUSA' : e.stato !== 'CHIUSA')).map(evento => {
+          <tbody>{filteredEventi.map(evento => {
             const entries = (partecipazioniByEvento[evento.id] || []).map(p => ({
               ...p,
               dataInizioPartecipazione: p.dataInizioPartecipazione || evento.dataInizio,
@@ -1009,7 +1032,7 @@ export default function EventiPage() {
             </tr>
           })}</tbody>
         </table>
-        {!eventi.length && <p className="p-4 text-gray-500">Nessun evento presente.</p>}
+        {!filteredEventi.length && <p className="p-4 text-gray-500">{needle ? 'Nessun evento trovato con questa ricerca e i filtri selezionati.' : 'Nessun evento presente in questa vista.'}</p>}
       </div>
     </div>
   )

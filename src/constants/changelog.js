@@ -1,6 +1,15 @@
-export const APP_VERSION = 'v0.28.0'
+export const APP_VERSION = 'v0.28.1'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.28.1',
+    date: '2026-10-06',
+    items: [
+      'Ricerca testuale in Fiere ed Eventi chiusi per nome, luogo, circuito, tipologia e creator.',
+      'Ricerca Clienti per nome, ragione sociale, recapiti e dati fiscali.',
+      'Ricerca Tasks per titolo, descrizione e assegnatari, combinata con le liste personali/condivise e il filtro delle completate.',
+    ],
+  },
   {
     version: 'v0.28.0',
     date: '2026-10-06',

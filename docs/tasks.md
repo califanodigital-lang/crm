@@ -91,3 +91,11 @@ un collega. Entrambi devono trovarla in Le mie task. Dopo l'attivazione Calendar
 controllate gli inviti email e l'evento giornaliero alla data giusta. Cambia
 scadenza e togli un assegnatario: deve aggiornarsi lo stesso evento. Togli
 la scadenza o elimina la task: deve essere cancellato dal calendario.
+
+## Ricerca - v0.28.1
+
+La barra filtra per titolo, descrizione e tutti gli assegnatari. Funziona
+anche con una parte del testo e senza distinzione fra maiuscole e minuscole.
+Restano attivi Le mie task / Tutte e Mostra completate. Per cercare ovunque,
+selezionare Tutte e attivare Mostra completate; svuotare la barra per rimuovere
+la ricerca. Nessuna migrazione Supabase richiesta per questa modifica.

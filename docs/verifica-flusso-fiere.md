@@ -31,3 +31,12 @@ Le precedenti correzioni di ricerca, vista per mese, ordine e archivio non richi
 ## Verifiche tecniche
 
 Build di produzione, lint e 25 controlli mirati della rubrica e dell'archivio superati (node tests/fair-workflow.mjs). Le prove con account reale e la verifica della migrazione su Supabase restano da eseguire prima del rilascio. Nessuna pubblicazione o modifica del database remoto eseguita.
+
+## Ricerca in Fiere ed Eventi chiusi - v0.28.1
+
+Nella lista usa la nuova barra: prova una parte del nome, anche in maiuscolo,
+poi una citta, un circuito o il nome di un creator partecipante/proposto.
+Devono restare solo gli eventi corrispondenti. Il filtro Tutti gli eventi /
+In gestione / Chiusi resta attivo: scegli Tutti gli eventi per cercare ovunque.
+Svuota la barra e verifica che ricompaiano gli eventi della vista scelta.
+Nessuna migrazione Supabase richiesta per questa ricerca.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Edit, ExternalLink, Plus, Trash2 } from 'lucide-react'
+import { Edit, ExternalLink, Plus, Trash2, Search } from 'lucide-react'
 import {
   getAllClientiTerzi,
   createClienteTerzo,
@@ -32,6 +32,7 @@ const getHref = (url) => {
 
 export default function ClientiTerziTab({ onDataChanged }) {
   const [clientiTerzi, setClientiTerzi] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [showManage, setShowManage] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -121,6 +122,13 @@ export default function ClientiTerziTab({ onDataChanged }) {
     onDataChanged?.()
   }
 
+  const needle = searchTerm.trim().toLowerCase()
+  const filteredClienti = clientiTerzi.filter(cliente => !needle || [
+    [cliente.nome, cliente.cognome].filter(Boolean).join(' '),
+    cliente.email, cliente.telefono, cliente.piva, cliente.codiceFiscale,
+    cliente.sitoWeb, cliente.residenza, cliente.domicilioFiscale,
+  ].some(value => String(value || '').toLowerCase().includes(needle)))
+
   if (loading) return (
     <div className="flex justify-center py-8">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400" />
@@ -141,8 +149,13 @@ export default function ClientiTerziTab({ onDataChanged }) {
         </button>
       </div>
 
-      {clientiTerzi.length === 0 ? (
-        <p className="text-center text-gray-400 text-sm py-8">Nessun cliente censito.</p>
+      <div className="relative">
+        <input type="search" aria-label="Cerca clienti" className="input w-full pr-11" placeholder="Cerca nome, ragione sociale, email, telefono, P.IVA o codice fiscale..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+      </div>
+
+      {filteredClienti.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-8">{needle ? 'Nessun cliente trovato con questa ricerca.' : 'Nessun cliente censito.'}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -158,7 +171,7 @@ export default function ClientiTerziTab({ onDataChanged }) {
               </tr>
             </thead>
             <tbody>
-              {clientiTerzi.map(cliente => (
+              {filteredClienti.map(cliente => (
                 <tr key={cliente.id} className="border-b border-gray-100 hover:bg-gray-50 group">
                   <td className="py-2.5 px-3 font-medium text-sm text-gray-900">{cliente.nome}</td>
                   <td className="py-2.5 px-3 text-sm text-gray-500">{cliente.cognome || '-'}</td>

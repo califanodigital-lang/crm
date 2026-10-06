@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw, Plus, CheckSquare, Trash2, Edit } from 'lucide-react'
+import { RefreshCw, Plus, CheckSquare, Trash2, Edit, Search } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { getActiveAgents } from '../services/userService'
 import { createTask, getTasks, updateTask, deleteTask, getTaskCalendarStatuses } from '../services/taskService'
@@ -24,6 +24,7 @@ export default function TasksPage() {
   const [urgent, setUrgent] = useState(false)
   const [assigneeId, setAssigneeId] = useState(user.id)
   const [additionalAssigneeIds, setAdditionalAssigneeIds] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [scope, setScope] = useState('mine')
   const [showCompleted, setShowCompleted] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -130,7 +131,11 @@ export default function TasksPage() {
   }
 
   const scoped = tasks.filter(task => scope === 'all' || taskAssigneeIds(task).includes(user.id))
-  const visible = scoped.filter(task => showCompleted || !task.completed).sort((a, b) => Number(a.completed) - Number(b.completed) || Number(b.urgent) - Number(a.urgent) || b.created_at.localeCompare(a.created_at))
+  const needle = searchTerm.trim().toLowerCase()
+  const matchingTasks = scoped.filter(task => !needle || [
+    task.title, task.description, ...taskAssigneeIds(task).map(operatorName),
+  ].some(value => String(value || '').toLowerCase().includes(needle)))
+  const visible = matchingTasks.filter(task => showCompleted || !task.completed).sort((a, b) => Number(a.completed) - Number(b.completed) || Number(b.urgent) - Number(a.urgent) || b.created_at.localeCompare(a.created_at))
 
   return <div className="max-w-5xl mx-auto">
     <header className="flex items-start justify-between gap-4 mb-6">
@@ -151,13 +156,18 @@ export default function TasksPage() {
       </div>
       <TaskAdditionalAssignees operators={operators} primaryId={assigneeId} value={additionalAssigneeIds} onChange={setAdditionalAssigneeIds} disabled={saving || loading || !!error} />
     </form>
+    <div className="relative mb-4">
+      <label htmlFor="task-search" className="sr-only">Cerca task</label>
+      <input id="task-search" type="search" className="input w-full pr-11" placeholder="Cerca titolo, descrizione o assegnatario..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} />
+      <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+    </div>
     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
       <div className="flex rounded-xl bg-gray-100 p-1" role="group" aria-label="Filtro assegnatario">{[['mine', 'Le mie task'], ['all', 'Tutte']].map(([value, label]) => <button key={value} onClick={() => setScope(value)} aria-pressed={scope === value} className={`rounded-lg px-4 py-2 text-sm font-semibold ${scope === value ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div>
       <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={showCompleted} onChange={event => setShowCompleted(event.target.checked)} /> Mostra completate</label>
     </div>
-    <p className="text-xs text-gray-500 mb-3" role="status">{scoped.filter(task => !task.completed).length} da completare</p>
+    <p className="text-xs text-gray-500 mb-3" role="status">{matchingTasks.filter(task => !task.completed).length} da completare</p>
     <div className="card !p-0 overflow-hidden">
-      {loading ? <p className="p-6 text-gray-500" role="status">Caricamento...</p> : error ? <p className="p-6 text-gray-500">Aggiorna per visualizzare una lista attendibile.</p> : !visible.length ? <div className="p-8 text-center text-gray-500"><CheckSquare className="w-8 h-8 mx-auto mb-3 text-blue-800" /><p>{showCompleted ? 'Nessuna task in questa lista.' : 'Nessuna task da completare.'}</p></div> : <ul className="divide-y divide-gray-100">{visible.map(task => <li key={task.id} className="flex flex-wrap items-center gap-3 p-4">
+      {loading ? <p className="p-6 text-gray-500" role="status">Caricamento...</p> : error ? <p className="p-6 text-gray-500">Aggiorna per visualizzare una lista attendibile.</p> : !visible.length ? <div className="p-8 text-center text-gray-500"><CheckSquare className="w-8 h-8 mx-auto mb-3 text-blue-800" /><p>{needle ? 'Nessuna task trovata con questa ricerca e i filtri selezionati.' : showCompleted ? 'Nessuna task in questa lista.' : 'Nessuna task da completare.'}</p></div> : <ul className="divide-y divide-gray-100">{visible.map(task => <li key={task.id} className="flex flex-wrap items-center gap-3 p-4">
         <input type="checkbox" checked={task.completed} onChange={event => changeTask(task, { completed: event.target.checked })} disabled={pending.includes(task.id) || editing?.id === task.id} aria-label={`${task.completed ? 'Riapri' : 'Completa'} ${task.title}`} className="w-5 h-5 accent-blue-800 shrink-0" />
         <div className="flex-1 min-w-0"><p className={`text-sm font-medium break-words ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>{task.title}</p>{task.description && <p className="text-sm text-gray-600 whitespace-pre-wrap break-words mt-1">{task.description}</p>}<p className="text-xs text-gray-500 mt-1">{taskAssigneeIds(task).map(operatorName).join(", ")}</p>{task.due_date && <p className={`text-xs mt-1 ${!task.completed && task.due_date < romeToday() ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>Scadenza: {formatDate(task.due_date)}{!task.completed && task.due_date < romeToday() ? ' - Scaduta' : ''}</p>}{calendarLabel(task) && <p className={`text-xs mt-1 ${calendarStatuses[task.id]?.status === 'error' ? 'text-amber-700' : 'text-gray-500'}`}>{calendarLabel(task)}</p>}</div>
         <button onClick={() => changeTask(task, { urgent: !task.urgent })} disabled={pending.includes(task.id) || editing?.id === task.id} aria-pressed={task.urgent} aria-label={`Urgenza: ${task.title}`} className={`text-xs font-semibold rounded-lg px-3 py-2 ${task.urgent ? 'bg-yellow-100 text-yellow-900' : 'bg-gray-50 text-gray-500'}`}>{task.urgent ? 'Urgente' : 'Non urgente'}</button>
