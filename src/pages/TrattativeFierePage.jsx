@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import DateRangeFilter from '../components/DateRangeFilter'
 import { getAllCircuiti } from '../services/circuitiService'
 import { createFieraDb, getAllFiereDb } from '../services/fieraDbService'
-import { deleteEvento } from '../services/eventoService'
+import { getAllEventi, deleteEvento } from '../services/eventoService'
 import { getAllTipologieEvento } from '../services/tipologieEventoService'
 import { getActiveAgents } from '../services/userService'
 import {
@@ -17,7 +17,6 @@ import {
 import {
   getStatoTrattativaFiera,
   STATI_TRATTATIVA_FIERA,
-  STATI_TRATTATIVA_FIERA_CHIUSI,
 } from '../constants/constants'
 import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
@@ -25,6 +24,11 @@ import NotesLogField from '../components/NotesLogField'
 import { formatDate } from '../utils/date'
 import { doesRangeOverlap, hasAnyDateInRange, isDateRangeDisabled } from '../utils/dateRange'
 import { useNavigate } from 'react-router-dom'
+
+import { isFairNegotiationArchived, sortFairNegotiations } from '../utils/fairWorkflow'
+
+import ExtraContactsField from '../components/ExtraContactsField'
+import { inheritCircuitContacts } from '../utils/circuitContacts'
 
 const EMPTY_FORM = {
   fieraDbId: '',
@@ -35,6 +39,7 @@ const EMPTY_FORM = {
   citta: '',
   dataInizio: '',
   dataFine: '',
+  contattiAggiuntivi: [],
   referente: '',
   contatto: '',
   telefono: '',
@@ -81,6 +86,9 @@ export default function TrattativeFierePage() {
   const navigate = useNavigate()
   const { userProfile } = useAuth()
   const [trattative, setTrattative] = useState([])
+  const [eventi, setEventi] = useState([])
+  const [fieraSearch, setFieraSearch] = useState('')
+  const [sortMode, setSortMode] = useState('dateAsc')
   const [fiereDb, setFiereDb] = useState([])
   const [circuiti, setCircuiti] = useState([])
   const [tipologie, setTipologie] = useState([])
@@ -96,14 +104,17 @@ export default function TrattativeFierePage() {
 
   async function loadData() {
     setLoading(true)
-    const [trattativeRes, fiereRes, circuitiRes, tipologieRes, agentiRes] = await Promise.all([
+    const [trattativeRes, fiereRes, circuitiRes, tipologieRes, agentiRes, eventiRes] = await Promise.all([
       getAllTrattativeFiere(),
       getAllFiereDb(),
       getAllCircuiti(),
       getAllTipologieEvento(),
       getActiveAgents(),
+      getAllEventi(),
     ])
 
+    if (trattativeRes.error || eventiRes.error) toast.error('Errore caricando trattative o eventi: lo stato di archivio potrebbe essere incompleto.')
+    setEventi(eventiRes.data || [])
     setTrattative(trattativeRes.data || [])
     setFiereDb(fiereRes.data || [])
     setCircuiti(circuitiRes.data || [])
@@ -140,6 +151,7 @@ export default function TrattativeFierePage() {
   }, [])
 
   const openCreate = () => {
+    setFieraSearch('')
     setFormOpen(true)
     setEditing(null)
     setFormData({
@@ -152,6 +164,7 @@ export default function TrattativeFierePage() {
   }
 
   const openEdit = (trattativa) => {
+    setFieraSearch('')
     setFormOpen(true)
     setEditing(trattativa)
     setFormData({
@@ -163,7 +176,10 @@ export default function TrattativeFierePage() {
 
   const hydrateFromFiera = (fieraId) => {
     const selected = fiereDb.find(fiera => fiera.id === fieraId)
-    if (!selected) return
+    if (!selected) {
+      setFormData(prev => ({ ...prev, fieraDbId: '' }))
+      return
+    }
 
     setFormData(prev => ({
       ...prev,
@@ -178,6 +194,7 @@ export default function TrattativeFierePage() {
       referente: selected.referente || '',
       contatto: selected.contatto || '',
       telefono: selected.telefono || '',
+      contattiAggiuntivi: selected.contattiAggiuntivi || [],
       sitoWeb: selected.sitoWeb || '',
       note: prev.note || selected.note || '',
       noteLog: prev.noteLog?.length ? prev.noteLog : (selected.noteLog || []),
@@ -224,7 +241,7 @@ export default function TrattativeFierePage() {
 
     let currentFormData = { ...formData, agente: agenteValue }
 
-    if (!editing && formData.creaFieraAutomaticamente) {
+    if (!editing && !formData.fieraDbId && formData.creaFieraAutomaticamente) {
       const fieraPayload = {
         nome: formData.nome,
         tipo: formData.tipo || null,
@@ -236,6 +253,7 @@ export default function TrattativeFierePage() {
         referente: formData.referente || null,
         contatto: formData.contatto || null,
         telefono: formData.telefono || null,
+        contattiAggiuntivi: formData.contattiAggiuntivi || [],
         sitoWeb: formData.sitoWeb || null,
         note: formData.note || null,
         noteLog: formData.noteLog || [],
@@ -331,8 +349,8 @@ export default function TrattativeFierePage() {
     toast.success(`Stato aggiornato a ${getStatoTrattativaFiera(stato).label}`)
   }
 
-  const filtered = trattative.filter(trattativa => {
-    const isClosed = STATI_TRATTATIVA_FIERA_CHIUSI.includes(trattativa.stato)
+  const filtered = sortFairNegotiations(trattative.filter(trattativa => {
+    const isClosed = isFairNegotiationArchived(trattativa, eventi)
     if (showClosed ? !isClosed : isClosed) return false
 
     const haystack = [
@@ -360,15 +378,15 @@ export default function TrattativeFierePage() {
               dateRange.end
             )
     return matchesSearch && matchesStatus && matchesDate
-  })
+  }), sortMode)
 
   const stats = {
-    attive: trattative.filter(t => !STATI_TRATTATIVA_FIERA_CHIUSI.includes(t.stato)).length,
-    contattate: trattative.filter(t => t.stato === 'CONTATTATO').length,
-    inTrattativa: trattative.filter(t => t.stato === 'IN_TRATTATIVA').length,
+    attive: trattative.filter(t => !isFairNegotiationArchived(t, eventi)).length,
+    contattate: trattative.filter(t => !isFairNegotiationArchived(t, eventi) && t.stato === 'CONTATTATO').length,
+    inTrattativa: trattative.filter(t => !isFairNegotiationArchived(t, eventi) && t.stato === 'IN_TRATTATIVA').length,
     followupImminenti: trattative.filter(t => {
       const target = t.dataFollowup1 || t.dataFollowup2
-      if (!target || STATI_TRATTATIVA_FIERA_CHIUSI.includes(t.stato)) return false
+      if (!target || isFairNegotiationArchived(t, eventi)) return false
       const diff = Math.ceil((new Date(`${target}T00:00:00`) - new Date()) / 86400000)
       return diff >= 0 && diff <= 3
     }).length,
@@ -413,7 +431,7 @@ export default function TrattativeFierePage() {
             value={dateRange}
             onChange={setDateRange}
             label="Periodo trattative fiere"
-            hint="Default: dal primo giorno del mese al primo del mese successivo. Se presenti, il filtro usa le date evento; altrimenti usa contatto e follow-up."
+            hint="Scegli un periodo oppure Vedi tutto. Se presenti, il filtro usa le date evento; altrimenti usa contatto e follow-up."
           />
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1 min-w-[220px]">
@@ -425,6 +443,11 @@ export default function TrattativeFierePage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <select aria-label="Ordine trattative" className="input lg:w-52" value={sortMode} onChange={e => setSortMode(e.target.value)}>
+              <option value="dateAsc">Data evento: crescente</option>
+              <option value="dateDesc">Data evento: decrescente</option>
+              <option value="alpha">Nome: A-Z</option>
+            </select>
             <select className="input lg:w-52" value={filterStato} onChange={(e) => setFilterStato(e.target.value)}>
               <option value="ALL">Tutti gli stati</option>
               {STATI_TRATTATIVA_FIERA.map(stato => (
@@ -439,7 +462,7 @@ export default function TrattativeFierePage() {
                   : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
               }`}
             >
-              {showClosed ? 'Torna alle attive' : 'Mostra chiuse'}
+              {showClosed ? 'Torna alle attive' : 'Archivio trattative'}
             </button>
           </div>
         </div>
@@ -492,6 +515,7 @@ export default function TrattativeFierePage() {
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       <StatoBadge value={trattativa.stato} />
+                      {isFairNegotiationArchived(trattativa, eventi) && trattativa.eventoId && <div className="text-xs text-gray-500 mt-1">In archivio</div>}
                       <select
                         className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white"
                         value={trattativa.stato}
@@ -570,13 +594,14 @@ export default function TrattativeFierePage() {
                 <label className="label">
                   Scheda DB Fiere
                 </label>
+                <input className="input mb-2" aria-label="Cerca nel database fiere" placeholder="Cerca per nome, città, luogo o circuito..." value={fieraSearch} onChange={e => setFieraSearch(e.target.value)} />
                 <select
                   className="input"
                   value={formData.fieraDbId}
                   onChange={(e) => hydrateFromFiera(e.target.value)}
                 >
                   <option value="">Seleziona una fiera dal database...</option>
-                  {fiereDb.map(fiera => (
+                  {fiereDb.filter(fiera => fiera.id === formData.fieraDbId || [fiera.nome, fiera.citta, fiera.location, circuitiMap[fiera.circuitoId]].join(' ').toLowerCase().includes(fieraSearch.trim().toLowerCase())).sort((a, b) => a.nome.localeCompare(b.nome, 'it')).map(fiera => (
                     <option key={fiera.id} value={fiera.id}>{fiera.nome}</option>
                   ))}
                 </select>
@@ -635,7 +660,7 @@ export default function TrattativeFierePage() {
               </div>
               <div>
                 <label className="label">Circuito</label>
-                <select className="input" value={formData.circuitoId || ''} onChange={(e) => setFormData(prev => ({ ...prev, circuitoId: e.target.value }))}>
+                <select className="input" value={formData.circuitoId || ''} onChange={(e) => setFormData(prev => inheritCircuitContacts(prev, circuiti.find(c => c.id === e.target.value), circuiti.find(c => c.id === prev.circuitoId)))}>
                   <option value="">Nessun circuito</option>
                   {circuiti.map(circuito => (
                     <option key={circuito.id} value={circuito.id}>{circuito.nome}</option>
@@ -695,9 +720,11 @@ export default function TrattativeFierePage() {
                 <label className="label">2° follow-up</label>
                 <input type="date" className="input" value={formData.dataFollowup2 || ''} onChange={(e) => setFormData(prev => ({ ...prev, dataFollowup2: e.target.value }))} />
               </div>
+              <ExtraContactsField value={formData.contattiAggiuntivi} onChange={contattiAggiuntivi => setFormData(prev => ({ ...prev, contattiAggiuntivi }))} />
               <div className="md:col-span-2">
                 <NotesLogField
                   value={formData.noteLog || []}
+                  attachmentContext={{ entityType: 'trattative_fiere', entityId: editing?.id }}
                   onChange={(noteLog) => setFormData(prev => ({ ...prev, noteLog }))}
                   deprecatedNote={formData.note}
                 />

@@ -3,6 +3,8 @@ import { Check, ChevronDown, ChevronUp, Edit, Plus, Trash2, X } from 'lucide-rea
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from './Toast'
 import { chronologicalNotes, noteBase, noteId } from '../utils/noteLog'
+import NoteAttachments from './NoteAttachments'
+import { listAttachments } from '../services/driveAttachmentService'
 
 const formatDateTime = (value) => {
   if (!value) return '-'
@@ -16,7 +18,7 @@ const formatDateTime = (value) => {
   })
 }
 
-export default function NotesLogField({ value = [], onChange, deprecatedNote = '', title = 'Note' }) {
+export default function NotesLogField({ value = [], onChange, deprecatedNote = '', title = 'Note', attachmentContext }) {
   const { userProfile } = useAuth()
   const [deprecatedOpen, setDeprecatedOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -73,6 +75,10 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
 
   const removeNote = async (id) => {
     try {
+      if (attachmentContext?.entityId && (await listAttachments(attachmentContext.entityType, attachmentContext.entityId, id)).length) {
+        toast.error('Rimuovi prima i PDF allegati a questa nota.')
+        return
+      }
       await onChange?.((Array.isArray(value) ? value : []).map(note => noteId(note) === id ? { ...note, id, _deleted: true, ...(note._new ? {} : { _base: note._base || noteBase(note) }) } : note))
     } catch (error) { toast.error(error?.message || 'Nota non eliminata. Riprova.') }
   }
@@ -110,7 +116,9 @@ export default function NotesLogField({ value = [], onChange, deprecatedNote = '
               <tr key={note.id || `${note.timestamp}-${note.topic}`} className="border-t border-gray-100 align-top">
                 <td className="px-3 py-2 text-gray-700">{note.operatore || '-'}</td>
                 <td className="px-3 py-2 font-medium text-gray-900">{note.topic || '-'}</td>
-                <td className="px-3 py-2 text-gray-700 whitespace-pre-wrap min-w-[220px]">{note.contenuto || '-'}</td>
+                <td className="px-3 py-2 text-gray-700 whitespace-pre-wrap min-w-[220px]">{note.contenuto || '-'}
+                  {attachmentContext && <NoteAttachments {...attachmentContext} note={note} readonly={readonly} />}
+                </td>
                 <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatDateTime(note.timestamp)}{note.modificatoIl && <div className="text-xs">Modificata da {note.modificatoDa || '-'}<br />{formatDateTime(note.modificatoIl)}</div>}</td>
                 <td className="px-3 py-2 text-right">
                   {!readonly && (

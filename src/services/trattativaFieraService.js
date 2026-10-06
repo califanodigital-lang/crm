@@ -3,6 +3,8 @@ import { getEventoById } from './eventoService'
 import { fetchAllRows } from './supabasePagination'
 import { addCivilDays, romeToday } from '../utils/civilDate'
 
+import { normalizeExtraContacts } from '../utils/circuitContacts'
+
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const CLOSED_STATUSES = ['NESSUNA_RISPOSTA', 'CHIUSO_PERSO']
 
@@ -38,6 +40,7 @@ const toCamelCase = (trattativa) => {
     referente: trattativa.referente,
     contatto: trattativa.contatto,
     telefono: trattativa.telefono,
+    contattiAggiuntivi: normalizeExtraContacts(trattativa.contatti_aggiuntivi),
     sitoWeb: trattativa.sito_web,
     agente: trattativa.agente,
     dataContatto: trattativa.data_contatto,
@@ -64,6 +67,7 @@ const toSnakeCase = (trattativa) => ensureFollowups({
   referente: cleanValue(trattativa.referente),
   contatto: cleanValue(trattativa.contatto),
   telefono: cleanValue(trattativa.telefono),
+  ...(trattativa.contattiAggiuntivi !== undefined ? { contatti_aggiuntivi: normalizeExtraContacts(trattativa.contattiAggiuntivi) } : {}),
   sito_web: cleanValue(trattativa.sitoWeb),
   agente: cleanValue(trattativa.agente),
   data_contatto: cleanValue(trattativa.dataContatto),
@@ -205,6 +209,7 @@ export const createTrattativaFieraFromFiera = async (fieraData, agenteNome) => {
       referente: fieraData.referente,
       contatto: fieraData.contatto,
       telefono: fieraData.telefono,
+      contattiAggiuntivi: fieraData.contattiAggiuntivi || [],
       sitoWeb: fieraData.sitoWeb,
       agente: agenteNome || '',
       dataContatto: today,

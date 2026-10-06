@@ -1,6 +1,22 @@
-export const APP_VERSION = 'v0.24.1'
+export const APP_VERSION = 'v0.26.0'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.26.0',
+    date: '2026-10-06',
+    items: [
+      'Fiere: ricerca testuale nel selettore, apertura delle schede cliccando tutta la card nella vista per mese e stato commerciale visibile nel database.',
+      'Trattative fiere: ordinamento per data o nome e archivio automatico delle trattative collegate a eventi chiusi, senza eliminare lo storico.',
+      'Passaggio manuale dal database alle trattative chiarito; pulsante + Trattativa disponibile nella lista anche prima del promemoria.',
+      'Contatti dei circuiti proposti nelle fiere e nelle trattative, con referenti aggiuntivi modificabili per la singola scheda. Richiede la migrazione Supabase 20261006_circuit_contacts.sql.',
+      'Docs aggiornate con istruzioni operative e prove guidate per il cliente.',
+    ],
+  },
+  {
+    version: 'v0.25.0',
+    date: '2026-10-01',
+    items: ['PDF nel log di fiere e trattative: caricamento, download e rimozione degli allegati dalle note salvate.', 'Integrazione Google Drive privata tramite backend Supabase; attivazione dopo configurazione dell’account aziendale.'],
+  },
   {
     version: 'v0.24.1',
     date: '2026-10-01',

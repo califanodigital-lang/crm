@@ -11,11 +11,18 @@ import {
   getAllTipologieEvento,
   updateTipologiaEvento,
 } from '../services/tipologieEventoService'
-import { createTrattativaFieraFromFiera } from '../services/trattativaFieraService'
+import { getAllTrattativeFiere, createTrattativaFieraFromFiera } from '../services/trattativaFieraService'
 import { formatDate } from '../utils/date'
 import { confirm } from '../components/ConfirmModal'
 import { toast } from '../components/Toast'
 import NotesLogField from '../components/NotesLogField'
+
+import { getAllEventi } from '../services/eventoService'
+import { getStatoTrattativaFiera } from '../constants/constants'
+import { isFairNegotiationArchived } from '../utils/fairWorkflow'
+
+import ExtraContactsField from '../components/ExtraContactsField'
+import { inheritCircuitContacts } from '../utils/circuitContacts'
 
 const emptyDateSet = () => ({ dataInizio: '', dataFine: '', prossimoContatto: '' })
 
@@ -25,6 +32,7 @@ const EMPTY_FIERA_FORM = {
   circuitoId: '',
   location: '',
   citta: '',
+  contattiAggiuntivi: [],
   referente: '',
   contatto: '',
   telefono: '',
@@ -34,7 +42,7 @@ const EMPTY_FIERA_FORM = {
   noteLog: [],
 }
 
-const EMPTY_CIRCUITO_FORM = { nome: '', note: '' }
+const EMPTY_CIRCUITO_FORM = { nome: '', note: '', referente: '', contatto: '', telefono: '', contattiAggiuntivi: [] }
 const EMPTY_TIPOLOGIA_FORM = { nome: '', note: '' }
 
 const todayLocal = () => {
@@ -74,7 +82,7 @@ const getFieraLatestDateSet = (fiera) => (
 
 const canStartTrattativa = (fiera) => isPastOrToday(getFieraLatestDateSet(fiera).prossimoContatto)
 
-function MonthContactsModal({ fiere, circuitiMap, onClose, onStartTrattativa }) {
+function MonthContactsModal({ fiere, circuitiMap, onClose, onStartTrattativa, onOpenFiera }) {
   const currentMonth = monthKey(todayLocal())
   const monthFiere = fiere
     .map(fiera => ({ fiera, dateSet: getFieraLatestDateSet(fiera) }))
@@ -100,7 +108,7 @@ function MonthContactsModal({ fiere, circuitiMap, onClose, onStartTrattativa }) 
           {monthFiere.map(({ fiera, dateSet }) => (
             <div key={fiera.id} className="border border-gray-100 rounded-xl p-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <div className="font-semibold text-gray-900">{fiera.nome}</div>
+                <button type="button" onClick={() => onOpenFiera(fiera)} className="font-semibold text-gray-900 hover:underline text-left">{fiera.nome}</button>
                 <div className="text-xs text-gray-400 mt-0.5">
                   {fiera.citta || '-'} {fiera.location ? `- ${fiera.location}` : ''} {circuitiMap[fiera.circuitoId] ? `- ${circuitiMap[fiera.circuitoId]}` : ''}
                 </div>
@@ -141,6 +149,8 @@ function MonthContactsModal({ fiere, circuitiMap, onClose, onStartTrattativa }) 
 export default function FiereDbPage() {
   const navigate = useNavigate()
   const { userProfile } = useAuth()
+  const [trattative, setTrattative] = useState([])
+  const [eventi, setEventi] = useState([])
   const [fiere, setFiere] = useState([])
   const [circuiti, setCircuiti] = useState([])
   const [tipologie, setTipologie] = useState([])
@@ -162,11 +172,16 @@ export default function FiereDbPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true)
-    const [fiereRes, circuitiRes, tipologieRes] = await Promise.all([
+    const [fiereRes, circuitiRes, tipologieRes, trattativeRes, eventiRes] = await Promise.all([
       getAllFiereDb(),
       getAllCircuiti(),
       getAllTipologieEvento(),
+      getAllTrattativeFiere(),
+      getAllEventi(),
     ])
+    if (fiereRes.error || trattativeRes.error || eventiRes.error) toast.error('Errore caricando fiere o stato commerciale. Riprova a caricare la pagina.')
+    setTrattative(trattativeRes.error || eventiRes.error ? null : trattativeRes.data || [])
+    setEventi(eventiRes.data || [])
     setFiere(fiereRes.data || [])
     setCircuiti(circuitiRes.data || [])
     setTipologie(tipologieRes.data || [])
@@ -182,6 +197,15 @@ export default function FiereDbPage() {
     () => Object.fromEntries((circuiti || []).map(circuito => [circuito.id, circuito.nome])),
     [circuiti]
   )
+
+  const commercialStatus = (fiera) => {
+    if (!trattative) return 'Stato non disponibile'
+    const rows = trattative.filter(t => t.fieraDbId === fiera.id)
+    const active = rows.filter(t => !isFairNegotiationArchived(t, eventi))
+      .sort((a, b) => (b.dataContatto || b.createdAt || '').localeCompare(a.dataContatto || a.createdAt || ''))
+    if (active.length) return `${getStatoTrattativaFiera(active[0].stato).label}${active[0].dataContatto ? ` - ${formatDate(active[0].dataContatto)}` : ''}`
+    return rows.length ? 'Contattata in precedenza - in archivio' : 'Nessun contatto registrato'
+  }
 
   const contactsThisMonth = useMemo(() => {
     const currentMonth = monthKey(todayLocal())
@@ -349,7 +373,7 @@ export default function FiereDbPage() {
 
   const openEditCircuitoModal = (circuito) => {
     setEditingCircuito(circuito)
-    setCircuitoForm({ nome: circuito.nome || '', note: circuito.note || '' })
+    setCircuitoForm({ ...EMPTY_CIRCUITO_FORM, ...circuito })
     setCircuitoModalOpen(true)
   }
 
@@ -449,7 +473,7 @@ export default function FiereDbPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">DB Fiere & Eventi</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Archivio unico delle fiere: anagrafica, date storiche e promemoria per riaprire il contatto quando ha senso.
+            Il passaggio alle trattative avviene manualmente: premi + Trattativa dopo il contatto. Il promemoria a 6 mesi non crea trattative automaticamente.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -474,7 +498,7 @@ export default function FiereDbPage() {
         </div>
         <div className="card text-center">
           <p className="text-2xl font-bold text-emerald-600">{readyToContact}</p>
-          <p className="text-sm text-gray-500">Pronte per trattativa</p>
+          <p className="text-sm text-gray-500">Ricontatti scaduti o di oggi</p>
         </div>
       </div>
 
@@ -549,7 +573,8 @@ export default function FiereDbPage() {
                 return (
                   <tr key={fiera.id} className="border-b hover:bg-gray-50">
                     <td className="py-2 pr-4">
-                      <div className="font-medium">{fiera.nome}</div>
+                      <button onClick={() => openEditFieraModal(fiera)} className="font-medium text-left hover:underline">{fiera.nome}</button>
+                      <div className="text-xs text-blue-700 mt-1">{commercialStatus(fiera)}</div>
                       {fiera.citta && <div className="text-xs text-gray-400">{fiera.citta}</div>}
                     </td>
                     <td className="py-2 pr-4 text-sm text-gray-600">{fiera.location || '-'}</td>
@@ -565,7 +590,7 @@ export default function FiereDbPage() {
                     <td className="py-2 pr-4 text-sm text-gray-600">{fiera.contatto || '-'}</td>
                     <td className="py-2 text-right">
                       <div className="flex gap-1 justify-end">
-                        {canStartTrattativa(fiera) && (
+                        {(
                           <button
                             onClick={() => handleStartTrattativa(fiera)}
                             className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded hover:bg-yellow-200 font-medium"
@@ -605,13 +630,19 @@ export default function FiereDbPage() {
               <h3 className="font-bold text-gray-900 mb-3 capitalize">{formatMonth(key)}</h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 {items.map(({ fiera, dateSet }, index) => (
-                  <div key={`${fiera.id}-${index}`} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
-                    <div className="font-semibold text-gray-900">{fiera.nome}</div>
-                    <div className="text-sm text-gray-600 mt-1">{getDateRangeLabel(dateSet)}</div>
-                    <div className="text-xs text-gray-400 mt-1">
+                  <button
+                    key={`${fiera.id}-${index}`}
+                    type="button"
+                    onClick={() => openEditFieraModal(fiera)}
+                    className="w-full text-left border border-gray-100 rounded-xl p-4 bg-gray-50 cursor-pointer hover:bg-yellow-50 hover:border-yellow-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 focus-visible:ring-offset-2 transition-colors"
+                  >
+                    <span className="block font-semibold text-gray-900">{fiera.nome}</span>
+                    <span className="block text-xs text-blue-700 mt-1">{commercialStatus(fiera)}</span>
+                    <span className="block text-sm text-gray-600 mt-1">{getDateRangeLabel(dateSet)}</span>
+                    <span className="block text-xs text-gray-400 mt-1">
                       {fiera.tipo || 'Tipologia non definita'} {fiera.citta ? `- ${fiera.citta}` : ''} {circuitiMap[fiera.circuitoId] ? `- ${circuitiMap[fiera.circuitoId]}` : ''}
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -690,6 +721,7 @@ export default function FiereDbPage() {
                 <div key={circuito.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50">
                   <div>
                     <div className="font-medium text-gray-900">{circuito.nome}</div>
+                    <div className="text-xs text-gray-600">{[circuito.referente, circuito.contatto, circuito.telefono].filter(Boolean).join(" - ")}</div>
                     {circuito.note && <div className="text-xs text-gray-400 mt-0.5">{circuito.note}</div>}
                   </div>
                   <div className="flex gap-1">
@@ -712,6 +744,7 @@ export default function FiereDbPage() {
 
       {contactsModalOpen && (
         <MonthContactsModal
+          onOpenFiera={fiera => { setContactsModalOpen(false); openEditFieraModal(fiera) }}
           fiere={fiere}
           circuitiMap={circuitiMap}
           onClose={() => setContactsModalOpen(false)}
@@ -743,7 +776,7 @@ export default function FiereDbPage() {
               </div>
               <div>
                 <label className="label">Circuito</label>
-                <select className="input" value={fieraForm.circuitoId || ''} onChange={(e) => setFieraForm(form => ({ ...form, circuitoId: e.target.value }))}>
+                <select className="input" value={fieraForm.circuitoId || ''} onChange={(e) => setFieraForm(form => inheritCircuitContacts(form, circuiti.find(c => c.id === e.target.value), circuiti.find(c => c.id === form.circuitoId)))}>
                   <option value="">Nessun circuito</option>
                   {circuiti.map(circuito => (
                     <option key={circuito.id} value={circuito.id}>{circuito.nome}</option>
@@ -841,9 +874,12 @@ export default function FiereDbPage() {
                 </div>
               </div>
 
+              <ExtraContactsField value={fieraForm.contattiAggiuntivi} onChange={contattiAggiuntivi => setFieraForm(form => ({ ...form, contattiAggiuntivi }))} />
+              <p className="md:col-span-2 text-xs text-gray-500">Il circuito propone i suoi contatti. Puoi modificarli o aggiungere referenti per questa fiera senza cambiare il circuito.</p>
               <div className="md:col-span-2">
                 <NotesLogField
                   value={fieraForm.noteLog || []}
+                  attachmentContext={{ entityType: 'fiere_db', entityId: editingFiera?.id }}
                   onChange={(noteLog) => setFieraForm(form => ({ ...form, noteLog }))}
                   deprecatedNote={fieraForm.note}
                 />
@@ -864,13 +900,20 @@ export default function FiereDbPage() {
 
       {circuitoModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h3 className="text-lg font-bold mb-4">{editingCircuito ? `Modifica circuito - ${editingCircuito.nome}` : 'Nuovo circuito'}</h3>
             <div className="space-y-4">
               <div>
                 <label className="label">Nome *</label>
                 <input className="input" value={circuitoForm.nome} onChange={(e) => setCircuitoForm(form => ({ ...form, nome: e.target.value }))} />
               </div>
+              {['referente', 'contatto', 'telefono'].map(field => (
+                <label key={field} className="block text-sm text-gray-600">
+                  {{ referente: 'Referente', contatto: 'Email / contatto', telefono: 'Telefono' }[field]}
+                  <input className="input" value={circuitoForm[field] || ''} onChange={e => setCircuitoForm(form => ({ ...form, [field]: e.target.value }))} />
+                </label>
+              ))}
+              <ExtraContactsField value={circuitoForm.contattiAggiuntivi} onChange={contattiAggiuntivi => setCircuitoForm(form => ({ ...form, contattiAggiuntivi }))} />
               <div>
                 <label className="label">Note</label>
                 <textarea className="input min-h-[100px]" value={circuitoForm.note || ''} onChange={(e) => setCircuitoForm(form => ({ ...form, note: e.target.value }))} />
@@ -890,7 +933,7 @@ export default function FiereDbPage() {
 
       {tipologiaModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
             <h3 className="text-lg font-bold mb-4">{editingTipologia ? `Modifica tipologia - ${editingTipologia.nome}` : 'Nuova tipologia evento'}</h3>
             <div className="space-y-4">
               <div>

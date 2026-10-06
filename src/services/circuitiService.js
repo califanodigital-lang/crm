@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
 
+import { normalizeExtraContacts } from '../utils/circuitContacts'
+
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 
 const toCamelCase = (circuito) => {
@@ -9,6 +11,10 @@ const toCamelCase = (circuito) => {
     id: circuito.id,
     nome: circuito.nome,
     note: circuito.note,
+    referente: circuito.referente,
+    contatto: circuito.contatto,
+    telefono: circuito.telefono,
+    contattiAggiuntivi: normalizeExtraContacts(circuito.contatti_aggiuntivi),
     createdAt: circuito.created_at,
     updatedAt: circuito.updated_at,
   }
@@ -17,6 +23,10 @@ const toCamelCase = (circuito) => {
 const toSnakeCase = (circuito) => ({
   nome: circuito.nome?.trim(),
   note: cleanValue(circuito.note),
+  referente: cleanValue(circuito.referente),
+  contatto: cleanValue(circuito.contatto),
+  telefono: cleanValue(circuito.telefono),
+  contatti_aggiuntivi: normalizeExtraContacts(circuito.contattiAggiuntivi),
 })
 
 export const getAllCircuiti = async () => {

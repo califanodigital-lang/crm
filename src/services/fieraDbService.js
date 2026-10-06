@@ -2,6 +2,8 @@ import { supabase } from '../lib/supabase'
 import { fetchAllRows } from './supabasePagination'
 import { addCivilMonths } from '../utils/civilDate'
 
+import { mergeExtraContacts, normalizeExtraContacts } from '../utils/circuitContacts'
+
 const cleanValue = (value) => value === '' || value === undefined ? null : value
 const normalizeValue = (value) => (value || '').trim().toLowerCase()
 const DATE_SETS_COLUMN = 'date_sets'
@@ -77,6 +79,7 @@ const toCamelCase = (f) => {
     referente: f.referente,
     contatto: f.contatto,
     telefono: f.telefono,
+    contattiAggiuntivi: normalizeExtraContacts(f.contatti_aggiuntivi),
     sitoWeb: f.sito_web,
     ultimaData: latestDateSet?.dataInizio || f.ultima_data,
     prossimoContatto: latestDateSet?.prossimoContatto || f.prossimo_contatto,
@@ -103,6 +106,7 @@ const toSnakeCase = (f, { includeDateSets = true } = {}) => {
     referente: cleanValue(f.referente),
     contatto: cleanValue(f.contatto),
     telefono: cleanValue(f.telefono),
+  ...(f.contattiAggiuntivi !== undefined ? { contatti_aggiuntivi: normalizeExtraContacts(f.contattiAggiuntivi) } : {}),
     sito_web: cleanValue(f.sitoWeb),
     ultima_data: cleanValue(latestDateSet?.dataInizio || f.ultimaData),
     prossimo_contatto: cleanValue(latestDateSet?.prossimoContatto || f.prossimoContatto),
@@ -205,6 +209,7 @@ export const createFieraDb = async (fieraData) => {
         referente: payload.referente ?? existing.referente,
         contatto: payload.contatto ?? existing.contatto,
         telefono: payload.telefono ?? existing.telefono,
+        contatti_aggiuntivi: mergeExtraContacts(existing.contatti_aggiuntivi, payload.contatti_aggiuntivi),
         sito_web: payload.sito_web ?? existing.sito_web,
         ultima_data: payload.ultima_data ?? existing.ultima_data,
         prossimo_contatto: payload.prossimo_contatto ?? existing.prossimo_contatto,
