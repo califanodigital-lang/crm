@@ -8,6 +8,7 @@ import { confirm } from '../components/ConfirmModal'
 import { formatDate } from '../utils/date'
 import { romeToday } from '../utils/civilDate'
 import { taskAssigneeIds, additionalTaskAssignees } from '../utils/taskAssignees'
+import { sortTasksByDeadline } from '../utils/taskOrder'
 import TaskAdditionalAssignees from '../components/TaskAdditionalAssignees'
 
 export default function TasksPage() {
@@ -135,7 +136,7 @@ export default function TasksPage() {
   const matchingTasks = scoped.filter(task => !needle || [
     task.title, task.description, ...taskAssigneeIds(task).map(operatorName),
   ].some(value => String(value || '').toLowerCase().includes(needle)))
-  const visible = matchingTasks.filter(task => showCompleted || !task.completed).sort((a, b) => Number(a.completed) - Number(b.completed) || Number(b.urgent) - Number(a.urgent) || b.created_at.localeCompare(a.created_at))
+  const visible = sortTasksByDeadline(matchingTasks.filter(task => showCompleted || !task.completed))
 
   return <div className="max-w-5xl mx-auto">
     <header className="flex items-start justify-between gap-4 mb-6">
@@ -165,6 +166,7 @@ export default function TasksPage() {
       <div className="flex rounded-xl bg-gray-100 p-1" role="group" aria-label="Filtro assegnatario">{[['mine', 'Le mie task'], ['all', 'Tutte']].map(([value, label]) => <button key={value} onClick={() => setScope(value)} aria-pressed={scope === value} className={`rounded-lg px-4 py-2 text-sm font-semibold ${scope === value ? 'bg-white text-blue-900 shadow-sm' : 'text-gray-500'}`}>{label}</button>)}</div>
       <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" checked={showCompleted} onChange={event => setShowCompleted(event.target.checked)} /> Mostra completate</label>
     </div>
+    <p className="text-xs text-gray-500 mb-2">Ordine per scadenza: prima le piu vicine, poi le task senza scadenza. A parita di data, prima le urgenti. Le completate restano in fondo.</p>
     <p className="text-xs text-gray-500 mb-3" role="status">{matchingTasks.filter(task => !task.completed).length} da completare</p>
     <div className="card !p-0 overflow-hidden">
       {loading ? <p className="p-6 text-gray-500" role="status">Caricamento...</p> : error ? <p className="p-6 text-gray-500">Aggiorna per visualizzare una lista attendibile.</p> : !visible.length ? <div className="p-8 text-center text-gray-500"><CheckSquare className="w-8 h-8 mx-auto mb-3 text-blue-800" /><p>{needle ? 'Nessuna task trovata con questa ricerca e i filtri selezionati.' : showCompleted ? 'Nessuna task in questa lista.' : 'Nessuna task da completare.'}</p></div> : <ul className="divide-y divide-gray-100">{visible.map(task => <li key={task.id} className="flex flex-wrap items-center gap-3 p-4">

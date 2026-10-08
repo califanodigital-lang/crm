@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Calendar, CalendarDays, Edit, Plus, Search, Trash2, X } from 'lucide-react'
+import { Calendar, CalendarDays, CheckCircle2, Edit, Plus, Search, Trash2, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { createCircuito, deleteCircuito, getAllCircuiti, updateCircuito } from '../services/circuitiService'
 import { createFieraDb, deleteFieraDb, getAllFiereDb, updateFieraDb } from '../services/fieraDbService'
@@ -19,6 +19,7 @@ import NotesLogField from '../components/NotesLogField'
 
 import { getAllEventi } from '../services/eventoService'
 import { getStatoTrattativaFiera } from '../constants/constants'
+import { getFairRelationship } from '../utils/fairRelationship'
 import { isFairNegotiationArchived } from '../utils/fairWorkflow'
 
 import ExtraContactsField from '../components/ExtraContactsField'
@@ -27,6 +28,7 @@ import { inheritCircuitContacts } from '../utils/circuitContacts'
 const emptyDateSet = () => ({ dataInizio: '', dataFine: '', prossimoContatto: '' })
 
 const EMPTY_FIERA_FORM = {
+  collaborazioneConclusaManuale: false,
   nome: '',
   tipo: '',
   circuitoId: '',
@@ -158,6 +160,7 @@ export default function FiereDbPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('lista')
   const [searchTerm, setSearchTerm] = useState('')
+  const [relationshipFilter, setRelationshipFilter] = useState('all')
   const [sortMode, setSortMode] = useState('dateDesc')
   const [contactsModalOpen, setContactsModalOpen] = useState(false)
   const [fieraModalOpen, setFieraModalOpen] = useState(false)
@@ -198,13 +201,23 @@ export default function FiereDbPage() {
     [circuiti]
   )
 
+  const relationshipById = useMemo(() => Object.fromEntries(
+    fiere.map(fiera => [fiera.id, getFairRelationship(fiera, trattative, eventi)])
+  ), [fiere, trattative, eventi])
+
+  const collaborationBadge = fiera => relationshipById[fiera.id] === 'collaborated' ? (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 mt-1">
+      <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" /> Collaborazione conclusa{fiera.collaborazioneConclusaManuale ? ' (manuale)' : ''}
+    </span>
+  ) : null
+
   const commercialStatus = (fiera) => {
     if (!trattative) return 'Stato non disponibile'
     const rows = trattative.filter(t => t.fieraDbId === fiera.id)
     const active = rows.filter(t => !isFairNegotiationArchived(t, eventi))
       .sort((a, b) => (b.dataContatto || b.createdAt || '').localeCompare(a.dataContatto || a.createdAt || ''))
     if (active.length) return `${getStatoTrattativaFiera(active[0].stato).label}${active[0].dataContatto ? ` - ${formatDate(active[0].dataContatto)}` : ''}`
-    return rows.length ? 'Contattata in precedenza - in archivio' : 'Nessun contatto registrato'
+    return rows.length ? 'Contattata in precedenza - in archivio' : relationshipById[fiera.id] === 'uncontacted' ? 'Nessun contatto registrato' : fiera.collaborazioneConclusaManuale ? 'Collaborazione registrata manualmente' : 'Evento collegato'
   }
 
   const contactsThisMonth = useMemo(() => {
@@ -219,6 +232,7 @@ export default function FiereDbPage() {
   const filteredFiere = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase()
     const filtered = fiere.filter(fiera => {
+      if (relationshipById[fiera.id] !== 'unavailable' && relationshipFilter !== 'all' && relationshipById[fiera.id] !== relationshipFilter) return false
       if (!needle) return true
       return [
         fiera.nome,
@@ -240,7 +254,7 @@ export default function FiereDbPage() {
         ? leftDate.localeCompare(rightDate)
         : rightDate.localeCompare(leftDate)
     })
-  }, [circuitiMap, fiere, searchTerm, sortMode])
+  }, [circuitiMap, fiere, searchTerm, sortMode, relationshipFilter, relationshipById])
 
   const eventMonthGroups = useMemo(() => {
     const groups = {}
@@ -535,6 +549,15 @@ export default function FiereDbPage() {
               />
             </div>
             <div className="flex gap-2 flex-wrap">
+              <label className="text-xs text-gray-600">
+                Rapporto commerciale
+                <select className="input w-auto block" value={relationshipFilter} onChange={e => setRelationshipFilter(e.target.value)} disabled={!trattative}>
+                  <option value="all">Tutte le fiere</option>
+                  <option value="collaborated">Con cui abbiamo collaborato</option>
+                  <option value="contacted">Contattate, senza collaborazioni</option>
+                  <option value="uncontacted">Mai contattate e nessuna collaborazione</option>
+                </select>
+              </label>
               <select className="input w-auto" value={sortMode} onChange={(e) => setSortMode(e.target.value)}>
                 <option value="dateDesc">Data: piu recente</option>
                 <option value="dateAsc">Data: piu vecchia</option>
@@ -549,6 +572,8 @@ export default function FiereDbPage() {
               </button>
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-3">La spunta Collaborazione conclusa indica un evento chiuso collegato oppure una collaborazione segnata manualmente nella scheda. Le contattate escludono quelle con collaborazioni concluse. Il filtro vale anche nella vista per mese.</p>
+          {!trattative && <p role="alert" className="text-xs text-red-600 mt-2">Stato commerciale non disponibile: ricarica la pagina per usare i filtri.</p>}
         </div>
       )}
 
@@ -575,6 +600,7 @@ export default function FiereDbPage() {
                     <td className="py-2 pr-4">
                       <button onClick={() => openEditFieraModal(fiera)} className="font-medium text-left hover:underline">{fiera.nome}</button>
                       <div className="text-xs text-blue-700 mt-1">{commercialStatus(fiera)}</div>
+                      {collaborationBadge(fiera)}
                       {fiera.citta && <div className="text-xs text-gray-400">{fiera.citta}</div>}
                     </td>
                     <td className="py-2 pr-4 text-sm text-gray-600">{fiera.location || '-'}</td>
@@ -638,6 +664,7 @@ export default function FiereDbPage() {
                   >
                     <span className="block font-semibold text-gray-900">{fiera.nome}</span>
                     <span className="block text-xs text-blue-700 mt-1">{commercialStatus(fiera)}</span>
+                    {collaborationBadge(fiera)}
                     <span className="block text-sm text-gray-600 mt-1">{getDateRangeLabel(dateSet)}</span>
                     <span className="block text-xs text-gray-400 mt-1">
                       {fiera.tipo || 'Tipologia non definita'} {fiera.citta ? `- ${fiera.citta}` : ''} {circuitiMap[fiera.circuitoId] ? `- ${circuitiMap[fiera.circuitoId]}` : ''}
@@ -874,6 +901,13 @@ export default function FiereDbPage() {
                 </div>
               </div>
 
+              <div className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                <label className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                  <input type="checkbox" checked={fieraForm.collaborazioneConclusaManuale === true} onChange={e => setFieraForm(form => ({ ...form, collaborazioneConclusaManuale: e.target.checked }))} />
+                  Collaborazione conclusa (segnalazione manuale)
+                </label>
+                <p className="text-xs text-gray-600 mt-2">Spunta se avete gia collaborato con questa fiera, anche senza un evento storico nel CRM. Salva la scheda per confermare. Togliendo la spunta rimuovi solo la segnalazione manuale: gli eventi chiusi collegati continuano a contare.</p>
+              </div>
               <ExtraContactsField value={fieraForm.contattiAggiuntivi} onChange={contattiAggiuntivi => setFieraForm(form => ({ ...form, contattiAggiuntivi }))} />
               <p className="md:col-span-2 text-xs text-gray-500">Il circuito propone i suoi contatti. Puoi modificarli o aggiungere referenti per questa fiera senza cambiare il circuito.</p>
               <div className="md:col-span-2">

@@ -9,7 +9,7 @@ Abbiamo sistemato i punti che ci hai segnalato. Ti chiediamo queste prove dopo l
 1. **Passaggio dal database alle trattative.** Inserire una fiera nel database non apre una trattativa automaticamente. Dopo averla contattata, premi **+ Trattativa** nella lista del database: ora lo trovi anche prima della scadenza del promemoria. Verifica che la fiera compaia nelle trattative. La data di contatto iniziale e quella di oggi: correggila se il contatto e avvenuto prima. Controlla le date della fiera per lavorare sull'edizione giusta.
 2. **Ricerca della fiera.** Vai in **Trattative Fiere > Nuova Trattativa Fiera**. Sopra **Scheda DB Fiere** scrivi una parte del nome, anche piu lettere nel mezzo del nome. Il menu sotto deve mostrare le fiere corrispondenti: seleziona quella giusta. Puoi cercare anche per citta, luogo o circuito.
 3. **Apertura dalla vista per data.** Nel database apri la vista raggruppata per mese e clicca in qualsiasi punto della card di una fiera. Deve aprirsi la scheda, che puoi consultare e modificare.
-4. **Capire se una fiera e gia stata contattata.** Dopo aver creato una trattativa, torna al database. Sotto il nome della fiera devono comparire lo stato commerciale e la data del contatto. Se ci sono solo trattative chiuse, vedrai che e stata contattata in precedenza. Il sistema puo mostrare solo i contatti registrati nel CRM.
+4. **Capire se una fiera e gia stata contattata.** Dopo aver creato una trattativa, torna al database. Sotto il nome della fiera devono comparire lo stato commerciale e la data del contatto. Se ci sono solo trattative chiuse, vedrai che e stata contattata in precedenza. Per collaborazioni passate senza evento nel CRM, apri la scheda, spunta **Collaborazione conclusa (segnalazione manuale)** e salva: la fiera entra nel filtro delle collaborazioni. Puoi togliere la spunta e salvare per correggerla; gli eventi chiusi collegati continuano comunque a contare.
 5. **Trattative ordinate per data.** In Trattative Fiere premi **Vedi tutto** e scegli **Data evento: crescente**, poi **decrescente**. Controlla che le date cambino ordine; le schede senza data restano in fondo. Prova anche **Dal / Al** per vedere solo un periodo: questo filtro era gia presente.
 6. **Evento chiuso e archivio.** Su una fiera di prova, porta la trattativa in **In trattativa** e verifica che venga creato o collegato l'evento. Quando l'evento puo essere chiuso, chiudilo in **Fiere & Eventi**. Torna in Trattative Fiere: deve sparire dalle attive e comparire in **Archivio trattative**. Premi **Vedi tutto** e scegli **Tutti gli stati** se non lo trovi. La trattativa viene conservata, non eliminata.
 7. **Contatti automatici dal circuito.** Nel database vai in **Impostazioni**, modifica un circuito e inserisci referente, email/contatto, telefono ed eventualmente **+ Aggiungi contatto**. Salva. Crea una nuova fiera e seleziona quel circuito: devono apparire i recapiti. Aggiungi un referente specifico della fiera, salva e riapri: devono esserci sia i contatti proposti sia quello aggiunto. Riapri il circuito: i suoi recapiti devono essere rimasti uguali. Prova anche a selezionare la fiera in una nuova trattativa: deve ereditare i contatti aggiuntivi.
@@ -40,3 +40,59 @@ Devono restare solo gli eventi corrispondenti. Il filtro Tutti gli eventi /
 In gestione / Chiusi resta attivo: scegli Tutti gli eventi per cercare ovunque.
 Svuota la barra e verifica che ricompaiano gli eventi della vista scelta.
 Nessuna migrazione Supabase richiesta per questa ricerca.
+
+## Collaborazioni e tre filtri - v0.28.2, 8 ottobre 2026
+
+Messaggio per il cliente:
+
+Nel Database Fiere trovi ora il filtro **Rapporto commerciale**:
+
+- **Con cui abbiamo collaborato**: almeno un evento chiuso collegato alla fiera oppure una segnalazione manuale;
+  vicino al nome compare automaticamente la spunta **Collaborazione conclusa**.
+- **Contattate, senza collaborazioni**: trattative registrate (anche perse o
+  senza risposta) o eventi aperti collegati, senza collaborazioni concluse.
+- **Mai contattate e nessuna collaborazione**: nessuna trattativa o evento
+  collegato registrato nel CRM.
+
+La spunta di collaborazione e automatica dagli eventi chiusi; dalla v0.28.3 puoi aggiungerla anche manualmente nella scheda.
+Se una fiera ha collaborazioni precedenti e una nuova trattativa aperta,
+resta nel gruppo delle collaborazioni e continua a mostrare lo stato del contatto.
+Usa **Tutte le fiere** per tornare alla lista completa. Puoi combinare il filtro
+con la ricerca; funziona anche nella vista per mese.
+
+Prove: cerca una fiera con evento chiuso, una solo contattata e una mai lavorata.
+Seleziona ciascun filtro e verifica che compaia nel gruppo previsto. Controlla
+anche una fiera con vecchia collaborazione e nuova trattativa. La semplice
+chiusura di una trattativa persa non deve far comparire la spunta di collaborazione.
+
+Nota tecnica: si usano i collegamenti fieraDbId, eventoOrigineId e quelli tra
+trattativa ed evento, senza abbinamenti per nome. Se lo storico non e collegato,
+va verificato il record: il CRM non puo ricostruire rapporti esterni non registrati.
+In caso di errore caricando lo stato commerciale i filtri vengono disabilitati.
+Nessuna migrazione Supabase o modifica ai dati remoti richiesta.
+
+## Collaborazione conclusa manuale - v0.28.3
+
+### Cosa dire al cliente
+
+Puoi ora segnare anche le collaborazioni passate che non hanno un evento nel CRM:
+
+1. Nel Database Fiere apri la scheda della fiera.
+2. Spunta **Collaborazione conclusa (segnalazione manuale)** e premi **Salva**.
+3. Nella lista e nella vista per mese compare **Collaborazione conclusa (manuale)**.
+   La fiera entra nel filtro **Con cui abbiamo collaborato**, anche senza trattative.
+4. Per correggere un errore, riapri la scheda, togli la spunta e salva.
+   Se esistono eventi chiusi collegati, la collaborazione rimane riconosciuta
+   automaticamente. La spunta non chiude eventi o trattative.
+
+Prova: segna una fiera mai contattata, salva, ricarica e controlla il filtro delle
+collaborazioni. Togli la spunta e verifica che torni fra le mai contattate.
+Ripeti su una fiera con evento chiuso: togliere la segnalazione manuale non deve
+far sparire lo storico della collaborazione. Annulla non salva la spunta.
+
+### Prima del rilascio
+
+Applicare in Supabase `supabase_migrations/20261008_fiere_manual_collaboration.sql`.
+Aggiunge un campo booleano, inizialmente falso; non cambia permessi, eventi o
+trattative. Il codice di riuso anagrafica conserva le segnalazioni manuali
+esistenti, anche quando si crea una trattativa. Nessuna migrazione remota eseguita.

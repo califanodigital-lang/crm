@@ -1,6 +1,23 @@
-export const APP_VERSION = 'v0.28.1'
+export const APP_VERSION = 'v0.28.3'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.28.3',
+    date: '2026-10-08',
+    items: [
+      'Database fiere: spunta manuale Collaborazione conclusa nella scheda, inclusa nel filtro delle collaborazioni e modificabile senza alterare eventi o trattative.',
+      'Rimuovere la segnalazione manuale mantiene il riconoscimento automatico degli eventi chiusi. Richiede la migrazione 20261008_fiere_manual_collaboration.sql.',
+    ],
+  },
+  {
+    version: 'v0.28.2',
+    date: '2026-10-08',
+    items: [
+      'Tasks ordinate per scadenza crescente; urgenza a parita di data, task senza scadenza e completate in fondo.',
+      'Database fiere: spunta automatica Collaborazione conclusa dagli eventi chiusi collegati e filtri per collaborazioni, contatti senza collaborazioni e fiere mai contattate.',
+      'Filtri commerciali disponibili anche nella vista per mese, combinabili con ricerca e ordinamento; Docs aggiornate.',
+    ],
+  },
   {
     version: 'v0.28.1',
     date: '2026-10-06',

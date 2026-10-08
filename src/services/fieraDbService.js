@@ -87,6 +87,7 @@ const toCamelCase = (f) => {
     note: f.note,
     noteLog: f.note_log || [],
     eventoOrigineId: f.evento_origine_id,
+    collaborazioneConclusaManuale: f.collaborazione_conclusa_manuale === true,
     createdAt: f.created_at,
     updatedAt: f.updated_at,
   }
@@ -113,6 +114,7 @@ const toSnakeCase = (f, { includeDateSets = true } = {}) => {
     note: cleanValue(f.note),
     note_log: f.noteLog || [],
     evento_origine_id: cleanValue(f.eventoOrigineId),
+    ...(f.collaborazioneConclusaManuale !== undefined ? { collaborazione_conclusa_manuale: f.collaborazioneConclusaManuale === true } : {}),
   }
 
   if (includeDateSets) payload.date_sets = dateSets
@@ -217,6 +219,8 @@ export const createFieraDb = async (fieraData) => {
         note: payload.note ?? existing.note,
         note_log: payload.note_log ?? existing.note_log,
         evento_origine_id: payload.evento_origine_id ?? existing.evento_origine_id,
+        // Reusing an existing fair during creation must preserve its manual history.
+        collaborazione_conclusa_manuale: existing.collaborazione_conclusa_manuale === true || payload.collaborazione_conclusa_manuale === true,
       }
 
       let { data, error } = await supabase

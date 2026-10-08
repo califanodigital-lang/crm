@@ -99,3 +99,15 @@ anche con una parte del testo e senza distinzione fra maiuscole e minuscole.
 Restano attivi Le mie task / Tutte e Mostra completate. Per cercare ovunque,
 selezionare Tutte e attivare Mostra completate; svuotare la barra per rimuovere
 la ricerca. Nessuna migrazione Supabase richiesta per questa modifica.
+
+## Ordine per scadenza - v0.28.2
+
+Le task da completare sono ordinate per scadenza crescente, comprese quelle
+scadute. Le task senza scadenza seguono quelle con data. A parita di data
+vengono prima le urgenti, poi quelle create piu recentemente. Le completate
+restano in fondo quando Mostra completate e attivo.
+
+Prova cliente: crea prima una task urgente con scadenza oggi e poi una urgente
+con scadenza domani. Quella di oggi deve restare sopra. Anche una task non
+urgente di oggi precede una urgente di domani. Ricerca e filtri restano attivi.
+Nessuna migrazione Supabase richiesta.
