@@ -11,7 +11,7 @@ const tasks = [
   { id: 'today-normal', due_date: '2026-10-08', urgent: false },
 ]
 const original = structuredClone(tasks)
-assert.deepEqual(sortTasksByDeadline(tasks).map(row => row.id), ['overdue', 'today', 'today-normal', 'tomorrow', 'no-date', 'done'])
+assert.deepEqual(sortTasksByDeadline(tasks).map(row => row.id), ['today', 'tomorrow', 'no-date', 'overdue', 'today-normal', 'done'])
 assert.deepEqual(tasks, original)
 assert.deepEqual(sortTasksByDeadline([
   { id: 'old', due_date: '2026-10-08', urgent: true, created_at: '2026-10-01' },
@@ -19,6 +19,14 @@ assert.deepEqual(sortTasksByDeadline([
 ]).map(row => row.id), ['new', 'old'])
 assert.deepEqual(sortTasksByDeadline([]), [])
 assert.deepEqual(sortTasksByDeadline([{ id: 'a' }, { id: 'b', due_date: '2027-01-01' }]).map(row => row.id), ['b', 'a'])
+
+// Regression: an undated urgent task stays above any non-urgent task.
+assert.deepEqual(sortTasksByDeadline([
+  { id: 'normal-overdue', urgent: false, due_date: '2026-01-01' },
+  { id: 'urgent-undated', urgent: true },
+  { id: 'completed-urgent', urgent: true, completed: true, due_date: '2026-01-01' },
+  { id: 'urgent-today', urgent: true, due_date: '2026-10-09' },
+]).map(row => row.id), ['urgent-today', 'urgent-undated', 'normal-overdue', 'completed-urgent'])
 
 const fair = { id: 'fair-1', nome: 'Fiera di prova' }
 const contact = { id: 'negotiation-1', fieraDbId: fair.id, stato: 'CONTATTATO' }
@@ -42,4 +50,4 @@ assert.equal(relationship({ ...fair, collaborazioneConclusaManuale: true }, null
 assert.equal(relationship({ ...fair, collaborazioneConclusaManuale: false }, [], []), 'uncontacted')
 assert.equal(relationship({ ...fair, collaborazioneConclusaManuale: false }, [contact], []), 'contacted')
 assert.equal(relationship({ ...fair, collaborazioneConclusaManuale: false }, [], [closedEvent]), 'collaborated')
-console.log('24 verifiche superate: ordine task, urgenza, assenza scadenza, storico fiere, collegamenti e dati non disponibili.')
+console.log('25 verifiche superate: ordine task, urgenza, assenza scadenza, storico fiere, collegamenti e dati non disponibili.')

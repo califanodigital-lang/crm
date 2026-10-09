@@ -1,6 +1,11 @@
-export const APP_VERSION = 'v0.28.3'
+export const APP_VERSION = 'v0.28.4'
 
 export const CHANGELOG = [
+  {
+    version: 'v0.28.4',
+    date: '2026-10-09',
+    items: ['Tasks: urgenti sempre prima delle non urgenti, anche senza scadenza; dentro ciascun gruppo ordine per scadenza crescente. Completate in fondo.'],
+  },
   {
     version: 'v0.28.3',
     date: '2026-10-08',
